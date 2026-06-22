@@ -1,0 +1,8 @@
+{
+  "datasets": [
+    {
+      "label": "OSERA Demo Data (Example)",
+      "url": "../data/finos-sample-platform.json"
+    }
+  ]
+}

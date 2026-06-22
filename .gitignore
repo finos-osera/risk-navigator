@@ -1,20 +1,33 @@
-# dependencies
-website/node_modules
-
-# production
-website/build
-
-# generated files
-website/.docusaurus
-.cache-loader
-
-# misc
+node_modules/
+.venv/
+.pytest_cache/
+__pycache__/
+*.pyc
 .DS_Store
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-website/npm-debug.log*
-website/yarn-debug.log*
-website/yarn-error.log*
+# Local/private pipeline artifacts
+data/local/
+data/vulns.db
+data/vulns.db.meta.json
+data/external/
+data/finos-github-org.json
+data/raw/finos-github-org/
+
+# Keep distributable sample data in repo
+!data/finos-sample-platform.json
+!data/raw/finos-sample-platform/
+!data/raw/finos-sample-platform/*.csv
+
+# Keep sample OSV seed only (full OSV dump is local-only)
+!data/sources/
+!data/sources/osv/
+!data/sources/osv/sample-osv.json
+data/sources/osv/all.zip
+data/sources/osv/all.zip.meta.json

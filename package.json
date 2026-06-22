@@ -1,0 +1,28 @@
+{
+  "name": "risk-navigator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OSERA Risk Navigator static UI and data pipeline",
+  "scripts": {
+    "ingest:vulns": "python3 scripts/ingest_vulns.py --write-sample",
+    "fetch:osv": "python3 scripts/fetch_osv_source.py",
+    "ingest:vulns:full": "python3 scripts/ingest_vulns.py --source-zip data/local/osv/all.zip --source-dir data/sources/osv",
+    "allowlist:finos-org": "python3 scripts/build_package_allowlist.py --scope finos-github-org",
+    "ingest:vulns:finos-org": "python3 scripts/ingest_vulns.py --source-zip data/local/osv/all.zip --source-dir data/sources/osv --package-allowlist-file data/local/allowlists/finos-github-org-packages.txt",
+    "fetch:external": "python3 scripts/fetch_external.py",
+    "extract:sample": "python3 scripts/extract_org.py --scope finos-sample-platform --source synthetic",
+    "extract:finos-org": "python3 scripts/extract_org.py --scope finos-github-org --source finos-github --github-org finos --github-parallelism 20 --github-max-manifests-per-repo 16",
+    "build:dataset": "python3 scripts/build_dataset.py --scope finos-sample-platform --exclude-library-namespaces pypi,rpm,oci,docker",
+    "build:dataset:finos-org": "python3 scripts/build_dataset.py --scope finos-github-org",
+    "validate:dataset": "python3 scripts/validate_dataset.py data/finos-sample-platform.json",
+    "validate:dataset:finos-org": "python3 scripts/validate_dataset.py data/finos-github-org.json",
+    "build:all": "npm run ingest:vulns && npm run fetch:external && npm run extract:sample && npm run build:dataset && npm run validate:dataset",
+    "build:all:finos-org": "npm run ingest:vulns && npm run fetch:external && npm run extract:finos-org && npm run build:dataset:finos-org && npm run validate:dataset:finos-org",
+    "build:all:finos-org:full-osv": "npm run fetch:osv && npm run extract:finos-org && npm run allowlist:finos-org && npm run ingest:vulns:finos-org && npm run fetch:external && npm run extract:finos-org && npm run build:dataset:finos-org && npm run validate:dataset:finos-org",
+    "dev": "vite --open /tool/risk-navigator.html",
+    "test": "python3 -m pytest -q"
+  },
+  "devDependencies": {
+    "vite": "^7.1.0"
+  }
+}

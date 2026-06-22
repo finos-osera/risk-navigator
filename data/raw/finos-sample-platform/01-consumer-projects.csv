@@ -1,0 +1,25 @@
+id,namespace,meta,proj,release,project_ref,eonid,department,tai_system
+github|finos|legend-studio,github,finos,legend-studio,1.0.0,github/finos/legend-studio,FIN-1000,Capital Markets,LEGEND_STUDIO
+github|finos|perspective-viewer,github,finos,perspective-viewer,1.0.1,github/finos/perspective-viewer,FIN-1001,Risk Platforms,PERSPECTIVE_VIEWER
+github|finos|fdb-relational-core,github,finos,fdb-relational-core,1.0.2,github/finos/fdb-relational-core,FIN-1002,Operations,FDB_RELATIONAL_CORE
+github|finos|symphony-bdk-java,github,finos,symphony-bdk-java,1.0.3,github/finos/symphony-bdk-java,FIN-1003,Shared Infrastructure,SYMPHONY_BDK_JAVA
+github|finos|openfin-java-integration,github,finos,openfin-java-integration,1.0.4,github/finos/openfin-java-integration,FIN-1004,Capital Markets,OPENFIN_JAVA_INTEGRATION
+github|finos|finos-tracers,github,finos,finos-tracers,1.0.5,github/finos/finos-tracers,FIN-1005,Risk Platforms,FINOS_TRACERS
+github|finos|cloud-events-router,github,finos,cloud-events-router,1.0.6,github/finos/cloud-events-router,FIN-1006,Operations,CLOUD_EVENTS_ROUTER
+github|finos|risk-aggregation-service,github,finos,risk-aggregation-service,1.0.7,github/finos/risk-aggregation-service,FIN-1007,Shared Infrastructure,RISK_AGGREGATION_SERVICE
+github|finos|trade-api-gateway,github,finos,trade-api-gateway,1.0.8,github/finos/trade-api-gateway,FIN-1008,Capital Markets,TRADE_API_GATEWAY
+github|finos|clearing-ledger-sync,github,finos,clearing-ledger-sync,1.0.9,github/finos/clearing-ledger-sync,FIN-1009,Risk Platforms,CLEARING_LEDGER_SYNC
+github|finos|reg-reporting-engine,github,finos,reg-reporting-engine,1.0.10,github/finos/reg-reporting-engine,FIN-1010,Operations,REG_REPORTING_ENGINE
+github|finos|market-data-distributor,github,finos,market-data-distributor,1.0.11,github/finos/market-data-distributor,FIN-1011,Shared Infrastructure,MARKET_DATA_DISTRIBUTOR
+github|finos|ops-batch-orchestrator,github,finos,ops-batch-orchestrator,1.0.12,github/finos/ops-batch-orchestrator,FIN-1012,Capital Markets,OPS_BATCH_ORCHESTRATOR
+github|finos|connectivity-hub,github,finos,connectivity-hub,1.0.13,github/finos/connectivity-hub,FIN-1013,Risk Platforms,CONNECTIVITY_HUB
+github|finos|authz-policy-engine,github,finos,authz-policy-engine,1.0.14,github/finos/authz-policy-engine,FIN-1014,Operations,AUTHZ_POLICY_ENGINE
+github|finos|portfolio-calc-engine,github,finos,portfolio-calc-engine,1.0.15,github/finos/portfolio-calc-engine,FIN-1015,Shared Infrastructure,PORTFOLIO_CALC_ENGINE
+github|finos|credit-risk-scoring,github,finos,credit-risk-scoring,1.0.16,github/finos/credit-risk-scoring,FIN-1016,Capital Markets,CREDIT_RISK_SCORING
+github|finos|liquidity-watch,github,finos,liquidity-watch,1.0.17,github/finos/liquidity-watch,FIN-1017,Risk Platforms,LIQUIDITY_WATCH
+github|finos|compliance-audit-stream,github,finos,compliance-audit-stream,1.0.18,github/finos/compliance-audit-stream,FIN-1018,Operations,COMPLIANCE_AUDIT_STREAM
+github|finos|reference-data-core,github,finos,reference-data-core,1.0.19,github/finos/reference-data-core,FIN-1019,Shared Infrastructure,REFERENCE_DATA_CORE
+github|finos|payments-scheduler,github,finos,payments-scheduler,1.0.20,github/finos/payments-scheduler,FIN-1020,Capital Markets,PAYMENTS_SCHEDULER
+github|finos|eod-reconciliation,github,finos,eod-reconciliation,1.0.21,github/finos/eod-reconciliation,FIN-1021,Risk Platforms,EOD_RECONCILIATION
+github|finos|vault-signing-proxy,github,finos,vault-signing-proxy,1.0.22,github/finos/vault-signing-proxy,FIN-1022,Operations,VAULT_SIGNING_PROXY
+github|finos|container-baseline-audit,github,finos,container-baseline-audit,1.0.23,github/finos/container-baseline-audit,FIN-1023,Shared Infrastructure,CONTAINER_BASELINE_AUDIT
