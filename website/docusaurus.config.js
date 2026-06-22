@@ -1,13 +1,15 @@
 const lightCodeTheme = require("prism-react-renderer").themes.github;
 const darkCodeTheme = require("prism-react-renderer").themes.nightOwl;
 
+const isGitHubPages = process.env.GITHUB_PAGES === "true";
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: "OSERA Risk Navigator",
   tagline: "Dependency-risk prioritization for open source supply resiliency",
   favicon: "img/favicon.ico",
-  url: "https://risk-navigator.finos.org",
-  baseUrl: "/",
+  url: isGitHubPages ? "https://finos-backpatch.github.io" : "https://risk-navigator.finos.org",
+  baseUrl: isGitHubPages ? "/risk-navigator/" : "/",
   organizationName: "finos-backpatch",
   projectName: "risk-navigator",
   onBrokenLinks: "throw",
@@ -25,7 +27,7 @@ const config = {
           path: "../docs",
           routeBasePath: "docs",
           sidebarPath: require.resolve("./sidebars.js"),
-          editUrl: "https://github.com/finos-backpatch/risk-navigator/edit/main/",
+          editUrl: ({ docPath }) => `https://github.com/finos-backpatch/risk-navigator/edit/main/docs/${docPath}`,
         },
         blog: false,
         theme: {

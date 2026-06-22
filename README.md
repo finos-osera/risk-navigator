@@ -84,6 +84,15 @@ python3 scripts/build_dataset.py --scope finos-github-org \
   --amplifiers-preaggregated
 ```
 
+## GitHub Pages
+
+The Docusaurus site is published by the GitHub Actions workflow in `.github/workflows/pages.yml`.
+On pushes to `main`, the workflow builds `website/` with the GitHub Pages base path and deploys to:
+
+```text
+https://finos-backpatch.github.io/risk-navigator/
+```
+
 ### Overlay metadata hooks
 
 Built datasets can optionally provide UI override metadata in `meta`:
