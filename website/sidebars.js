@@ -2,6 +2,7 @@
 module.exports = {
   tutorialSidebar: [
     "home",
+    "data-pipeline",
     "runbook",
     "spec",
     "CUSTOMIZATION_GUIDE",

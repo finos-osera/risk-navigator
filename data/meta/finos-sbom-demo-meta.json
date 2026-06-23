@@ -1,0 +1,23 @@
+{
+  "scope_type": "repository-sbom-sample",
+  "scope_name": "finos-sbom-demo",
+  "scope_label": "FINOS SBOM Scan Demo",
+  "division": "FINOS public repositories",
+  "division_short": "FINOS",
+  "project_group_mode": "metadata",
+  "filter_labels": {
+    "project_group": "Input source",
+    "project_reference": "Repository"
+  },
+  "dataset_methodology": {
+    "summary": "Demo dataset built from CycloneDX SBOM files representing a small FINOS public repository scan.",
+    "scanner_script": "scripts/scan_repos_to_sbom.py",
+    "sbom_dir": "data/sboms/finos-sbom-demo",
+    "scanner_options": ["cdxgen", "syft"],
+    "limitations": [
+      "The committed SBOMs are compact demo inputs aligned to the sample OSV vulnerability seed.",
+      "Full repo scans depend on scanner ecosystem coverage, available lockfiles, and public repository contents.",
+      "Private registries, generated dependency graphs, and build-time dependency resolution are outside this demo path."
+    ]
+  }
+}

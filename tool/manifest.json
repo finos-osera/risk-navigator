@@ -3,6 +3,14 @@
     {
       "label": "OSERA Demo Data (Example)",
       "url": "../data/finos-sample-platform.json"
+    },
+    {
+      "label": "FINOS SBOM Scan Demo",
+      "url": "../data/finos-sbom-demo.json"
+    },
+    {
+      "label": "FINOS GitHub Org Snapshot",
+      "url": "../data/finos-github-org.json"
     }
   ]
 }

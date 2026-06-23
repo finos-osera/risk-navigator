@@ -11,10 +11,17 @@ const copies = [
   ["tool/manifest.json", "tool/manifest.json"],
   ["tool/assets/osera-horizontal-color.svg", "tool/assets/osera-horizontal-color.svg"],
   ["tool/assets/osera-horizontal-white.svg", "tool/assets/osera-horizontal-white.svg"],
+  ["tool/risk-navigator.html", "tools/risk-navigator.html"],
+  ["tool/manifest.json", "tools/manifest.json"],
+  ["tool/assets/osera-horizontal-color.svg", "tools/assets/osera-horizontal-color.svg"],
+  ["tool/assets/osera-horizontal-white.svg", "tools/assets/osera-horizontal-white.svg"],
   ["data/finos-sample-platform.json", "data/finos-sample-platform.json"],
+  ["data/finos-sbom-demo.json", "data/finos-sbom-demo.json"],
+  ["data/finos-github-org.json", "data/finos-github-org.json"],
 ];
 
 await rm(resolve(staticDir, "tool"), { recursive: true, force: true });
+await rm(resolve(staticDir, "tools"), { recursive: true, force: true });
 await rm(resolve(staticDir, "data"), { recursive: true, force: true });
 
 for (const [source, target] of copies) {

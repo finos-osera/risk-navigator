@@ -1,0 +1,25 @@
+{
+  "scope_type": "public-github-org",
+  "scope_name": "finos-github-org",
+  "scope_label": "FINOS GitHub Org Snapshot",
+  "division": "FINOS public repositories",
+  "division_short": "FINOS",
+  "project_group_mode": "metadata",
+  "filter_labels": {
+    "project_group": "Repository topic",
+    "project_reference": "Repository"
+  },
+  "dataset_methodology": {
+    "summary": "Dataset built from public active non-fork repositories in the FINOS GitHub organization.",
+    "repository_source": "GitHub REST API org repository listing",
+    "dependency_source": "Repository manifest extraction via scripts/extract_org.py",
+    "vulnerability_source": "OSV all.zip filtered by observed package allowlist, plus CISA KEV, FIRST EPSS, and deps.dev release metadata",
+    "build_command": "npm run build:all:finos-org:full-osv",
+    "limitations": [
+      "Only public, active, non-fork repositories are included by default.",
+      "Dependency coverage depends on manifests present in public repositories and extractor ecosystem support.",
+      "The extractor reads declared manifest dependencies and does not perform full build-system resolution for every ecosystem.",
+      "Authenticated GitHub API access is recommended to avoid public API rate limits."
+    ]
+  }
+}

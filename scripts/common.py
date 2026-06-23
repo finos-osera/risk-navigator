@@ -64,6 +64,27 @@ def make_library_id(namespace: str, meta: str, proj: str, release: str) -> str:
     return f"{namespace}|{meta}|{proj}|{release}"
 
 
+def canonical_release(namespace: str, release: str) -> str:
+    """Return the package-manager canonical form for a release string.
+
+    OSV records sometimes use Git tag notation such as v1.2.3 for ecosystems
+    whose registries publish the package version as 1.2.3. Normalize that at
+    ingestion/build boundaries so version chains do not split the same release
+    into duplicate rows with conflicting vulnerability metadata.
+    """
+
+    value = str(release or "").strip()
+    ns = str(namespace or "").lower()
+    if ns in {"npm", "pypi"} and re.match(r"^[vV](?=\d)", value):
+        return value[1:]
+    return value
+
+
+def canonical_library_id(library_id: str) -> str:
+    namespace, meta, proj, release = parse_library_id(library_id)
+    return make_library_id(namespace, meta, proj, canonical_release(namespace, release))
+
+
 def parse_library_id(library_id: str) -> Tuple[str, str, str, str]:
     namespace, meta, proj, release = library_id.split("|", 3)
     return namespace, meta, proj, release

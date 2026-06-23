@@ -1,0 +1,4 @@
+id,namespace,meta,proj,release,project_ref,eonid,department,tai_system
+github|finos|legend-studio,github,finos,legend-studio,main,github/finos/legend-studio,SBOM-1,SBOM Scan,legend-studio
+github|finos|perspective,github,finos,perspective,master,github/finos/perspective,SBOM-2,SBOM Scan,perspective
+github|finos|symphony-bdk-java,github,finos,symphony-bdk-java,main,github/finos/symphony-bdk-java,SBOM-3,SBOM Scan,symphony-bdk-java

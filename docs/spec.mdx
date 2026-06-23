@@ -5,6 +5,13 @@ title: Spec Summary
 
 The full specification lives in [`SPEC.md`](https://github.com/finos-backpatch/risk-navigator/blob/main/SPEC.md). This page summarizes the contract for the docs site.
 
+`SPEC.md` is the authoritative build contract. Docusaurus pages are the
+published operating manual and must stay synchronized with the spec. When
+requirements, dataset shape, pipeline behavior, prerequisites, bundled
+datasets, or customization guidance change, update the relevant docs page in
+the same change and link back to the spec rather than duplicating long
+requirement blocks.
+
 ## Goal
 
 Risk Navigator is a static decision tool that lets project owners and technology leaders answer:
@@ -30,6 +37,13 @@ The dataset includes:
 - `libraries`: vulnerable dependency records, CVEs, consumers, upgrade paths, and remediation signals.
 - `amplifier_clusters`: parent dependency clusters that can reduce transitive exposure.
 
+Version releases are canonicalized before joins. For PyPI and npm, leading
+Git-tag `v` prefixes before numeric versions are stripped, so `v0.8.8` and
+`0.8.8` collapse to one version-chain row.
+
+For input file shapes, raw CSV examples, CycloneDX SBOM import behavior, and
+sample dataset provenance, see [Data Pipeline and Formats](./data-pipeline).
+
 ## Pipeline contract
 
 The build pipeline has four phases:
@@ -43,8 +57,27 @@ The build pipeline has four phases:
 
 The current prototype includes:
 
-- Libraries, Top fixes, Backpatch Priority Calculator, Backpatch landscape, Amplifiers, Frameworks, Dead-ends, Projects, CVE list, and Project CVE Remediation Plan modes.
+- Dashboard, Libraries, Top fixes, Backpatch Priority Calculator, Backpatch landscape, Amplifiers, Frameworks, Dead-ends, Projects, CVE list, and Project CVE Remediation Plan modes.
 - CVSS and EPSS sliders.
 - project group, namespace, project reference, action, age, KEV, direct, transitive, and backpatch filters.
 - structured detail panes and version-chain exploration.
-- Maven-focused OpenRewrite cart output.
+- shareable URL state for dataset, active mode, namespace/group/project/search
+  filters, severity thresholds, action filters, and boolean flags.
+- configurable Policy CVSS Threshold, default `7.0`, that drives
+  below-threshold version-chain labels and displayed remediation target
+  candidates. Below-threshold versions may still have lower-severity CVEs.
+- Maven-focused OpenRewrite cart output. Default generated recipe IDs use
+  `org.finos.osera.risknav.UpgradeBundle_<scope>` and Java-safe
+  `A-Za-z0-9_` class-style segments; corporate overlays may override the
+  package prefix while preserving the no-hyphen identifier rule.
+
+The Dashboard is the default landing mode. It summarizes current-filter
+exposure across projects, distinct CVEs, vulnerable libraries, namespaces,
+CVSS spread, project groups, and direct/transitive remediation opportunities.
+Changing row selection in table modes resets the right-hand detail pane to the
+top of its scroll viewport.
+
+Project-reference filter chips are substring matches against project refs,
+rendered labels, raw project ids, repo/org fields, and aliases. Query
+parameters override locally persisted viewer preferences so filtered views can
+be shared directly.

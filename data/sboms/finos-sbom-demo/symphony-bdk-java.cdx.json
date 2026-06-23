@@ -1,0 +1,31 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-06-23T00:00:00Z",
+    "tools": [{ "vendor": "Risk Navigator", "name": "demo-repo-scanner", "version": "0.1.0" }],
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:github/finos/symphony-bdk-java@main",
+      "name": "symphony-bdk-java",
+      "version": "main",
+      "externalReferences": [{ "type": "vcs", "url": "https://github.com/finos/symphony-bdk-java.git" }]
+    }
+  },
+  "components": [
+    { "type": "library", "bom-ref": "pkg:maven/org.apache.camel/camel-activemq@3.20.6", "name": "camel-activemq", "group": "org.apache.camel", "version": "3.20.6", "purl": "pkg:maven/org.apache.camel/camel-activemq@3.20.6", "scope": "required" },
+    { "type": "library", "bom-ref": "pkg:maven/org.apache.activemq/activemq-client@5.17.2", "name": "activemq-client", "group": "org.apache.activemq", "version": "5.17.2", "purl": "pkg:maven/org.apache.activemq/activemq-client@5.17.2", "scope": "required" },
+    { "type": "library", "bom-ref": "pkg:maven/org.springframework/spring-webmvc@6.1.3", "name": "spring-webmvc", "group": "org.springframework", "version": "6.1.3", "purl": "pkg:maven/org.springframework/spring-webmvc@6.1.3", "scope": "required" },
+    { "type": "library", "bom-ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.14.2", "name": "jackson-databind", "group": "com.fasterxml.jackson.core", "version": "2.14.2", "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.14.2", "scope": "required" },
+    { "type": "library", "bom-ref": "pkg:maven/org.junit.jupiter/junit-jupiter@5.10.1", "name": "junit-jupiter", "group": "org.junit.jupiter", "version": "5.10.1", "purl": "pkg:maven/org.junit.jupiter/junit-jupiter@5.10.1", "scope": "test" }
+  ],
+  "dependencies": [
+    { "ref": "pkg:github/finos/symphony-bdk-java@main", "dependsOn": ["pkg:maven/org.apache.camel/camel-activemq@3.20.6", "pkg:maven/org.springframework/spring-webmvc@6.1.3", "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.14.2", "pkg:maven/org.junit.jupiter/junit-jupiter@5.10.1"] },
+    { "ref": "pkg:maven/org.apache.camel/camel-activemq@3.20.6", "dependsOn": ["pkg:maven/org.apache.activemq/activemq-client@5.17.2"] },
+    { "ref": "pkg:maven/org.apache.activemq/activemq-client@5.17.2", "dependsOn": [] },
+    { "ref": "pkg:maven/org.springframework/spring-webmvc@6.1.3", "dependsOn": [] },
+    { "ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.14.2", "dependsOn": [] },
+    { "ref": "pkg:maven/org.junit.jupiter/junit-jupiter@5.10.1", "dependsOn": [] }
+  ]
+}

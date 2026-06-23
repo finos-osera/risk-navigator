@@ -3,7 +3,7 @@ import Layout from "@theme/Layout";
 import Link from "@docusaurus/Link";
 import useBaseUrl from "@docusaurus/useBaseUrl";
 
-const publicToolUrl = "https://finos-backpatch.github.io/risk-navigator/tool/risk-navigator.html";
+const publicToolUrl = "/tools/risk-navigator.html";
 
 const toolSections = [
   {

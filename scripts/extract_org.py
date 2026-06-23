@@ -4,6 +4,7 @@
 Supports:
 - Synthetic FINOS-like portfolio (default)
 - CycloneDX SBOM directory import (optional)
+- FINOS GitHub manifest extraction (optional)
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ try:
 except ModuleNotFoundError:
     tomllib = None
 
-from common import make_library_id, parse_library_id, slugify
+from common import canonical_release, make_library_id, parse_library_id, slugify
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB = ROOT / "data" / "vulns.db"
@@ -416,6 +417,79 @@ def parse_image_reference(image: str) -> Tuple[str, str, str, str]:
     return ("oci", meta, repo, normalize_version_text(tag))
 
 
+def parse_purl(purl: str, fallback: Dict[str, object]) -> Optional[Tuple[str, str, str, str]]:
+    """Return Risk Navigator coordinates from a package-url string."""
+
+    if not purl.startswith("pkg:"):
+        return None
+
+    body = purl[4:]
+    body = body.split("#", 1)[0].split("?", 1)[0]
+    release = "unspecified"
+    if "@" in body:
+        body, release = body.rsplit("@", 1)
+
+    if "/" in body:
+        namespace, rest = body.split("/", 1)
+    else:
+        namespace, rest = body, ""
+
+    namespace = urllib.parse.unquote(namespace).lower()
+    rest = urllib.parse.unquote(rest)
+    parts = [part for part in rest.split("/") if part]
+
+    meta = ""
+    proj = ""
+    if namespace == "maven" and len(parts) >= 2:
+        meta = parts[0]
+        proj = parts[1]
+    elif namespace == "npm" and len(parts) >= 2 and parts[0].startswith("@"):
+        meta = parts[0]
+        proj = parts[1]
+    elif len(parts) >= 2:
+        meta = "/".join(parts[:-1])
+        proj = parts[-1]
+    elif parts:
+        proj = parts[0]
+
+    if not proj:
+        raw_name = str(fallback.get("name") or "").strip()
+        raw_group = str(fallback.get("group") or "").strip()
+        if raw_name:
+            proj = raw_name
+            meta = raw_group
+
+    if not namespace or not proj:
+        return None
+    return (namespace, meta, proj, normalize_version_text(release))
+
+
+def cyclonedx_component_coords(component: Dict[str, object]) -> Optional[Tuple[str, str, str, str]]:
+    purl = str(component.get("purl") or "").strip()
+    parsed = parse_purl(purl, component) if purl else None
+    if parsed:
+        return parsed
+
+    group = str(component.get("group") or "").strip()
+    name = str(component.get("name") or "").strip()
+    version = normalize_version_text(str(component.get("version") or "unspecified"))
+    if not name:
+        return None
+    # CycloneDX without purl is ambiguous; Maven-style group/name is the best
+    # fit for the current demo and OpenRewrite cart behavior.
+    namespace = "maven" if group else "generic"
+    return (namespace, group, name, version)
+
+
+def cyclonedx_qualifier(component: Dict[str, object]) -> str:
+    scope = str(component.get("scope") or "").strip().lower()
+    if scope in {"excluded", "optional"}:
+        return "build"
+    if scope in {"test", "development"}:
+        return "test"
+    return "runtime"
+
+
 def parse_dockerfile_dependencies(text: str) -> List[Tuple[str, str, str, str, str]]:
     deps: List[Tuple[str, str, str, str, str]] = []
     for line in text.splitlines():
@@ -710,8 +784,14 @@ def load_vuln_edges(db_path: Path) -> Dict[str, List[Dict[str, object]]]:
         conn.close()
 
     out: Dict[str, List[Dict[str, object]]] = defaultdict(list)
+    seen: set[Tuple[str, str]] = set()
     for row in rows:
-        lid = make_library_id(row["namespace"], row["meta"], row["proj"], row["release"])
+        release = canonical_release(row["namespace"], row["release"])
+        lid = make_library_id(row["namespace"], row["meta"], row["proj"], release)
+        key = (lid, row["cve_id"])
+        if key in seen:
+            continue
+        seen.add(key)
         out[lid].append(
             {
                 "cve_id": row["cve_id"],
@@ -740,10 +820,11 @@ def build_version_chain_rows(
     release_id = 1000
     for key in sorted(set(vulnerable_keys)):
         namespace, meta, proj = key
-        releases = list(VERSION_CHAIN_CANDIDATES.get(key, []))
+        releases = [canonical_release(namespace, rel) for rel in VERSION_CHAIN_CANDIDATES.get(key, [])]
         # ensure versions that came from vuln ingestion are represented
         for lid in vuln_edge_map.keys():
             ns, me, pr, rel = parse_library_id(lid)
+            rel = canonical_release(ns, rel)
             if (ns, me, pr) == key and rel not in releases:
                 releases.append(rel)
 
@@ -1042,8 +1123,71 @@ def extract_finos_github_org(
     return stats
 
 
-def extract_from_cyclonedx(scope: str, sbom_dir: Path, raw_root: Path) -> Dict[str, object]:
-    """Minimal CycloneDX importer for organizations with existing SBOM dumps."""
+def cyclonedx_external_ref(component: Dict[str, object], ref_type: str) -> str:
+    refs = component.get("externalReferences") or []
+    if not isinstance(refs, list):
+        return ""
+    for ref in refs:
+        if not isinstance(ref, dict):
+            continue
+        if str(ref.get("type") or "").lower() == ref_type.lower():
+            return str(ref.get("url") or "").strip()
+    return ""
+
+
+def project_ref_from_cyclonedx(component: Dict[str, object], sbom_file: Path) -> str:
+    vcs = cyclonedx_external_ref(component, "vcs")
+    if vcs:
+        cleaned = vcs.removesuffix(".git")
+        marker = "github.com/"
+        if marker in cleaned:
+            return "github/" + cleaned.split(marker, 1)[1].strip("/")
+        return cleaned
+    return f"sbom/{sbom_file.name}"
+
+
+def direct_refs_from_cyclonedx(payload: Dict[str, object], root_ref: str) -> set:
+    direct: set = set()
+    deps = payload.get("dependencies") or []
+    if not isinstance(deps, list):
+        return direct
+    for row in deps:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("ref") or "") != root_ref:
+            continue
+        depends_on = row.get("dependsOn") or []
+        if isinstance(depends_on, list):
+            direct.update(str(item) for item in depends_on if str(item).strip())
+    return direct
+
+
+def dependency_parent_map_from_cyclonedx(payload: Dict[str, object], root_ref: str) -> Dict[str, str]:
+    """Map each non-root component ref to its first parent ref in the SBOM graph."""
+
+    parent_by_child: Dict[str, str] = {}
+    deps = payload.get("dependencies") or []
+    if not isinstance(deps, list):
+        return parent_by_child
+    for row in deps:
+        if not isinstance(row, dict):
+            continue
+        parent = str(row.get("ref") or "")
+        if not parent:
+            continue
+        depends_on = row.get("dependsOn") or []
+        if not isinstance(depends_on, list):
+            continue
+        for child in depends_on:
+            child_ref = str(child or "")
+            if not child_ref or child_ref == root_ref:
+                continue
+            parent_by_child.setdefault(child_ref, parent)
+    return parent_by_child
+
+
+def extract_from_cyclonedx(scope: str, sbom_dir: Path, db_path: Path, raw_root: Path) -> Dict[str, object]:
+    """Import CycloneDX SBOMs as project inventory plus dependency edges."""
 
     projects: List[Project] = []
     edges: List[DepEdge] = []
@@ -1054,94 +1198,64 @@ def extract_from_cyclonedx(scope: str, sbom_dir: Path, raw_root: Path) -> Dict[s
 
         metadata = payload.get("metadata") or {}
         component = metadata.get("component") or {}
+        if not isinstance(component, dict):
+            component = {}
         comp_name = str(component.get("name") or sbom_file.stem)
         comp_version = str(component.get("version") or "0.0.0")
-        project_id = f"github|imported|{slugify(comp_name)}"
+        project_ref = project_ref_from_cyclonedx(component, sbom_file)
+        ref_parts = project_ref.split("/")
+        owner = ref_parts[1] if len(ref_parts) >= 3 and ref_parts[0] == "github" else "imported"
+        repo_name = ref_parts[2] if len(ref_parts) >= 3 and ref_parts[0] == "github" else slugify(comp_name)
+        project_id = f"github|{owner}|{repo_name}"
+        root_ref = str(component.get("bom-ref") or "").strip()
         projects.append(
             Project(
                 id=project_id,
                 namespace="github",
-                meta="imported",
-                proj=slugify(comp_name),
+                meta=owner,
+                proj=repo_name,
                 release=comp_version,
-                project_ref=f"sbom/{sbom_file.name}",
+                project_ref=project_ref,
                 eonid=f"SBOM-{len(projects)+1}",
-                department="Imported",
+                department="SBOM Scan",
                 tai_system=comp_name,
             )
         )
 
-        components = payload.get("components") or []
+        components_raw = payload.get("components") or []
+        components = [comp for comp in components_raw if isinstance(comp, dict)] if isinstance(components_raw, list) else []
+        component_by_ref = {str(comp.get("bom-ref") or ""): comp for comp in components if str(comp.get("bom-ref") or "")}
+        library_id_by_ref: Dict[str, str] = {}
         for comp in components:
-            if not isinstance(comp, dict):
+            ref = str(comp.get("bom-ref") or "").strip()
+            coords = cyclonedx_component_coords(comp)
+            if not ref or not coords:
                 continue
-            purl = str(comp.get("purl") or "")
-            if not purl.startswith("pkg:"):
-                continue
-            # purl format: pkg:maven/group/artifact@version
-            release = purl.split("@")[-1] if "@" in purl else "0"
-            path = purl.split(":", 1)[1].split("@", 1)[0]
-            namespace = path.split("/", 1)[0]
-            rest = path.split("/", 1)[1] if "/" in path else path
-            if namespace == "maven" and "/" in rest:
-                meta, proj = rest.split("/", 1)
-            else:
-                meta, proj = "", rest
+            namespace, meta, proj, release = coords
             library_id = make_library_id(namespace, meta, proj, release)
-            edges.append(DepEdge(project_id, library_id, 1, "runtime"))
+            library_id_by_ref[ref] = library_id
 
-    raw_dir = raw_root / scope
-    raw_dir.mkdir(parents=True, exist_ok=True)
+        direct_refs = direct_refs_from_cyclonedx(payload, root_ref) if root_ref else set()
+        parent_by_child = dependency_parent_map_from_cyclonedx(payload, root_ref) if root_ref else {}
+        graph_available = bool(direct_refs or parent_by_child)
+        seen_edges: set = set()
 
-    write_csv(
-        raw_dir / "01-consumer-projects.csv",
-        [
-            {
-                "id": p.id,
-                "namespace": p.namespace,
-                "meta": p.meta,
-                "proj": p.proj,
-                "release": p.release,
-                "project_ref": p.project_ref,
-                "eonid": p.eonid,
-                "department": p.department,
-                "tai_system": p.tai_system,
-            }
-            for p in projects
-        ],
-        ["id", "namespace", "meta", "proj", "release", "project_ref", "eonid", "department", "tai_system"],
-    )
-    write_csv(
-        raw_dir / "02-dep-edges.csv",
-        [
-            {
-                "consumer_id": e.consumer_id,
-                "library_id": e.library_id,
-                "direct": e.direct,
-                "qualifier": e.qualifier,
-                "parent_id": e.parent_id,
-            }
-            for e in edges
-        ],
-        ["consumer_id", "library_id", "direct", "qualifier", "parent_id"],
-    )
-
-    # placeholders; build_dataset will join against vuln DB and fill coverage where possible.
-    for name, cols in [
-        ("03-cve-libs.csv", ["library_id", "namespace", "meta", "proj", "release", "max_cvss", "cve_count", "highest_priority", "max_exploitability", "lib_tai_system", "lib_primary_owner", "lib_dept"]),
-        ("04-version-chain.csv", ["library_id", "namespace", "meta", "proj", "release", "release_id", "max_cvss", "cve_count"]),
-        ("05-amplifiers.csv", ["cve_lib_id", "cve_lib_coords", "amplifier_id", "amplifier_coords", "root_projects_affected"]),
-        ("06-cve-edges.csv", ["library_id", "cve_id", "cvss_base", "cvss_temporal", "priority", "exploitability"]),
-    ]:
-        write_csv(raw_dir / name, [], cols)
+        for ref, library_id in sorted(library_id_by_ref.items(), key=lambda item: item[1]):
+            comp = component_by_ref.get(ref, {})
+            qualifier = cyclonedx_qualifier(comp)
+            parent_ref = parent_by_child.get(ref, "")
+            direct = 1 if (not graph_available or ref in direct_refs or parent_ref == root_ref) else 0
+            parent_id = "" if direct else library_id_by_ref.get(parent_ref, "")
+            key = (project_id, library_id, direct, qualifier, parent_id)
+            if key in seen_edges:
+                continue
+            seen_edges.add(key)
+            edges.append(DepEdge(project_id, library_id, direct, qualifier, parent_id))
 
     return {
-        "scope": scope,
-        "projects": len(projects),
-        "dep_edges": len(edges),
-        "cve_libs": 0,
-        "cve_edges": 0,
-        "amplifiers": 0,
+        **write_scope_extract(scope=scope, projects=projects, edges=edges, db_path=db_path, raw_root=raw_root),
+        "sbom_dir": str(sbom_dir),
+        "sboms": len(projects),
     }
 
 
@@ -1171,7 +1285,7 @@ def main() -> int:
     elif args.source == "cyclonedx":
         if not args.sbom_dir:
             raise SystemExit("--sbom-dir is required for --source cyclonedx")
-        stats = extract_from_cyclonedx(args.scope, args.sbom_dir, args.raw_root)
+        stats = extract_from_cyclonedx(args.scope, args.sbom_dir, args.db, args.raw_root)
     else:
         stats = extract_finos_github_org(
             scope=args.scope,

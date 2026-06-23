@@ -3,6 +3,7 @@ website/node_modules/
 website/build/
 website/.docusaurus/
 website/static/tool/
+website/static/tools/
 website/static/data/
 .venv/
 .pytest_cache/
@@ -22,13 +23,14 @@ data/local/
 data/vulns.db
 data/vulns.db.meta.json
 data/external/
-data/finos-github-org.json
-data/raw/finos-github-org/
 
 # Keep distributable sample data in repo
 !data/finos-sample-platform.json
 !data/raw/finos-sample-platform/
 !data/raw/finos-sample-platform/*.csv
+!data/finos-github-org.json
+!data/raw/finos-github-org/
+!data/raw/finos-github-org/*.csv
 
 # Keep sample OSV seed only (full OSV dump is local-only)
 !data/sources/

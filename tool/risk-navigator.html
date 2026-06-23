@@ -56,12 +56,17 @@
   --link-visited: #d6beff;
 }
 * { box-sizing: border-box; }
+html { height: 100%; }
 body {
   margin: 0;
   font-family: "Inter", system-ui, sans-serif;
   background: radial-gradient(circle at 0 0, #eaf2ff 0, transparent 35%), var(--bg);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 :root[data-theme="dark"] body {
   background: radial-gradient(circle at 0 0, #17304a 0, transparent 35%), var(--bg);
@@ -190,9 +195,24 @@ main {
   display: grid;
   grid-template-columns: minmax(0,1fr) 10px var(--detail-width);
   gap: 8px;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
 }
 @media (max-width: 1024px) {
   main { grid-template-columns: 1fr; }
+}
+main.dashboard-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 390px);
+}
+main.dashboard-layout #paneSplitter {
+  display: none;
+}
+main.dashboard-layout #detail {
+  display: block;
+}
+@media (max-width: 1024px) {
+  main.dashboard-layout { grid-template-columns: 1fr; }
 }
 .splitter {
   border-radius: 10px;
@@ -220,9 +240,24 @@ main {
   border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
+  min-height: 0;
+}
+main > section.panel {
+  display: flex;
+  flex-direction: column;
 }
 .filter-shell {
   border-bottom: 1px solid var(--line);
+}
+.filter-shell.dashboard-filter { border-bottom: 0; }
+.filter-shell.dashboard-filter .filter-summary-row { display: none; }
+.filter-shell.dashboard-filter .filter-panel { display: block; }
+.filter-shell.dashboard-filter .filter-bar {
+  grid-template-columns: 1fr;
+  padding: 12px;
+}
+.filter-shell.dashboard-filter .field {
+  min-width: 0;
 }
 .filter-summary-row {
   min-height: 36px;
@@ -276,6 +311,12 @@ main {
 }
 .filter-shell.collapsed .filter-summary-row {
   border-bottom: 0;
+}
+.filter-shell.dashboard-filter.collapsed .filter-panel {
+  display: block;
+}
+.filter-shell.dashboard-filter.collapsed .filter-summary-row {
+  display: none;
 }
 .filter-bar {
   padding: 12px;
@@ -375,7 +416,14 @@ main {
   background: color-mix(in srgb, var(--panel) 70%, var(--warn) 30%);
   font-weight: 700;
 }
-.table-wrap { overflow: auto; max-height: 65vh; }
+.table-wrap { overflow: auto; max-height: 65vh; flex: 1; min-height: 0; }
+main > section.panel .table-wrap {
+  max-height: none;
+}
+main.dashboard-layout .table-wrap {
+  max-height: none;
+  height: 100%;
+}
 table { width: 100%; border-collapse: collapse; font-size: 12px; }
 th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
 th {
@@ -404,6 +452,21 @@ tr.sel td { background: var(--primary-soft); }
 .badge.prio-green { color: #064e3b; border-color: #047857; background: #6ee7b7; }
 .badge.prio-gray { color: #111827; border-color: #6b7280; background: #d1d5db; }
 #detail { padding: 12px; overflow: auto; max-height: calc(100vh - 120px); }
+main.dashboard-layout #detail {
+  padding: 0;
+  max-height: none;
+}
+main.dashboard-layout #detail > h3 {
+  margin: 0 !important;
+  top: 0;
+}
+.dashboard-filter-intro {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
 #detail > h3 {
   position: sticky;
   top: -12px;
@@ -612,6 +675,253 @@ textarea { width: 100%; min-height: 180px; border: 1px solid var(--line); border
   display: inline-block;
   margin-right: 4px;
 }
+.dashboard-view {
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--primary-soft) 48%, transparent), transparent 42%),
+    color-mix(in srgb, var(--panel) 78%, var(--chip) 22%);
+  min-height: 100%;
+  align-content: start;
+}
+.dashboard-view[hidden] { display: none; }
+.dashboard-hero {
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--line) 72%);
+  border-radius: 12px;
+  padding: 16px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--navy) 94%, var(--primary) 6%), color-mix(in srgb, var(--navy) 78%, var(--blue) 22%));
+  color: #fff;
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.7fr);
+  gap: 14px;
+  box-shadow: 0 14px 32px color-mix(in srgb, #000 14%, transparent);
+}
+@media (max-width: 980px) {
+  .dashboard-hero { grid-template-columns: 1fr; }
+}
+.dashboard-hero h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+.dashboard-hero p {
+  margin: 8px 0 0 0;
+  color: rgba(255, 255, 255, .76);
+  font-size: 12px;
+  line-height: 1.45;
+  max-width: 760px;
+}
+.dashboard-hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.hero-metric {
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(255,255,255,.08);
+  border-radius: 10px;
+  padding: 10px;
+}
+.hero-metric .num {
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 800;
+}
+.hero-metric .cap {
+  margin-top: 5px;
+  color: rgba(255,255,255,.72);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .25px;
+  text-transform: uppercase;
+}
+.dashboard-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (max-width: 1200px) {
+  .dashboard-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .dashboard-kpis { grid-template-columns: 1fr; }
+}
+.dashboard-card,
+.dashboard-section {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 92%, var(--chip) 8%);
+  box-shadow: 0 1px 0 color-mix(in srgb, #000 4%, transparent);
+}
+.dashboard-card {
+  padding: 12px;
+  min-height: 94px;
+  position: relative;
+  overflow: hidden;
+}
+.dashboard-card::after {
+  content: "";
+  position: absolute;
+  right: -20px;
+  bottom: -28px;
+  width: 92px;
+  height: 92px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary-soft) 56%, transparent);
+}
+.dashboard-card .label,
+.dashboard-section .label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .25px;
+  text-transform: uppercase;
+}
+.dashboard-card .value {
+  margin-top: 6px;
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 800;
+  position: relative;
+  z-index: 1;
+}
+.dashboard-card .sub {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  position: relative;
+  z-index: 1;
+}
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 980px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+}
+.dashboard-section {
+  padding: 12px;
+  min-width: 0;
+}
+.dashboard-section h3 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+}
+.opportunity-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (max-width: 1200px) {
+  .opportunity-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .opportunity-grid { grid-template-columns: 1fr; }
+}
+.opportunity-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 154px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 96%, var(--chip) 4%), color-mix(in srgb, var(--panel) 82%, var(--chip) 18%));
+  display: grid;
+  align-content: space-between;
+  gap: 10px;
+}
+.opportunity-card.priority {
+  border-color: color-mix(in srgb, var(--kev) 32%, var(--line) 68%);
+  box-shadow: inset 3px 0 0 var(--kev);
+}
+.opportunity-card.leverage {
+  border-color: color-mix(in srgb, var(--primary) 32%, var(--line) 68%);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+.opportunity-title {
+  font-size: 13px;
+  font-weight: 800;
+}
+.opportunity-decision {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.opportunity-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.opportunity-metrics div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 6px;
+  background: color-mix(in srgb, var(--panel) 82%, var(--chip) 18%);
+}
+.opportunity-metrics strong {
+  display: block;
+  font-size: 15px;
+  line-height: 1;
+}
+.opportunity-metrics span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.bar-list {
+  display: grid;
+  gap: 9px;
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(112px, 0.8fr) minmax(120px, 2fr) minmax(42px, auto);
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+.bar-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bar-track {
+  height: 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--panel) 68%, var(--chip) 32%);
+}
+.bar-fill {
+  height: 100%;
+  min-width: 3px;
+  border-radius: 999px;
+  background: var(--primary);
+}
+.bar-fill.risk-low { background: var(--good); }
+.bar-fill.risk-med { background: var(--warn); }
+.bar-fill.risk-high { background: #ef4444; }
+.bar-fill.risk-critical { background: var(--kev); }
+.bar-count {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: right;
+}
+.dashboard-note {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.executive-table td,
+.executive-table th {
+  font-size: 11px;
+}
 #detail a { color: var(--link); font-weight: 600; text-decoration-color: var(--link); }
 #detail a:visited { color: var(--link-visited); }
 a { color: var(--link); text-decoration-color: var(--link); }
@@ -730,6 +1040,13 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
   font-weight: 700;
   color: var(--ink);
 }
+.policy-note {
+  margin: 6px 0;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--chip) 70%, var(--panel) 30%);
+}
 </style>
 </head>
 <body>
@@ -771,6 +1088,11 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
             <span id="cvssMinValue" class="small">0.0</span>
           </div>
           <div class="field">
+            <label>Policy CVSS Threshold</label>
+            <input id="policyCvssMax" type="number" min="0" max="10" step="0.1" value="7.0">
+            <span id="policyCvssMaxValue" class="small">&lt; 7.0 is below threshold</span>
+          </div>
+          <div class="field">
             <label id="labelProjectGroup">Project Group</label>
             <select id="departmentFilter"><option value="">All</option></select>
           </div>
@@ -783,7 +1105,7 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
           </div>
           <div class="field">
             <label id="labelProjectReference">Project Reference</label>
-            <input id="projectRefInput" list="projectRefList" placeholder="add exact reference (github/org/repo)">
+            <input id="projectRefInput" list="projectRefList" placeholder="type substring or select repo">
             <datalist id="projectRefList"></datalist>
             <div id="projectRefChips" class="chips"></div>
           </div>
@@ -842,7 +1164,8 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
     </div>
 
     <div class="table-wrap">
-      <table>
+      <div id="dashboardView" class="dashboard-view" hidden></div>
+      <table id="mainTable">
         <thead><tr id="tableHead"></tr></thead>
         <tbody id="tableBody"></tbody>
       </table>
@@ -913,7 +1236,7 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
         </select>
       </label>
       <label><input id="versionCollapseRuns" type="checkbox" checked> Collapse adjacent status runs</label>
-      <label><input id="versionShowSafe" type="checkbox" checked> Show safe versions</label>
+      <label><input id="versionShowSafe" type="checkbox" checked> Show below-threshold versions</label>
     </div>
     <div id="versionSummary" class="version-summary small"></div>
     <div class="libs-table-wrap" style="flex:1; min-height:0;">
@@ -949,6 +1272,7 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
 
 <script>
 const MODES = [
+  { id: "dashboard", label: "Dashboard" },
   { id: "libraries", label: "Libraries" },
   { id: "top-fixes", label: "Top fixes" },
   { id: "backpatch-priority", label: "Backpatch Priority Calculator" },
@@ -1048,12 +1372,13 @@ Risk Navigator is part of OSERA's open source supply resiliency work.
 
 1. Choose a dataset from the selector.
 2. Use filters for CVSS, EPSS, KEV, namespace, project group, and direct/transitive exposure.
-3. Move through Libraries, Top fixes, Backpatch, Amplifiers, Frameworks, Dead-ends, Projects, and CVE list views.
+3. Start with Dashboard, then move through Libraries, Top fixes, Backpatch, Amplifiers, Frameworks, Dead-ends, Projects, and CVE list views.
 4. Open row details to inspect safe versions, consumer impact, CVEs, and OpenRewrite cart actions.
 
 ## Data and refresh
 
 - The bundled **OSERA Demo Data (Example)** is a demo dataset.
+- **FINOS SBOM Scan Demo** is built from committed CycloneDX SBOM inputs that mirror repo-scanner output.
 - Additional generated datasets can be added to tool/manifest.json.
 - Rebuild datasets with the local scripts in scripts/.
 `;
@@ -1067,21 +1392,37 @@ Risk Navigator helps teams prioritize dependency-risk remediation across project
 
 - Use the dataset selector in the top-right.
 - **OSERA Demo Data (Example)** is a demo dataset.
+- **FINOS SBOM Scan Demo** shows the repo-scanner/SBOM ingestion path.
 - Additional locally generated datasets can be added to tool/manifest.json.
 - Last selected dataset and last active mode/tab are remembered across reloads (local browser storage).
+- The browser URL updates with dataset, active mode, and active filters so filtered views can be shared.
+- Query parameters override local browser storage when a link is opened.
 
-## 2. Read The Ten Modes
+## 2. Read The Eleven Modes
 
-1. **Libraries**: vulnerable library inventory and upgrade path.
-2. **Top fixes**: ranked action list (UPGRADE_*, BACKPATCH_PROBABLE/BACKPATCH_LIKELY, CREATE_PATCH, AMPLIFIER, FRAMEWORK).
-3. **Backpatch Priority Calculator**: scored patch/fork recommendations, priority colors, and ROI.
-4. **Backpatch landscape**: dedicated backpatch opportunity view with qualification, consumer split, and remediation edge impact.
-5. **Amplifiers**: high-leverage parent dependencies.
-6. **Frameworks**: coordinated family-level upgrade opportunities.
-7. **Dead-ends**: no clean GA-safe path; backpatch may be required.
-8. **Projects**: consumer-project impact view.
-9. **CVE list**: portfolio-wide CVE rollup with direct/transitive/library/project hit counts.
-10. **Project CVE Remediation Plan**: project-level queue, action counts, and strategy labels.
+1. **Dashboard**: filter-aware landing summary for projects, CVEs, namespaces, CVSS spread, project groups, and direct/transitive opportunity mix.
+2. **Libraries**: vulnerable library inventory and upgrade path.
+3. **Top fixes**: ranked action list (UPGRADE_*, BACKPATCH_PROBABLE/BACKPATCH_LIKELY, CREATE_PATCH, AMPLIFIER, FRAMEWORK).
+4. **Backpatch Priority Calculator**: scored patch/fork recommendations, priority colors, and ROI.
+5. **Backpatch landscape**: dedicated backpatch opportunity view with qualification, consumer split, and remediation edge impact.
+6. **Amplifiers**: high-leverage parent dependencies.
+7. **Frameworks**: coordinated family-level upgrade opportunities.
+8. **Dead-ends**: no clean GA-safe path; backpatch may be required.
+9. **Projects**: consumer-project impact view.
+10. **CVE list**: portfolio-wide CVE rollup with direct/transitive/library/project hit counts.
+11. **Project CVE Remediation Plan**: project-level queue, action counts, and strategy labels.
+
+The default **Dashboard** summarizes the active dataset and current filters:
+projects, distinct CVEs, vulnerable libraries, namespace spread, CVSS spread,
+project-group spread, and direct/transitive remediation opportunities.
+
+Project Reference chips are substring filters. Type a repo/org fragment or
+alias and press Enter; matching is case-insensitive across project refs, ids,
+repo/org fields, and aliases.
+
+Policy CVSS Threshold controls version-chain status labels and displayed target
+versions. The default is 7.0: a GA version below that CVSS threshold is a
+below-threshold candidate, not necessarily a version with zero known CVEs.
 
 ## 3. OpenRewrite Cart
 
@@ -1177,6 +1518,7 @@ const HELP_GLOSSARY_MARKDOWN = `
 ## Org data acquisition approach
 
 - Project and dependency inventory is produced by extraction scripts into scope CSVs under \`data/raw/<scope>/\`.
+- The SBOM demo imports CycloneDX files from \`data/sboms/finos-sbom-demo/\` and uses the CycloneDX dependency graph to preserve direct vs transitive edges where available.
 - For the FINOS org dataset, extraction walks repository manifests/SBOM-like dependency declarations and derives:
   - consumer project records,
   - direct/transitive dependency edges,
@@ -1235,6 +1577,7 @@ const state = {
   trancheFocus: null,
   filters: {
     cvssMin: 0,
+    policyCvssMax: 7.0,
     effort: new Set(EFFORTS),
     department: "",
     namespace: "",
@@ -1259,6 +1602,8 @@ const state = {
   projectPlanProfiles: new Map(),
   filterPanelCollapsed: false,
   projectRemediationAvoidableMajorOnly: false,
+  initialUrlState: null,
+  urlSyncPaused: false,
   versionExplorer: {
     libId: "",
     viewMode: "all",
@@ -1280,6 +1625,8 @@ const els = {
   tranchePills: $("#tranchePills"),
   tableHead: $("#tableHead"),
   tableBody: $("#tableBody"),
+  mainTable: $("#mainTable"),
+  dashboardView: $("#dashboardView"),
   rowCount: $("#rowCount"),
   detail: $("#detail"),
   cartBtn: $("#cartBtn"),
@@ -1309,6 +1656,11 @@ const els = {
   mainLayout: $("#mainLayout")
 };
 
+const filterHome = {
+  parent: null,
+  nextSibling: null
+};
+
 function toAscii(text) {
   return text
     .replace(/[\u2014\u2013]/g, "--")
@@ -1325,6 +1677,31 @@ function slugify(s) {
   return (s || "scope").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "scope";
 }
 
+function openRewriteIdSegment(value, fallback = "Recipe") {
+  const cleaned = String(value || "")
+    .replace(/[^A-Za-z0-9_]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const safe = cleaned || fallback;
+  return /^[A-Za-z_]/.test(safe) ? safe : `_${safe}`;
+}
+
+function openRewriteRecipeNamespace(scopeName) {
+  return [
+    "org",
+    "finos",
+    "osera",
+    "risknav",
+    `UpgradeBundle_${openRewriteIdSegment(scopeName || "scope", "scope")}`
+  ].join(".");
+}
+
+function openRewriteCartRecipeName(namespace, item) {
+  const group = openRewriteIdSegment(item.groupId, "group");
+  const artifact = openRewriteIdSegment(item.artifactId, "artifact");
+  return `${namespace}_${group}__${artifact}`;
+}
+
 function fmt(n, digits = 2) {
   if (n === null || n === undefined || Number.isNaN(Number(n))) return "-";
   return Number(n).toFixed(digits);
@@ -1339,6 +1716,86 @@ function kevSearchUrl(cveId) {
 function parseLibraryId(id) {
   const [namespace = "", meta = "", proj = "", release = ""] = String(id || "").split("|");
   return { namespace, meta, proj, release };
+}
+
+function canonicalRelease(namespace, release) {
+  const value = String(release || "").trim();
+  const ns = String(namespace || "").toLowerCase();
+  if ((ns === "npm" || ns === "pypi") && /^[vV](?=\d)/.test(value)) return value.slice(1);
+  return value;
+}
+
+function isGaRelease(release) {
+  const raw = String(release || "").trim();
+  if (!raw || /(?:^|[.-])(snapshot|alpha|beta|rc\d*|cr\d*|m\d+|milestone|preview|ea|atlassian|cloudera|redhat|rhel|ppa)(?:$|[.-])/i.test(raw)) {
+    return false;
+  }
+  const base = raw.replace(/(?:\.|-)(Final|RELEASE|GA|jre\d*)$/i, "");
+  return /^\d+(?:\.\d+)*$/.test(base);
+}
+
+function policyCvssThreshold() {
+  const n = Number(state.filters && state.filters.policyCvssMax);
+  if (!Number.isFinite(n)) return 7.0;
+  return Math.max(0, Math.min(10, n));
+}
+
+function numericVersionTokens(release) {
+  const m = String(release || "").trim().match(/^(\d+(?:\.\d+)*)/);
+  if (!m) return null;
+  return m[1].split(".").map(part => Number(part));
+}
+
+function paddedTokens(tokens, size = 6) {
+  const out = (tokens || []).slice(0, size);
+  while (out.length < size) out.push(0);
+  return out;
+}
+
+function compareVersionStrings(left, right) {
+  const lt = numericVersionTokens(left);
+  const rt = numericVersionTokens(right);
+  if (!lt || !rt) return null;
+  const l = paddedTokens(lt);
+  const r = paddedTokens(rt);
+  for (let i = 0; i < l.length; i += 1) {
+    if (l[i] < r[i]) return -1;
+    if (l[i] > r[i]) return 1;
+  }
+  return 0;
+}
+
+function classifyVersionDistance(currentRelease, targetRelease) {
+  const curTokens = numericVersionTokens(currentRelease);
+  const targetTokens = numericVersionTokens(targetRelease);
+  if (!curTokens || !targetTokens) return "UNKNOWN";
+  const cur = paddedTokens(curTokens, 3);
+  const target = paddedTokens(targetTokens, 3);
+  if (target[0] !== cur[0]) return "MAJOR";
+  if (target[1] !== cur[1]) return "MINOR";
+  return "PATCH";
+}
+
+function findPolicyThresholdTarget(lib) {
+  if (!lib) return { nearest: "", maxPatch: "", distance: "UNKNOWN" };
+  const threshold = policyCvssThreshold();
+  const current = String(lib.release || "");
+  const candidates = (lib.version_chain || [])
+    .filter(row => {
+      const release = String(row.release || "");
+      const cmp = compareVersionStrings(release, current);
+      return cmp !== null && cmp > 0 && isGaRelease(release) && Number(row.max_cvss || 0) < threshold;
+    })
+    .sort((a, b) => compareVersionStrings(a.release, b.release) || 0);
+  if (!candidates.length) return { nearest: "", maxPatch: "", distance: "DEAD_END" };
+  const nearest = String(candidates[0].release || "");
+  const nearestLine = parseMajorMinor(nearest);
+  const sameLine = candidates.filter(row => {
+    const mm = parseMajorMinor(row.release);
+    return mm && nearestLine && mm.major === nearestLine.major && mm.minor === nearestLine.minor;
+  });
+  const maxPatch = sameLine.length ? String(sameLine[sameLine.length - 1].release || nearest) : nearest;
+  return { nearest, maxPatch, distance: classifyVersionDistance(current, nearest) };
 }
 
 function parseReleaseDateAny(obj) {
@@ -1461,6 +1918,23 @@ function renderLibraryRef(meta, proj, release, namespace = "") {
     parts.push(`<span class="sep">@</span><span class="chip">${release}</span>`);
   }
   return `<span class="lib-title">${parts.join("")}</span>`;
+}
+
+function renderLibraryDisplayName(lib, includeRelease = false) {
+  if (!lib) return "-";
+  return renderLibraryRef(lib.meta || "", lib.proj || "", includeRelease ? lib.release || "" : "", lib.namespace || "");
+}
+
+function versionPolicyDisclaimer() {
+  return `<div class="small policy-note">Below-threshold means a GA release with max CVSS &lt; ${fmt(policyCvssThreshold(), 1)} under the current remediation policy. It can still have known lower-severity CVEs; CVE count and CVSS remain shown for review.</div>`;
+}
+
+function versionStatusBadge(row) {
+  if (row.is_safe) {
+    const hasCves = Number(row.cve_count || 0) > 0;
+    return `<span class="badge dir">${hasCves ? "BELOW THRESHOLD" : "NO KNOWN CVES"}</span>`;
+  }
+  return `<span class="badge kev">ABOVE THRESHOLD</span>`;
 }
 
 function renderLibraryIdRich(id) {
@@ -1864,8 +2338,167 @@ function isValidMode(modeId) {
   return MODES.some(m => m.id === modeId);
 }
 
+function parseBooleanParam(value) {
+  const v = String(value || "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes" || v === "on";
+}
+
+function getFirstQueryParam(params, names) {
+  for (const name of names) {
+    const value = params.get(name);
+    if (value !== null && value !== "") return value;
+  }
+  return "";
+}
+
+function splitQueryTokens(values) {
+  return values
+    .flatMap(v => String(v || "").split(","))
+    .map(v => v.trim())
+    .filter(Boolean);
+}
+
+function parseUrlState() {
+  const params = new URLSearchParams(location.search);
+  const mode = getFirstQueryParam(params, ["mode", "tab", "view"]);
+  const effortTokens = splitQueryTokens(params.getAll("effort"));
+  return {
+    manifest: getFirstQueryParam(params, ["manifest"]),
+    data: getFirstQueryParam(params, ["data", "dataset"]),
+    mode: isValidMode(mode) ? mode : "",
+    namespace: getFirstQueryParam(params, ["namespace", "ns"]),
+    department: getFirstQueryParam(params, ["group", "department", "projectGroup"]),
+    projectRefs: splitQueryTokens([
+      ...params.getAll("project"),
+      ...params.getAll("repo"),
+      ...params.getAll("ref"),
+      ...params.getAll("projectRef")
+    ]),
+    search: getFirstQueryParam(params, ["search", "q"]),
+    cvssMin: getFirstQueryParam(params, ["cvss", "cvssMin"]),
+    policyCvssMax: getFirstQueryParam(params, ["policyCvss", "policyCvssMax", "policyThreshold"]),
+    epssMin: getFirstQueryParam(params, ["epss", "epssMin"]),
+    efforts: effortTokens,
+    kevOnly: params.has("kev") ? parseBooleanParam(params.get("kev")) : null,
+    directOnly: params.has("direct") ? parseBooleanParam(params.get("direct")) : null,
+    transitiveOnly: params.has("transitive") ? parseBooleanParam(params.get("transitive")) : null,
+    backpatchOnly: params.has("backpatch") ? parseBooleanParam(params.get("backpatch")) : null,
+    ageBucket: getFirstQueryParam(params, ["age", "ageBucket"]),
+    minProjects: getFirstQueryParam(params, ["minProjects", "min_projects"]),
+    recommendedAction: getFirstQueryParam(params, ["action", "recommendedAction"])
+  };
+}
+
+function setSelectValue(selector, value) {
+  const el = $(selector);
+  if (!el) return;
+  const v = String(value || "");
+  if (v && ![...el.options].some(opt => opt.value === v)) {
+    el.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`);
+  }
+  el.value = v;
+}
+
+function applyUrlStateToFilters(urlState) {
+  if (!urlState) return;
+  const f = state.filters;
+  const boundedNumber = (value, fallback, min, max) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(min, Math.min(max, n));
+  };
+  if (urlState.namespace) f.namespace = urlState.namespace;
+  if (urlState.department) f.department = urlState.department;
+  if (urlState.projectRefs.length) f.projectRefChips = [...new Set(urlState.projectRefs)];
+  if (urlState.search) f.search = urlState.search;
+  if (urlState.cvssMin !== "") f.cvssMin = boundedNumber(urlState.cvssMin, f.cvssMin || 0, 0, 10);
+  if (urlState.policyCvssMax !== "") f.policyCvssMax = boundedNumber(urlState.policyCvssMax, f.policyCvssMax || 7.0, 0, 10);
+  if (urlState.epssMin !== "") f.epssMin = boundedNumber(urlState.epssMin, f.epssMin || 0, 0, 1);
+  if (urlState.efforts.length) {
+    const selected = urlState.efforts.filter(e => EFFORTS.includes(e));
+    if (selected.length) f.effort = new Set(selected);
+  }
+  if (urlState.kevOnly !== null) f.kevOnly = !!urlState.kevOnly;
+  if (urlState.directOnly !== null) f.directOnly = !!urlState.directOnly;
+  if (urlState.transitiveOnly !== null) f.transitiveOnly = !!urlState.transitiveOnly;
+  if (urlState.backpatchOnly !== null) f.backpatchOnly = !!urlState.backpatchOnly;
+  if (urlState.ageBucket) f.ageBucket = urlState.ageBucket;
+  if (urlState.minProjects !== "") f.minProjects = boundedNumber(urlState.minProjects, f.minProjects || 0, 0, Number.MAX_SAFE_INTEGER);
+  if (urlState.recommendedAction) f.recommendedAction = urlState.recommendedAction;
+}
+
+function syncFilterControlsFromState() {
+  const f = state.filters;
+  const cvss = $("#cvssMin");
+  if (cvss) cvss.value = String(Number(f.cvssMin || 0));
+  const cvssLabel = $("#cvssMinValue");
+  if (cvssLabel) cvssLabel.textContent = Number(f.cvssMin || 0).toFixed(1);
+
+  const policyCvss = $("#policyCvssMax");
+  if (policyCvss) policyCvss.value = String(Number(f.policyCvssMax ?? 7.0));
+  const policyCvssLabel = $("#policyCvssMaxValue");
+  if (policyCvssLabel) policyCvssLabel.textContent = `< ${Number(f.policyCvssMax ?? 7.0).toFixed(1)} is below threshold`;
+
+  const epss = $("#epssMin");
+  if (epss) epss.value = String(Number(f.epssMin || 0));
+  const epssLabel = $("#epssMinValue");
+  if (epssLabel) epssLabel.textContent = Number(f.epssMin || 0).toFixed(3);
+
+  setSelectValue("#departmentFilter", f.department || "");
+  setSelectValue("#namespaceFilter", f.namespace || "");
+  setSelectValue("#ageBucketFilter", f.ageBucket || "");
+  setSelectValue("#actionFilter", f.recommendedAction || "");
+  const minProjects = $("#minProjectsFilter");
+  if (minProjects) minProjects.value = String(Number(f.minProjects || 0));
+  const search = $("#searchInput");
+  if (search) search.value = f.search || "";
+  const projectInput = $("#projectRefInput");
+  if (projectInput) projectInput.value = "";
+  const kev = $("#kevOnly");
+  if (kev) kev.checked = !!f.kevOnly;
+  const direct = $("#directOnly");
+  if (direct) direct.checked = !!f.directOnly;
+  const transitive = $("#transitiveOnly");
+  if (transitive) transitive.checked = !!f.transitiveOnly;
+  const backpatch = $("#backpatchOnly");
+  if (backpatch) backpatch.checked = !!f.backpatchOnly;
+  updateNamespacePreview();
+  renderProjectRefChips();
+}
+
+function syncUrlState() {
+  if (state.urlSyncPaused || !state.datasetUrl) return;
+  const f = state.filters || {};
+  const params = new URLSearchParams();
+  const current = new URLSearchParams(location.search);
+  const manifest = current.get("manifest");
+  if (manifest) params.set("manifest", manifest);
+  params.set("data", state.datasetUrl);
+  params.set("mode", state.mode || "dashboard");
+  if (f.namespace) params.set("namespace", f.namespace);
+  if (f.department) params.set("group", f.department);
+  if (f.projectRefChips && f.projectRefChips.length) params.set("project", f.projectRefChips.join(","));
+  if (f.search) params.set("search", f.search);
+  if (Number(f.cvssMin || 0) > 0) params.set("cvss", Number(f.cvssMin || 0).toFixed(1));
+  if (Number(f.policyCvssMax ?? 7.0) !== 7.0) params.set("policyCvss", Number(f.policyCvssMax ?? 7.0).toFixed(1));
+  if (Number(f.epssMin || 0) > 0) params.set("epss", Number(f.epssMin || 0).toFixed(3));
+  const selectedEfforts = EFFORTS.filter(e => f.effort && f.effort.has(e));
+  if (selectedEfforts.length && selectedEfforts.length !== EFFORTS.length) params.set("effort", selectedEfforts.join(","));
+  if (f.kevOnly) params.set("kev", "1");
+  if (f.directOnly) params.set("direct", "1");
+  if (f.transitiveOnly) params.set("transitive", "1");
+  if (f.backpatchOnly) params.set("backpatch", "1");
+  if (f.ageBucket) params.set("age", f.ageBucket);
+  if (Number(f.minProjects || 0) > 0) params.set("minProjects", String(Number(f.minProjects || 0)));
+  if (f.recommendedAction) params.set("action", f.recommendedAction);
+  const nextUrl = `${location.pathname}?${params.toString()}${location.hash || ""}`;
+  if (nextUrl !== `${location.pathname}${location.search}${location.hash || ""}`) {
+    history.replaceState(null, "", nextUrl);
+  }
+}
+
 function setMode(modeId, selected = null) {
-  const next = isValidMode(modeId) ? modeId : "libraries";
+  const next = isValidMode(modeId) ? modeId : "dashboard";
   state.mode = next;
   state.selected = selected;
   localStorage.setItem(STORAGE_KEYS.lastMode, next);
@@ -2151,15 +2784,46 @@ function getLibrariesForPackage(namespace, meta, proj) {
 }
 
 function buildVersionExplorerRows(lib) {
-  const rows = (lib.version_chain || []).map(v => ({ ...v }));
+  const rowsByRelease = new Map();
+  (lib.version_chain || []).forEach((v, idx) => {
+    const release = canonicalRelease(lib.namespace, v.release);
+    if (!release) return;
+    const item = { ...v, release, original_release: String(v.release || ""), original_idx: idx };
+    const existing = rowsByRelease.get(release);
+    if (!existing) {
+      rowsByRelease.set(release, item);
+      return;
+    }
+    const existingDate = parseReleaseDateAny(existing);
+    const nextDate = parseReleaseDateAny(item);
+    const merged = {
+      ...existing,
+      ...item,
+      release,
+      original_release: existing.original_release === item.original_release
+        ? existing.original_release
+        : `${existing.original_release}, ${item.original_release}`,
+      release_id: Math.min(Number(existing.release_id || existing.original_idx || idx), Number(item.release_id || idx)),
+      max_cvss: Math.max(Number(existing.max_cvss || 0), Number(item.max_cvss || 0)),
+      cve_count: Math.max(Number(existing.cve_count || 0), Number(item.cve_count || 0))
+    };
+    if (existingDate && !nextDate) {
+      merged.release_date = existing.release_date;
+      merged.release_published_at = existing.release_published_at;
+      merged.release_date_source = existing.release_date_source;
+    }
+    rowsByRelease.set(release, merged);
+  });
+  const rows = [...rowsByRelease.values()].sort((a, b) => Number(a.release_id || 0) - Number(b.release_id || 0));
   const packageLibs = getLibrariesForPackage(lib.namespace, lib.meta, lib.proj);
   const consumedByRelease = new Map();
   packageLibs.forEach(pl => {
-    const rel = String(pl.release || "");
+    const rel = canonicalRelease(pl.namespace, pl.release);
+    const existing = consumedByRelease.get(rel) || { projects: 0, direct: 0, transitive: 0 };
     consumedByRelease.set(rel, {
-      projects: Number(pl.total_consumer_count || 0),
-      direct: Number(pl.direct_consumer_count || 0),
-      transitive: Number(pl.transitive_consumer_count || 0)
+      projects: Math.max(Number(existing.projects || 0), Number(pl.total_consumer_count || 0)),
+      direct: Math.max(Number(existing.direct || 0), Number(pl.direct_consumer_count || 0)),
+      transitive: Math.max(Number(existing.transitive || 0), Number(pl.transitive_consumer_count || 0))
     });
   });
   return rows.map((v, idx) => {
@@ -2169,7 +2833,7 @@ function buildVersionExplorerRows(lib) {
     return {
       idx,
       release: rel,
-      is_safe: !!v.is_safe,
+      is_safe: Number(v.max_cvss || 0) < policyCvssThreshold() && isGaRelease(rel),
       cve_count: Number(v.cve_count || 0),
       max_cvss: Number(v.max_cvss || 0),
       release_id: Number(v.release_id || idx),
@@ -2214,7 +2878,7 @@ function collapseVersionRows(rows) {
         age: `${first.age} -> ${last.age}`,
         consumed: false,
         consumed_projects: 0,
-        notes: `Collapsed ${run.length} adjacent ${first.is_safe ? "safe" : "vulnerable"} releases`
+        notes: `Collapsed ${run.length} adjacent ${first.is_safe ? "below-threshold" : "above-threshold"} releases`
       });
     } else {
       run.forEach(r => out.push({ ...r, type: "single", release_label: r.release, notes: "" }));
@@ -2251,14 +2915,14 @@ function renderVersionRowsTable(rows) {
       <td>${r.age || "-"}</td>
       <td>${fmt(r.max_cvss,1)}</td>
       <td>${Number(r.cve_count || 0)}</td>
-      <td>${r.is_safe ? "<span class='badge dir'>yes</span>" : "<span class='badge kev'>no</span>"}</td>
+      <td>${versionStatusBadge(r)}</td>
       <td>${r.consumed ? `<span class='badge dir'>${Number(r.consumed_projects || 0)} projects (${Number(r.consumed_direct || 0)} DIR / ${Number(r.consumed_transitive || 0)} TRA)</span>` : "-"}</td>
       <td>${r.notes || ""}</td>
     </tr>
   `).join("");
   return `
     <table class="mini-table">
-      <thead><tr><th>Release</th><th>Age</th><th>CVSS</th><th>CVEs</th><th>Safe</th><th>Consumption</th><th>Notes</th></tr></thead>
+      <thead><tr><th>Release</th><th>Age</th><th>CVSS</th><th>CVEs</th><th>Policy status</th><th>Consumption</th><th>Notes</th></tr></thead>
       <tbody>${body || `<tr><td colspan="7" class="small">No version rows in this section.</td></tr>`}</tbody>
     </table>
   `;
@@ -2276,7 +2940,8 @@ function renderInlineVersionChain(lib, title = "Version chain") {
       <div class="spacer"></div>
       <button data-open-version="${lib.id}" class="ghost">Explore versions</button>
     </div>
-    <div class="small">Consumed/current versions are expanded. Non-consumed versions are collapsed where adjacent release states match.</div>
+    ${versionPolicyDisclaimer()}
+    <div class="small">Consumed/current versions are expanded. Non-consumed versions are collapsed where adjacent policy status matches.</div>
     <details class="vc-block" open>
       <summary>Consumed/current versions (${consumedOrCurrent.length})</summary>
       ${renderVersionRowsTable(consumedOrCurrent)}
@@ -2292,6 +2957,7 @@ function renderVersionExplorer() {
   const lib = getLibraryById(state.versionExplorer.libId);
   if (!lib) return;
   const assessment = buildBackpatchAssessment(lib);
+  const thresholdTarget = findPolicyThresholdTarget(lib);
   const allRows = buildVersionExplorerRows(lib);
   let rows = allRows.slice();
   const mode = state.versionExplorer.viewMode;
@@ -2305,18 +2971,19 @@ function renderVersionExplorer() {
   }
   const displayed = state.versionExplorer.collapseRuns ? collapseVersionRows(rows) : rows.map(r => ({ ...r, type: "single", release_label: r.release, notes: r.consumed ? "Consumed by projects" : "" }));
 
-  els.versionModalTitle.textContent = `Version Explorer: ${lib.meta}:${lib.proj}`;
+  els.versionModalTitle.innerHTML = `Version Explorer: ${renderLibraryDisplayName(lib, false)}`;
   const vulnCount = allRows.filter(r => !r.is_safe).length;
   const safeCount = allRows.filter(r => r.is_safe).length;
   const consumedCount = allRows.filter(r => r.consumed).length;
   els.versionSummary.innerHTML = `
     Current: <code>${lib.release}</code> | Remediation: <strong>${assessment.remediation_type || "NONE"}</strong>
-    | Safe path: <strong>${assessment.safe_path_kind || "unknown"}</strong>
-    | Versions: ${allRows.length} total (${vulnCount} vulnerable / ${safeCount} safe) | Consumed releases: ${consumedCount}
+    | Threshold path: <strong>${thresholdTarget.distance ? thresholdTarget.distance.toLowerCase() : "unknown"}</strong>
+    | Versions: ${allRows.length} total (${vulnCount} above threshold / ${safeCount} below threshold) | Consumed releases: ${consumedCount}
+    ${versionPolicyDisclaimer()}
   `;
 
   const body = displayed.map(r => {
-    const status = r.is_safe ? `<span class="badge dir">SAFE</span>` : `<span class="badge kev">VULNERABLE</span>`;
+    const status = versionStatusBadge(r);
     const consumed = r.consumed ? `<span class="badge tra">yes</span>` : "-";
     const projects = r.consumed ? `${r.consumed_projects} (${r.consumed_direct}/${r.consumed_transitive})` : "-";
     const notes = r.notes || "";
@@ -2685,15 +3352,14 @@ function removeCartItem(key) {
 
 function generateYaml() {
   if (!state.cart.length) return "# Cart is empty\n";
-  const scopeSlug = slugify(state.dataset.meta.scope_name || "scope");
-  const ns = `com.example.risk-navigator.UpgradeBundle.${scopeSlug}`;
+  const ns = openRewriteRecipeNamespace(state.dataset.meta.scope_name || "scope");
   const docs = [];
   for (const item of state.cart) {
-    const subName = `${ns}.${item.groupId.replace(/[^a-zA-Z0-9._-]/g, "_")}__${item.artifactId.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const subName = openRewriteCartRecipeName(ns, item);
     const warn = item.directConsumers === 0 ? "WARNING: no direct consumers in scope; mostly transitive impact." : "";
     docs.push(`---\ntype: specs.openrewrite.org/v1beta/recipe\nname: ${subName}\ndisplayName: Upgrade ${item.groupId}:${item.artifactId} if ${item.fromRange} is present\ndescription: |\n  Conditional upgrade. Source scope: ${item.directConsumers} direct consumer(s), ${item.transitiveConsumers} transitive. ${warn}\npreconditions:\n  - org.openrewrite.java.dependencies.FindDependency:\n      groupId: ${yamlScalar(item.groupId)}\n      artifactId: ${yamlScalar(item.artifactId)}\n      version: ${yamlScalar(item.fromRange)}\nrecipeList:\n  - org.openrewrite.java.dependencies.UpgradeDependencyVersion:\n      groupId: ${yamlScalar(item.groupId)}\n      artifactId: ${yamlScalar(item.artifactId)}\n      newVersion: ${yamlScalar(item.newVersion)}`);
   }
-  docs.push(`---\ntype: specs.openrewrite.org/v1beta/recipe\nname: ${ns}\ndisplayName: Upgrade vulnerable Maven/Gradle dependencies -- ${state.dataset.meta.scope_name}\ndescription: |\n  Generated by Risk Navigator. Cart contains ${state.cart.length} libraries.\nrecipeList:\n${state.cart.map(item => `  - ${ns}.${item.groupId.replace(/[^a-zA-Z0-9._-]/g, "_")}__${item.artifactId.replace(/[^a-zA-Z0-9._-]/g, "_")}`).join("\n")}`);
+  docs.push(`---\ntype: specs.openrewrite.org/v1beta/recipe\nname: ${ns}\ndisplayName: Upgrade vulnerable Maven/Gradle dependencies -- ${state.dataset.meta.scope_name}\ndescription: |\n  Generated by Risk Navigator. Cart contains ${state.cart.length} libraries.\nrecipeList:\n${state.cart.map(item => `  - ${openRewriteCartRecipeName(ns, item)}`).join("\n")}`);
   return toAscii(docs.join("\n\n"));
 }
 
@@ -3014,6 +3680,24 @@ function activeFilters() {
   return state.filters || {};
 }
 
+function projectReferenceSearchValues(project) {
+  const p = project || {};
+  const parsed = parseProjectId(p.id || "");
+  const values = [
+    p.id,
+    p.project_ref,
+    renderProjectRef(p),
+    p.namespace,
+    p.meta,
+    p.proj,
+    parsed.namespace,
+    parsed.meta,
+    parsed.proj
+  ];
+  (Array.isArray(p.aliases) ? p.aliases : []).forEach(a => values.push(a));
+  return [...new Set(values.map(v => String(v || "").trim()).filter(Boolean))];
+}
+
 function populateFilterOptions() {
   const ds = state.dataset;
   state.projectGroups = computeProjectGroups(ds);
@@ -3077,18 +3761,11 @@ function computeFilteredLibraries() {
       if (!hasGroup) return false;
     }
     if (f.projectRefChips.length) {
+      const chips = f.projectRefChips.map(chip => String(chip || "").trim().toLowerCase()).filter(Boolean);
       const hasProjectRef = (lib.consumer_project_ids || []).some(pid => {
         const p = projectsById.get(pid) || {};
-        const names = new Set();
-        const ref = String(p.project_ref || "").trim();
-        if (ref) names.add(ref);
-        const display = renderProjectRef(p);
-        if (display) names.add(display);
-        (Array.isArray(p.aliases) ? p.aliases : []).forEach(a => {
-          const v = String(a || "").trim();
-          if (v) names.add(v);
-        });
-        return f.projectRefChips.some(chip => names.has(chip));
+        const names = projectReferenceSearchValues(p).map(v => v.toLowerCase());
+        return chips.some(chip => names.some(name => name.includes(chip)));
       });
       if (!hasProjectRef) return false;
     }
@@ -3997,7 +4674,340 @@ function simulatePatchFramework(fwRow) {
   };
 }
 
+function cvesInCurrentThresholds(lib) {
+  const minCvss = Number(state.filters.cvssMin || 0);
+  const minEpss = Number(state.filters.epssMin || 0);
+  return (lib.cves || []).filter(cve => Number(cve.cvss || 0) >= minCvss && Number(cve.epss || 0) >= minEpss);
+}
+
+function cvssBucket(score) {
+  const n = Number(score || 0);
+  if (n >= 9) return "Critical";
+  if (n >= 7) return "High";
+  if (n >= 4) return "Medium";
+  return "Low";
+}
+
+function barRows(rows, options = {}) {
+  const max = Math.max(1, ...rows.map(r => Number(r.value || 0)));
+  const limit = options.limit || rows.length;
+  const empty = options.empty || "No rows in current filter scope.";
+  const visible = rows.slice(0, limit);
+  if (!visible.length) return `<div class="dashboard-note">${empty}</div>`;
+  return `<div class="bar-list">${visible.map(r => {
+    const pct = Math.max(2, Math.round((Number(r.value || 0) / max) * 100));
+    const tone = r.tone ? ` ${r.tone}` : "";
+    return `
+      <div class="bar-row">
+        <div class="bar-label" title="${escapeHtml(r.label)}">${escapeHtml(r.label)}</div>
+        <div class="bar-track"><div class="bar-fill${tone}" style="width:${pct}%"></div></div>
+        <div class="bar-count">${escapeHtml(String(r.display ?? r.value ?? 0))}</div>
+      </div>
+    `;
+  }).join("")}</div>`;
+}
+
+function computeDashboardMetrics(filteredLibraries) {
+  const libs = filteredLibraries || [];
+  const projects = computeProjectRows(libs);
+  const cves = computeCveRows(libs);
+  const topFixRows = computeTopFixRows(libs);
+  const affectedProjectIds = new Set();
+  const namespaceMap = new Map();
+  const groupMap = new Map();
+  const cvssCounts = new Map([
+    ["Critical", 0],
+    ["High", 0],
+    ["Medium", 0],
+    ["Low", 0]
+  ]);
+  let directLibs = 0;
+  let transitiveLibs = 0;
+  let directProjectEdges = 0;
+  let transitiveProjectEdges = 0;
+
+  libs.forEach(lib => {
+    (lib.consumer_project_ids || []).forEach(id => affectedProjectIds.add(id));
+    if (Number(lib.direct_consumer_count || 0) > 0) directLibs += 1;
+    if (Number(lib.transitive_consumer_count || 0) > 0) transitiveLibs += 1;
+    directProjectEdges += Number(lib.direct_consumer_count || 0);
+    transitiveProjectEdges += Number(lib.transitive_consumer_count || 0);
+    const bucket = cvssBucket(lib.max_cvss);
+    cvssCounts.set(bucket, (cvssCounts.get(bucket) || 0) + 1);
+
+    const ns = String(lib.namespace || "unknown");
+    if (!namespaceMap.has(ns)) {
+      namespaceMap.set(ns, { label: namespaceMeta(ns).label || ns, libraries: 0, projects: new Set(), cves: new Set(), direct: 0, transitive: 0 });
+    }
+    const row = namespaceMap.get(ns);
+    row.libraries += 1;
+    row.direct += Number(lib.direct_consumer_count || 0);
+    row.transitive += Number(lib.transitive_consumer_count || 0);
+    (lib.consumer_project_ids || []).forEach(id => row.projects.add(id));
+    cvesInCurrentThresholds(lib).forEach(cve => {
+      const id = String(cve.cve_id || "").trim();
+      if (id) row.cves.add(id);
+    });
+  });
+
+  projects.forEach(p => {
+    const group = String(p.project_group || "General").trim() || "General";
+    if (!groupMap.has(group)) groupMap.set(group, { label: group, projects: 0, libraries: 0, risk: 0 });
+    const row = groupMap.get(group);
+    row.projects += 1;
+    row.libraries += Number(p.visible_count || 0);
+    row.risk += Number(p.visible_count || 0) * Math.max(1, Number(p.visible_max_cvss || 0));
+  });
+
+  const namespaceRows = [...namespaceMap.values()]
+    .map(r => ({
+      label: r.label,
+      value: r.libraries,
+      display: `${r.libraries} libs`,
+      cves: r.cves.size,
+      projects: r.projects.size,
+      direct: r.direct,
+      transitive: r.transitive
+    }))
+    .sort((a, b) => b.value - a.value || b.cves - a.cves || a.label.localeCompare(b.label));
+
+  const cvssRows = [
+    { label: "Critical (9.0-10.0)", value: cvssCounts.get("Critical") || 0, tone: "risk-critical" },
+    { label: "High (7.0-8.9)", value: cvssCounts.get("High") || 0, tone: "risk-high" },
+    { label: "Medium (4.0-6.9)", value: cvssCounts.get("Medium") || 0, tone: "risk-med" },
+    { label: "Low (0.0-3.9)", value: cvssCounts.get("Low") || 0, tone: "risk-low" }
+  ];
+
+  const projectGroupRows = [...groupMap.values()]
+    .map(r => ({ label: r.label, value: r.projects, display: `${r.projects} projects`, libraries: r.libraries, risk: r.risk }))
+    .sort((a, b) => b.value - a.value || b.risk - a.risk || a.label.localeCompare(b.label));
+
+  const directTransitiveRows = [
+    { label: "Direct vulnerable libs", value: directLibs, display: `${directLibs} libs`, tone: "risk-low" },
+    { label: "Transitive vulnerable libs", value: transitiveLibs, display: `${transitiveLibs} libs`, tone: "risk-med" },
+    { label: "Direct project-library edges", value: directProjectEdges, display: `${directProjectEdges} edges`, tone: "risk-low" },
+    { label: "Transitive project-library edges", value: transitiveProjectEdges, display: `${transitiveProjectEdges} edges`, tone: "risk-med" }
+  ];
+
+  const laneDefs = [
+    {
+      id: "direct",
+      title: "Direct upgrade lane",
+      decision: "Low-friction patch/minor upgrades that can move through normal owner workflows.",
+      match: r => r.action_type === "UPGRADE_PATCH" || r.action_type === "UPGRADE_MINOR"
+    },
+    {
+      id: "leverage",
+      title: "Coordinated leverage lane",
+      decision: "Amplifier and framework moves where one coordinated change can clear repeated exposure.",
+      tone: "leverage",
+      match: r => r.action_type === "AMPLIFIER" || r.action_type === "FRAMEWORK"
+    },
+    {
+      id: "patch",
+      title: "OSERA patch lane",
+      decision: "Backpatch, create-patch, or fork candidates where mutualized maintenance may reduce migration pressure.",
+      tone: "priority",
+      match: r => String(r.action_type || "").startsWith("BACKPATCH") || r.action_type === "CREATE_PATCH"
+    },
+    {
+      id: "migration",
+      title: "Major migration lane",
+      decision: "Higher-cost migrations that need explicit funding, sequencing, or temporary risk acceptance.",
+      match: r => r.action_type === "UPGRADE_MAJOR"
+    }
+  ];
+
+  const opportunityLanes = laneDefs.map(def => {
+    const rows = topFixRows.filter(def.match);
+    return {
+      ...def,
+      actions: rows.length,
+      projects: rows.reduce((sum, r) => sum + Number(r.projects || 0), 0),
+      cves: rows.reduce((sum, r) => sum + Number(r.cves_cleared || 0), 0),
+      libs: rows.reduce((sum, r) => sum + Number(r.libs_cleared || 0), 0),
+      top: rows.slice(0, 3)
+    };
+  });
+
+  const topOpportunities = topFixRows.slice(0, 8);
+  const criticalLibs = cvssCounts.get("Critical") || 0;
+  const highLibs = cvssCounts.get("High") || 0;
+  const leadingNamespace = namespaceRows[0] || null;
+  const leadingGroup = projectGroupRows[0] || null;
+
+  return {
+    projects,
+    cves,
+    topFixRows,
+    topOpportunities,
+    opportunityLanes,
+    criticalLibs,
+    highLibs,
+    leadingNamespace,
+    leadingGroup,
+    affectedProjectCount: affectedProjectIds.size,
+    vulnerableLibraries: libs.length,
+    kevLibraries: libs.filter(lib => lib.is_kev_listed).length,
+    namespaceRows,
+    cvssRows,
+    projectGroupRows,
+    directTransitiveRows
+  };
+}
+
+function activeDatasetDisplayName() {
+  const m = (state.dataset && state.dataset.meta) || {};
+  const scopeName = String(m.scope_name || "current estate").trim() || "current estate";
+  const scopeLabel = String(m.scope_label || "").trim() || scopeName;
+  const division = String(m.division_short || m.division || "").trim();
+  return division ? `${division} / ${scopeLabel}` : scopeLabel;
+}
+
+function renderDashboard(filteredLibraries) {
+  if (!els.dashboardView || !els.mainTable) return;
+  const metrics = computeDashboardMetrics(filteredLibraries);
+  const datasetTitle = activeDatasetDisplayName();
+  els.dashboardView.hidden = false;
+  els.mainTable.hidden = true;
+  els.tableHead.innerHTML = "";
+  els.tableBody.innerHTML = "";
+  els.rowCount.textContent = "Dashboard";
+  els.dashboardView.innerHTML = `
+    <section class="dashboard-hero">
+      <div>
+        <h2>Opportunity landscape for ${escapeHtml(datasetTitle)}</h2>
+        <p>Filter-aware executive view of where remediation effort concentrates: routine owner upgrades, coordinated leverage moves, OSERA patch candidates, and major migration work.</p>
+      </div>
+      <div class="dashboard-hero-metrics">
+        <div class="hero-metric"><div class="num">${metrics.criticalLibs + metrics.highLibs}</div><div class="cap">High / critical libraries</div></div>
+        <div class="hero-metric"><div class="num">${metrics.topFixRows.length}</div><div class="cap">Ranked opportunities</div></div>
+        <div class="hero-metric"><div class="num">${metrics.leadingNamespace ? escapeHtml(metrics.leadingNamespace.label) : "-"}</div><div class="cap">Largest namespace</div></div>
+        <div class="hero-metric"><div class="num">${metrics.leadingGroup ? escapeHtml(String(metrics.leadingGroup.value)) : "0"}</div><div class="cap">Projects in top group</div></div>
+      </div>
+    </section>
+    <div class="dashboard-kpis">
+      <section class="dashboard-card">
+        <div class="label">Affected projects</div>
+        <div class="value">${metrics.affectedProjectCount}</div>
+        <div class="sub">${metrics.projects.length} projects remain visible after project filters.</div>
+      </section>
+      <section class="dashboard-card">
+        <div class="label">Distinct CVEs</div>
+        <div class="value">${metrics.cves.length}</div>
+        <div class="sub">${metrics.cves.filter(c => c.kev).length} KEV-listed CVEs in current scope.</div>
+      </section>
+      <section class="dashboard-card">
+        <div class="label">Vulnerable libraries</div>
+        <div class="value">${metrics.vulnerableLibraries}</div>
+        <div class="sub">${metrics.kevLibraries} libraries include KEV-linked findings.</div>
+      </section>
+      <section class="dashboard-card">
+        <div class="label">Direct / transitive</div>
+        <div class="value">${metrics.directTransitiveRows[0].value} / ${metrics.directTransitiveRows[1].value}</div>
+        <div class="sub">Libraries with direct exposure versus transitive exposure.</div>
+      </section>
+    </div>
+    <div class="opportunity-grid">
+      ${metrics.opportunityLanes.map(lane => `
+        <section class="opportunity-card ${lane.tone || ""}">
+          <div>
+            <div class="opportunity-title">${escapeHtml(lane.title)}</div>
+            <div class="opportunity-decision">${escapeHtml(lane.decision)}</div>
+          </div>
+          <div class="opportunity-metrics">
+            <div><strong>${lane.projects}</strong><span>Projects</span></div>
+            <div><strong>${lane.cves}</strong><span>CVEs</span></div>
+            <div><strong>${lane.libs}</strong><span>Libs</span></div>
+          </div>
+        </section>
+      `).join("")}
+    </div>
+    <div class="dashboard-grid">
+      <section class="dashboard-section">
+        <h3>Namespace spread</h3>
+        ${barRows(metrics.namespaceRows, { limit: 10 })}
+        <div class="dashboard-note" style="margin-top:8px;">Counted by vulnerable library versions; CVE and project reach are shown in the table below.</div>
+      </section>
+      <section class="dashboard-section">
+        <h3>CVSS spread</h3>
+        ${barRows(metrics.cvssRows)}
+      </section>
+      <section class="dashboard-section">
+        <h3>Project-group spread</h3>
+        ${barRows(metrics.projectGroupRows, { limit: 10, empty: "No affected project groups in current filters." })}
+      </section>
+      <section class="dashboard-section">
+        <h3>Direct / transitive opportunities</h3>
+        ${barRows(metrics.directTransitiveRows)}
+      </section>
+    </div>
+    <section class="dashboard-section">
+      <h3>Namespace detail</h3>
+      <div class="libs-table-wrap">
+        <table class="libs-table">
+          <thead><tr><th>Namespace</th><th>Libraries</th><th>Distinct CVEs</th><th>Projects</th><th>Direct edges</th><th>Transitive edges</th></tr></thead>
+          <tbody>${metrics.namespaceRows.map(r => `<tr><td>${escapeHtml(r.label)}</td><td>${r.value}</td><td>${r.cves}</td><td>${r.projects}</td><td>${r.direct}</td><td>${r.transitive}</td></tr>`).join("") || `<tr><td colspan="6" class="small">No namespace exposure in current filters.</td></tr>`}</tbody>
+        </table>
+      </div>
+    </section>
+    <section class="dashboard-section">
+      <h3>Top ranked opportunities</h3>
+      <div class="libs-table-wrap">
+        <table class="libs-table executive-table">
+          <thead><tr><th>#</th><th>Action</th><th>Target</th><th>Projects</th><th>CVEs</th><th>Libs</th><th>Effort</th><th>Score</th></tr></thead>
+          <tbody>${metrics.topOpportunities.map((r, idx) => `<tr>
+            <td>${idx + 1}</td>
+            <td>${renderTopFixAction(r)}</td>
+            <td>${renderTopFixTarget(r)}</td>
+            <td>${r.projects}</td>
+            <td>${r.cves_cleared}</td>
+            <td>${r.libs_cleared}</td>
+            <td>${escapeHtml(r.effort || "-")}</td>
+            <td>${fmt(r.score, 3)}</td>
+          </tr>`).join("") || `<tr><td colspan="8" class="small">No ranked opportunities in current filters.</td></tr>`}</tbody>
+        </table>
+      </div>
+    </section>
+  `;
+  renderDashboardFilterSidebar(metrics);
+}
+
+function ensureFilterHome() {
+  if (!filterHome.parent && els.filterShell) {
+    filterHome.parent = els.filterShell.parentNode;
+    filterHome.nextSibling = els.filterShell.nextSibling;
+  }
+}
+
+function moveFiltersToDefaultHome() {
+  ensureFilterHome();
+  if (!els.filterShell || !filterHome.parent) return;
+  els.filterShell.classList.remove("dashboard-filter");
+  filterHome.parent.insertBefore(els.filterShell, filterHome.nextSibling);
+}
+
+function renderDashboardFilterSidebar(metrics) {
+  ensureFilterHome();
+  els.detail.innerHTML = `
+    <h3 style="margin:0;">Shape the landscape</h3>
+    <div class="dashboard-filter-intro">
+      Filter the executive view without leaving Dashboard. Current scope:
+      ${metrics.affectedProjectCount} affected projects,
+      ${metrics.cves.length} distinct CVEs,
+      ${metrics.vulnerableLibraries} vulnerable libraries.
+    </div>
+  `;
+  if (els.filterShell) {
+    els.filterShell.classList.add("dashboard-filter");
+    els.detail.appendChild(els.filterShell);
+  }
+  els.detail.scrollTop = 0;
+}
+
 function renderTable(columns, rows, rowIdFn, rowCellsFn) {
+  if (els.dashboardView) els.dashboardView.hidden = true;
+  if (els.mainTable) els.mainTable.hidden = false;
   els.tableHead.innerHTML = "";
   columns.forEach(col => {
     const th = document.createElement("th");
@@ -4022,7 +5032,13 @@ function renderTable(columns, rows, rowIdFn, rowCellsFn) {
     const id = rowIdFn(row);
     tr.dataset.id = id;
     if (state.selected === id) tr.classList.add("sel");
-    tr.onclick = () => { state.selected = id; renderDetail(row); highlightSelected(); };
+    tr.onclick = () => {
+      const changed = state.selected !== id;
+      state.selected = id;
+      renderDetail(row);
+      if (changed) els.detail.scrollTop = 0;
+      highlightSelected();
+    };
     rowCellsFn(row, idx).forEach(html => {
       const td = document.createElement("td");
       td.innerHTML = html;
@@ -4119,8 +5135,8 @@ function renderDetail(item) {
         <div class="k">🔥 KEV</div><div>${lib.kev_cve_count}</div>
         <div class="k">EPSS max</div><div>${fmt(lib.epss_max,3)}</div>
         <div class="k">Upgrade</div><div>${lib.effort_class}</div>
-        <div class="k">Safe at</div><div>${lib.nearest_safe_version || "-"}</div>
-        <div class="k">Max patch</div><div>${lib.max_safe_patch_same_minor || "-"}</div>
+        <div class="k">Below threshold at</div><div>${findPolicyThresholdTarget(lib).nearest || "-"}</div>
+        <div class="k">Max threshold patch</div><div>${findPolicyThresholdTarget(lib).maxPatch || "-"}</div>
         <div class="k">Top amplifier</div><div>${lib.top_amplifier ? renderLibraryRef(lib.top_amplifier.meta, lib.top_amplifier.proj, lib.top_amplifier.release, lib.top_amplifier.namespace || "") : "-"}</div>
         <div class="k">Frameworks</div><div>${renderFrameworkJumpButtons(lib)}</div>
       </div>
@@ -5025,7 +6041,15 @@ function renderDetail(item) {
 }
 
 function renderMode(filteredLibraries) {
+  const isDashboard = state.mode === "dashboard";
+  if (els.mainLayout) els.mainLayout.classList.toggle("dashboard-layout", isDashboard);
+  if (!isDashboard) moveFiltersToDefaultHome();
   renderTranches(filteredLibraries);
+
+  if (isDashboard) {
+    renderDashboard(filteredLibraries);
+    return;
+  }
 
   if (state.mode === "libraries") {
     const rows = filteredLibraries;
@@ -5041,27 +6065,31 @@ function renderMode(filteredLibraries) {
         {label:"Projects", sortKey:"total_consumer_count"},
         {label:"Direct", sortKey:"direct_consumer_count"},
         {label:"Upgrade", sortKey:"effort_class"},
-        {label:"Safe at", sortKey:"nearest_safe_version"},
-        {label:"Max patch", sortKey:"max_safe_patch_same_minor"},
+        {label:"Below threshold at", sortKey:"nearest_safe_version"},
+        {label:"Max threshold patch", sortKey:"max_safe_patch_same_minor"},
         {label:"Top amplifier"}
       ],
       rows,
       r => r.id,
-      (r,idx) => [
-        idx + 1,
-        renderLibraryCell(r),
-        r.release,
-        fmt(r.max_cvss,1),
-        r.cve_count,
-        r.kev_cve_count ? `<span class="badge kev">${r.kev_cve_count}</span>` : "0",
-        fmt(r.epss_max,3),
-        r.total_consumer_count,
-        r.direct_consumer_count,
-        `<span class="chip effort-${r.effort_class}">${r.effort_class.replace("_","-")}</span>`,
-        r.nearest_safe_version || "-",
-        r.max_safe_patch_same_minor || "-",
-        r.top_amplifier ? renderLibraryRef(r.top_amplifier.meta, r.top_amplifier.proj, "", r.top_amplifier.namespace || "") : "-"
-      ]
+      (r,idx) => {
+        const target = findPolicyThresholdTarget(r);
+        const effort = target.distance && target.distance !== "DEAD_END" ? target.distance : r.effort_class;
+        return [
+          idx + 1,
+          renderLibraryCell(r),
+          r.release,
+          fmt(r.max_cvss,1),
+          r.cve_count,
+          r.kev_cve_count ? `<span class="badge kev">${r.kev_cve_count}</span>` : "0",
+          fmt(r.epss_max,3),
+          r.total_consumer_count,
+          r.direct_consumer_count,
+          `<span class="chip effort-${effort || "UNKNOWN"}">${String(effort || "UNKNOWN").replace("_","-")}</span>`,
+          target.nearest || "-",
+          target.maxPatch || "-",
+          r.top_amplifier ? renderLibraryRef(r.top_amplifier.meta, r.top_amplifier.proj, "", r.top_amplifier.namespace || "") : "-"
+        ];
+      }
     );
     if (!rows.length) renderDetail(null); else renderDetail(rows.find(r => r.id === state.selected) || rows[0]);
     return;
@@ -5398,6 +6426,7 @@ function render() {
   renderFilterCompactSummary(libs);
   updateCartVisibility(libs);
   renderMode(libs);
+  syncUrlState();
 }
 
 async function loadDatasetSelection(url) {
@@ -5410,6 +6439,11 @@ async function loadDatasetSelection(url) {
   applyMetaPresentation(m);
 
   populateFilterOptions();
+  if (state.initialUrlState) {
+    applyUrlStateToFilters(state.initialUrlState);
+    state.initialUrlState = null;
+  }
+  syncFilterControlsFromState();
   loadCart();
   state.selected = null;
   state.detailImpact = "all";
@@ -5569,6 +6603,12 @@ function bindEvents() {
     $("#cvssMinValue").textContent = Number(e.target.value).toFixed(1);
     renderFast();
   });
+  $("#policyCvssMax").addEventListener("input", e => {
+    const n = Number(e.target.value);
+    state.filters.policyCvssMax = Number.isFinite(n) ? Math.max(0, Math.min(10, n)) : 7.0;
+    $("#policyCvssMaxValue").textContent = `< ${state.filters.policyCvssMax.toFixed(1)} is below threshold`;
+    renderFast();
+  });
 
   $("#departmentFilter").addEventListener("change", e => { state.filters.department = e.target.value; render(); });
   $("#namespaceFilter").addEventListener("change", e => { state.filters.namespace = e.target.value; updateNamespacePreview(); render(); });
@@ -5588,15 +6628,22 @@ function bindEvents() {
   $("#minProjectsFilter").addEventListener("input", debounce(e => { state.filters.minProjects = Number(e.target.value || 0); render(); }, 120));
   $("#actionFilter").addEventListener("change", e => { state.filters.recommendedAction = e.target.value || ""; render(); });
 
+  const applyProjectRefInput = input => {
+    const v = String(input.value || "").trim();
+    if (!v) return;
+    if (!state.filters.projectRefChips.includes(v)) state.filters.projectRefChips.push(v);
+    input.value = "";
+    renderProjectRefChips();
+    render();
+  };
+
   $("#projectRefInput").addEventListener("keydown", e => {
     if (e.key !== "Enter") return;
     e.preventDefault();
-    const v = e.target.value.trim();
-    if (!v) return;
-    if (!state.filters.projectRefChips.includes(v)) state.filters.projectRefChips.push(v);
-    e.target.value = "";
-    renderProjectRefChips();
-    render();
+    applyProjectRefInput(e.target);
+  });
+  $("#projectRefInput").addEventListener("change", e => {
+    applyProjectRefInput(e.target);
   });
 
   els.datasetSelect.addEventListener("change", e => loadDatasetSelection(e.target.value));
@@ -5654,11 +6701,12 @@ function renderFilterCompactSummary(filteredLibraries) {
     `Group: ${f.department || "All"}`,
     `Namespace: ${f.namespace ? namespaceMeta(f.namespace).label : "All"}`,
     `CVSS>=${Number(f.cvssMin || 0).toFixed(1)}`,
+    `Policy CVSS<${policyCvssThreshold().toFixed(1)}`,
     `EPSS>=${Number(f.epssMin || 0).toFixed(3)}`,
     effortLabel,
     `Age: ${f.ageBucket || "All"}`,
     `Action: ${f.recommendedAction || "All"}`,
-    `Refs: ${f.projectRefChips.length}`,
+    `Project refs: ${f.projectRefChips.length ? f.projectRefChips.join(", ") : "All"}`,
     `Min projects: ${Number(f.minProjects || 0)}`,
     `Flags: ${flags || "none"}`,
     `Filtered libs: ${(filteredLibraries || []).length}`,
@@ -5671,18 +6719,21 @@ function renderFilterCompactSummary(filteredLibraries) {
 }
 
 async function init() {
+  const urlState = parseUrlState();
+  state.initialUrlState = urlState;
+  state.urlSyncPaused = true;
   loadTheme();
   setFilterPanelCollapsed(localStorage.getItem("risk-nav-filters-collapsed") === "1");
   applyDetailWidth(localStorage.getItem("risk-nav-detail-width") || 420);
   initPaneSplitter();
   bindEvents();
-  setMode(localStorage.getItem(STORAGE_KEYS.lastMode) || "libraries", null);
+  setMode(urlState.mode || localStorage.getItem(STORAGE_KEYS.lastMode) || "dashboard", null);
 
   state.manifest = await fetchManifest();
   const datasets = state.manifest.datasets || [];
   els.datasetSelect.innerHTML = datasets.map(d => `<option value="${d.url}">${d.label || d.url}</option>`).join("");
 
-  const fromQuery = new URLSearchParams(location.search).get("data");
+  const fromQuery = urlState.data;
   const fromStorage = localStorage.getItem(STORAGE_KEYS.lastDataset);
   const initial = fromQuery || fromStorage || (datasets[0] && datasets[0].url);
   if (!initial) throw new Error("No datasets in manifest");
@@ -5693,6 +6744,8 @@ async function init() {
   els.datasetSelect.value = initial;
 
   await loadDatasetSelection(initial);
+  state.urlSyncPaused = false;
+  syncUrlState();
 }
 
 init().catch(err => {

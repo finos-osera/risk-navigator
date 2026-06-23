@@ -1,0 +1,35 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-06-23T00:00:00Z",
+    "tools": [{ "vendor": "Risk Navigator", "name": "demo-repo-scanner", "version": "0.1.0" }],
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:github/finos/legend-studio@main",
+      "name": "legend-studio",
+      "version": "main",
+      "externalReferences": [{ "type": "vcs", "url": "https://github.com/finos/legend-studio.git" }]
+    }
+  },
+  "components": [
+    { "type": "library", "bom-ref": "pkg:maven/org.springframework.boot/spring-boot-starter-web@2.7.18", "name": "spring-boot-starter-web", "group": "org.springframework.boot", "version": "2.7.18", "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-web@2.7.18", "scope": "required" },
+    { "type": "library", "bom-ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.14.2", "name": "jackson-databind", "group": "com.fasterxml.jackson.core", "version": "2.14.2", "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.14.2", "scope": "required" },
+    { "type": "library", "bom-ref": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1", "name": "log4j-core", "group": "org.apache.logging.log4j", "version": "2.14.1", "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1", "scope": "required" },
+    { "type": "library", "bom-ref": "pkg:maven/org.springframework/spring-web@5.3.39", "name": "spring-web", "group": "org.springframework", "version": "5.3.39", "purl": "pkg:maven/org.springframework/spring-web@5.3.39", "scope": "required" },
+    { "type": "library", "bom-ref": "pkg:maven/org.springframework/spring-context@5.3.39", "name": "spring-context", "group": "org.springframework", "version": "5.3.39", "purl": "pkg:maven/org.springframework/spring-context@5.3.39", "scope": "required" },
+    { "type": "library", "bom-ref": "pkg:maven/org.springframework/spring-beans@5.3.17", "name": "spring-beans", "group": "org.springframework", "version": "5.3.17", "purl": "pkg:maven/org.springframework/spring-beans@5.3.17", "scope": "required" },
+    { "type": "library", "bom-ref": "pkg:maven/org.yaml/snakeyaml@1.33", "name": "snakeyaml", "group": "org.yaml", "version": "1.33", "purl": "pkg:maven/org.yaml/snakeyaml@1.33", "scope": "required" }
+  ],
+  "dependencies": [
+    { "ref": "pkg:github/finos/legend-studio@main", "dependsOn": ["pkg:maven/org.springframework.boot/spring-boot-starter-web@2.7.18", "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.14.2", "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"] },
+    { "ref": "pkg:maven/org.springframework.boot/spring-boot-starter-web@2.7.18", "dependsOn": ["pkg:maven/org.springframework/spring-web@5.3.39", "pkg:maven/org.springframework/spring-context@5.3.39", "pkg:maven/org.springframework/spring-beans@5.3.17", "pkg:maven/org.yaml/snakeyaml@1.33"] },
+    { "ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.14.2", "dependsOn": [] },
+    { "ref": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1", "dependsOn": [] },
+    { "ref": "pkg:maven/org.springframework/spring-web@5.3.39", "dependsOn": [] },
+    { "ref": "pkg:maven/org.springframework/spring-context@5.3.39", "dependsOn": [] },
+    { "ref": "pkg:maven/org.springframework/spring-beans@5.3.17", "dependsOn": [] },
+    { "ref": "pkg:maven/org.yaml/snakeyaml@1.33", "dependsOn": [] }
+  ]
+}

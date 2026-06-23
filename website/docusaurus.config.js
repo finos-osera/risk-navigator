@@ -5,7 +5,9 @@ const isGitHubPages = process.env.GITHUB_PAGES === "true";
 const siteUrl = isGitHubPages
   ? "https://finos-backpatch.github.io"
   : process.env.DEPLOY_PRIME_URL || process.env.URL || "https://risk-navigator.finos.org";
-const publicToolUrl = "https://finos-backpatch.github.io/risk-navigator/tool/risk-navigator.html";
+const publicToolUrl = "/tools/risk-navigator.html";
+const launchToolHtml = `<a class="navbar__item navbar__link" href="${publicToolUrl}">Launch Tool</a>`;
+const launchToolFooterHtml = `<a class="footer__link-item" href="${publicToolUrl}">Launch Tool</a>`;
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -18,10 +20,12 @@ const config = {
   projectName: "risk-navigator",
   onBrokenLinks: "throw",
   markdown: {
+    mermaid: true,
     hooks: {
       onBrokenMarkdownLinks: "warn",
     },
   },
+  themes: ["@docusaurus/theme-mermaid"],
 
   presets: [
     [
@@ -56,7 +60,7 @@ const config = {
         { to: "/", label: "Overview", position: "right" },
         { to: "/docs/home", label: "Docs", position: "right" },
         { href: "https://osera.finos.org", label: "OSERA", position: "right" },
-        { href: publicToolUrl, label: "Launch Tool", position: "right" },
+        { type: "html", value: launchToolHtml, position: "right" },
         {
           href: "https://github.com/finos-backpatch/risk-navigator",
           label: "GitHub",
@@ -77,7 +81,7 @@ const config = {
           items: [
             { label: "Overview", to: "/" },
             { label: "Docs", to: "/docs/home" },
-            { label: "Launch Tool", href: publicToolUrl },
+            { html: launchToolFooterHtml },
             { label: "GitHub", href: "https://github.com/finos-backpatch/risk-navigator" },
           ],
         },
@@ -89,7 +93,7 @@ const config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} FINOS.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Fintech Open Source Foundation (<a href="https://www.finos.org/" target="_blank" rel="noopener noreferrer">FINOS</a>).`,
     },
     prism: {
       theme: lightCodeTheme,

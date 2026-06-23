@@ -9,6 +9,27 @@
 
 ---
 
+## 0. Prerequisites
+
+The reference implementation assumes:
+
+- Node.js 20 or later.
+- npm 10 or later.
+- Python 3.11 or later.
+- Git for optional public repository scans.
+- Network access when fetching OSV, CISA KEV, FIRST EPSS, deps.dev, or public GitHub repository data.
+- Optional SBOM scanner tooling when regenerating scanner-based demo inputs:
+  - `cdxgen`, or
+  - `syft`.
+
+The static viewer itself has no runtime server dependency. Once a dataset has
+been built, `tool/risk-navigator.html` can be served by any static-file server.
+
+Do not document local workstation paths, usernames, shell initialization details,
+or machine-specific package-manager setup in project docs or published demo
+metadata. Public docs and sample datasets should use portable commands and
+repo-relative paths.
+
 ## 1. Goals
 
 Build a **static, self-contained HTML viewer** plus a **set of ingestion
@@ -56,6 +77,14 @@ with these concrete UI/UX choices now treated as requirements:
 - Right-hand detail pane width is user-adjustable via a draggable divider between left/right panes and persisted locally.
 - Viewer session preferences persist locally across reloads, including last selected dataset and last active mode/tab (query params still override when provided).
 - Amplifier/framework member library sets in right-side details use structured tables (not plain string lists).
+- Dashboard is the default landing mode and summarizes current-filter exposure:
+  affected projects, distinct CVEs, vulnerable libraries, KEV counts,
+  namespace spread, CVSS spread, project-group spread, and direct/transitive
+  opportunity mix. It also presents an executive opportunity landscape across
+  remediation lanes: direct upgrades, coordinated leverage, OSERA patch work,
+  and major migrations.
+- When a table row selection changes, the right-hand detail pane scroll position
+  resets to the top of that pane.
 
 ---
 
@@ -113,13 +142,34 @@ flowchart TB
 Four scripts, one HTML, one or more JSONs. No build step. No server. The HTML
 opens via `file://` or any static-file server.
 
+### 3.1 Dataset production contract
+
+Every published dataset should be reproducible from documented inputs:
+
+- list the dataset in `tool/manifest.json`,
+- document the source inventory path,
+- document the build command,
+- document the validation command,
+- preserve enough raw extract files or SBOM inputs to audit how the final JSON
+  was produced,
+- avoid machine-local absolute paths in final JSON metadata.
+
+For the bundled samples:
+
+- `data/finos-sample-platform.json` is produced from the synthetic extractor and
+  raw CSVs under `data/raw/finos-sample-platform/`.
+- `data/finos-sbom-demo.json` is produced from CycloneDX SBOM files under
+  `data/sboms/finos-sbom-demo/`, then normalized to raw CSVs under
+  `data/raw/finos-sbom-demo/`.
+
 ---
 
 ## 4. Data model — the schema you'll join into
 
-The HTML is the single source of truth for the dataset shape. Match it
-exactly or the UI won't render. Every other concern (ingestion, normalization,
-storage) can vary by implementation.
+This SPEC is the source of truth for the dataset shape; the viewer and
+validator implement this contract. Match it exactly or the UI won't render.
+Every other concern (ingestion, normalization, storage) can vary by
+implementation.
 
 ### 4.1 The built dataset (`data/<scope>.json`)
 
@@ -285,6 +335,21 @@ a system family, a region. Keep them roughly 1k–200k consumer projects each.
 }
 ```
 
+Version normalization rules:
+
+- `library.id`, `library.release`, and every `version_chain[].release` must use
+  the package-manager canonical version, not a Git tag decoration.
+- For `pypi` and `npm`, a leading `v` or `V` immediately before a digit is
+  treated as tag syntax and stripped. For example, `v0.8.8` and `0.8.8` are the
+  same release and must be represented as `0.8.8`.
+- Producers must deduplicate version-chain rows after canonicalization. When
+  duplicate rows collapse to the same release, keep one row using the minimum
+  `release_id`, maximum `max_cvss`, maximum `cve_count`, and any available
+  release timestamp metadata.
+- CVE/version edge joins and consumed-release joins must use the same
+  canonical release key, so a row cannot appear once as safe `0.8.8` and again
+  as unknown or vulnerable `v0.8.8`.
+
 Optional UI overlay hooks in `meta`:
 
 - `branding.primary.logo_url`, `branding.primary.label`
@@ -363,11 +428,15 @@ keep them committed alongside the built JSON.
 
 ## 5. Computational rules
 
-### 5.1 Safe-version walker (`find_nearest_safe`)
+### 5.1 Threshold-qualified version walker (`find_nearest_safe`)
 
 Given a current vulnerable release `R_cur` and the library's full version
-chain, find the nearest **GA release** with `max_cvss < 7.0` whose version is
-strictly greater than `R_cur`.
+chain, find the nearest **GA release** whose `max_cvss` is below the policy
+CVSS threshold and whose version is strictly greater than `R_cur`. The default
+pipeline threshold is `7.0`, so existing dataset fields named
+`nearest_safe_version`, `max_safe_patch_same_minor`, and `is_safe` mean
+"nearest/best GA release below the default policy threshold," not "no known
+CVEs."
 
 ```python
 _GA_SUFFIX_RE   = re.compile(r"(?:\.|-)(Final|RELEASE|GA|jre\d*)$", re.IGNORECASE)
@@ -395,16 +464,22 @@ Distance classification, from current to chosen:
 | Same `major.minor`, different `patch` | PATCH | LOW (rename to **PATCH**) |
 | Same `major`, different `minor` | MINOR | MEDIUM (rename to **MINOR**) |
 | Different `major` | MAJOR | HIGH (rename to **MAJOR**) |
-| No GA safe version exists | DEAD_END | DEAD_END |
+| No GA below-threshold version exists | DEAD_END | DEAD_END |
 | Version string un-parseable | UNKNOWN | UNKNOWN |
 
 The UI displays them as **Patch / Minor / Major / Dead-end / Unknown** with
 color-coding (green / yellow / orange / purple / grey).
 
 Also record `max_safe_patch_same_minor`: of all GA candidates sharing the
-chosen safe's `(major, minor)`, the highest. Used by the cart's
+chosen below-threshold target's `(major, minor)`, the highest. Used by the cart's
 "Target maximum patch in same minor" toggle so the user can pin to
 `6.0.23` instead of `6.0.0`.
+
+The UI may expose a different live policy threshold for exploration. When it
+does, visible version-chain status labels and displayed remediation target
+candidates should recompute from the version chain client-side using the active
+threshold, while the persisted dataset fields remain the default-threshold
+baseline.
 
 ### 5.2 Tooling filter
 
@@ -464,14 +539,15 @@ e.g. `spring-boot` and "Spring (all sub-projects)").
 
 ---
 
-## 6. Views — ten modes sharing one filter bar
+## 6. Views — eleven modes sharing one filter bar
 
 ```mermaid
 flowchart LR
   MODE{"Mode tabs (top of left pane)"}
   FILT["Collapsible filter section (below tabs):<br/>CVSS slider · Upgrade chips · Dept · Namespace ·<br/>Project reference multi-select · Search · KEV-only · Direct-only · Transitive-only · Backpatch-only · EPSS slider 0.000..1.000 · Age bucket · Min projects · Recommended action"]
   MODE --> FILT
-  MODE --> LIB["Libraries<br/>(default)"]
+  MODE --> DASH["Dashboard<br/>(default landing overview)"]
+  MODE --> LIB["Libraries"]
   MODE --> FIX["Top fixes<br/>(unified action ranking)"]
   MODE --> BPC["Backpatch Priority Calculator<br/>(investment-oriented scoring)"]
   MODE --> BPL["Backpatch landscape<br/>(backpatch/create-patch analysis)"]
@@ -483,7 +559,37 @@ flowchart LR
   MODE --> PRP["Project CVE Remediation Plan<br/>(project queue + strategy)"]
 ```
 
-### 6.1 Libraries (default)
+### 6.1 Dashboard (default)
+
+The default landing mode is a dashboard summary over the active dataset and
+current filters. It must provide at least:
+
+- affected project count,
+- distinct CVE count,
+- vulnerable library count,
+- KEV-linked CVE/library counts,
+- namespace spread across ecosystems such as `maven`, `npm`, `pypi`, `rpm`,
+  and other observed package namespaces,
+- CVSS score distribution,
+- project-group distribution,
+- direct versus transitive remediation opportunity counts.
+
+Dashboard visualizations should be compact, filter-aware, and scannable. They
+are for portfolio orientation; detailed investigation still happens in the
+table modes and right-hand detail pane.
+
+The dashboard must orient a decision maker toward opportunity allocation, not
+just inventory counts. It should distinguish normal owner upgrades from
+coordinated leverage actions, OSERA patch/backpatch candidates, and major
+migrations that require explicit funding or sequencing.
+
+In Dashboard mode, the right-hand panel is a filter sidebar, not a detail pane.
+The full filter set should remain available there so decision makers can shape
+the opportunity landscape while keeping the main canvas focused on the
+dashboard. In table modes, the same filters return below the mode tabs and the
+right-hand panel returns to row details.
+
+### 6.2 Libraries
 
 Columns: # · Library coord · Version · CVSS · CVEs · KEV (🔥 badge) · EPSS ·
 Projects · Direct · Upgrade · Safe at · Max patch · Top amplifier.
@@ -499,7 +605,7 @@ Backpatch simulation expectation in detail pane:
   - projects that could avoid larger immediate upgrade motion when backpatch is available.
 - This simulation is a planning heuristic and should be labeled with clear assumptions.
 
-### 6.2 Top fixes
+### 6.3 Top fixes
 
 Unified ranked list of **action items** across the dataset. Action types and
 their effort weights:
@@ -658,7 +764,7 @@ Detail pane must include:
 - generated research prompt for deeper analysis
 - considerations list (for example when minor upgrade exists but carries dependency reshuffles)
 
-### 6.5 Amplifiers / 6.6 Frameworks / 6.7 Dead-ends / 6.8 Projects
+### 6.6 Amplifiers / 6.7 Frameworks / 6.8 Dead-ends / 6.9 Projects
 
 Same pattern, different aggregation. See HTML for column lists and detail-pane
 contents. Projects mode is the consumer-side view — one row per consumer
@@ -681,7 +787,7 @@ Display conventions implemented:
 - Amplifier detail pane includes an affected-project list (bounded list with overflow note) reconstructed from visible amplified-library consumer IDs within current filter scope.
 - Client-side aggregations over unbounded arrays should use reducer patterns rather than spread-argument `Math.max(...arr)` forms to avoid runtime argument-limit failures on very large scopes.
 
-### 6.9 CVE list
+### 6.10 CVE list
 
 Portfolio-wide CVE rollup view across current filtered library scope.
 
@@ -705,7 +811,7 @@ Detail pane should include:
 - human-readable reported/modified dates (not raw ISO strings) in table/detail displays
 - CVE-id interactions outside the CVE-detail pane open a CVE detail modal; modal includes direct NVD link
 
-### 6.10 Project CVE Remediation Plan
+### 6.11 Project CVE Remediation Plan
 
 Project-centric remediation queue used for portfolio planning.
 
@@ -832,13 +938,18 @@ Fallback behavior:
 ```
 CVSS ≥ [slider]   Upgrade: [Patch][Minor][Major][Dead-end][Unknown]
 Project Group: [dropdown]    Namespace: [dropdown]    Project reference: [typeahead + chips]
+Policy CVSS threshold [number, default 7.0]
 Search: [free text]    KEV only [☐]   Direct only [☐]   Transitive only [☐]   Backpatch candidates only [☐]
 EPSS ≥ [slider 0.000..1.000]   Version age bucket [select]   Min affected projects [number]   Recommended action [select]
 ```
 
-All filters apply across all ten modes. Project reference supports multiple exact-match
-chips combined with OR, plus a substring filter. Default implementation uses
-heuristic project grouping unless org-mapped grouping is explicitly configured.
+All filters apply across all eleven modes. Project reference supports multiple
+substring chips combined with OR. A chip must match case-insensitively against
+project reference, rendered project label, project id, namespace/org/repo
+fields, or aliases. Pressing Enter in the project-reference input adds the
+typed substring directly; it must not require choosing an exact datalist value.
+Default implementation uses heuristic project grouping unless org-mapped
+grouping is explicitly configured.
 Mode tabs (`Libraries`, `Top fixes`, etc.) are fixed at the top of the left pane.
 The filter section is collapsible independent of mode selection. In collapsed state,
 it compresses to a ~36px summary strip that remains visible and shows compact
@@ -847,6 +958,54 @@ class selection, project-ref chip count, and filtered library/project counts).
 When the collapsed summary has too many pills, content must wrap onto additional
 lines (auto-height) rather than introducing a horizontal scrollbar.
 The collapsed/expanded control is icon-based (`+` / `-`) and stateful.
+
+CVSS threshold semantics:
+
+- `CVSS Min` filters the currently displayed vulnerable libraries.
+- `Policy CVSS threshold` controls version-chain and remediation-target
+  labeling. Default is `7.0`, meaning a GA release with `max_cvss < 7.0` is
+  considered below the current policy threshold.
+- Below-threshold does **not** mean "no known CVEs." A below-threshold version
+  can still carry lower-severity CVEs, and the UI must continue showing CVE
+  count and CVSS beside the policy-status label.
+- The dashboard filter sidebar and Version Explorer must expose this setting so
+  users can adjust risk appetite and immediately see version-chain status and
+  displayed target versions update.
+
+### URL-state and shareable links
+
+The viewer must support shareable query parameters for the active dataset,
+active mode/tab, and common filters. Query parameters override locally persisted
+viewer preferences. Local storage remains the fallback when a parameter is not
+present.
+
+Supported canonical parameters:
+
+- `manifest`: optional manifest URL override.
+- `data`: dataset URL or manifest dataset URL.
+- `mode`: active mode id, such as `dashboard`, `libraries`, `top-fixes`,
+  `projects`, or `project-remediation`.
+- `namespace`: package namespace filter, such as `maven`, `npm`, `pypi`, or
+  `rpm`.
+- `group`: project group / department filter.
+- `project`: comma-separated project-reference substring chips.
+- `search`: free-text library/CVE search.
+- `cvss`: minimum CVSS threshold.
+- `policyCvss`: policy CVSS threshold used for below-threshold version
+  labeling and displayed remediation target candidates.
+- `epss`: minimum EPSS threshold.
+- `effort`: comma-separated upgrade classes from `PATCH`, `MINOR`, `MAJOR`,
+  `DEAD_END`, and `UNKNOWN`.
+- `kev`, `direct`, `transitive`, `backpatch`: boolean flags, where `1`,
+  `true`, `yes`, and `on` are true.
+- `age`: version-age bucket.
+- `minProjects`: minimum affected-project count.
+- `action`: recommended-action filter.
+
+The implementation may accept aliases on read, but it should write canonical
+parameter names when synchronizing browser history. URL synchronization should
+use `history.replaceState` for ordinary filter changes so slider/text edits do
+not flood browser history.
 
 ### Help and Documentation (always available)
 
@@ -863,7 +1022,7 @@ The collapsed/expanded control is icon-based (`+` / `-`) and stateful.
 - At minimum the documentation covers:
   - dataset selection and scope meaning
   - all filter semantics
-  - ten modes and how to read each
+  - eleven modes and how to read each
   - top-fix action semantics (`UPGRADE_*`, `BACKPATCH_PROBABLE`, `BACKPATCH_LIKELY`, `CREATE_PATCH`, `AMPLIFIER`, `FRAMEWORK`)
   - backpatch-priority score model and recommended-action semantics
   - project remediation queue semantics and strategy labels
@@ -894,6 +1053,13 @@ flowchart TB
 
 Amplifier and framework detail panes follow the same shape: header, summary,
 what-if simulator, member list/table.
+
+Row-selection behavior:
+
+- When a user selects a different row in any table mode, the right-hand detail
+  pane scrolls back to the top of its own scroll viewport.
+- Re-rendering the same selected item for an in-pane toggle can preserve local
+  scroll position.
 
 Implemented extension:
 
@@ -945,13 +1111,23 @@ The format was developed and tested against OpenRewrite:
   single `UpgradeDependencyVersion`.
 - **Aggregator last.** A single recipe that lists every sub-recipe by
   name in its `recipeList:`. This is the one the user actually invokes
-  via their OpenRewrite tooling. Sub-recipe names live in the aggregator's namespace
-  (`<aggregator>.<group>__<artifact>`).
+  via their OpenRewrite tooling. Sub-recipe names are derived from the
+  aggregator recipe ID using `<aggregator>_<group>__<artifact>`.
+- **Recipe IDs are Java-safe.** Generated OpenRewrite `name:` values and
+  aggregator `recipeList:` entries use the package prefix
+  `org.finos.osera.risknav` followed by class-style segments containing only
+  `A-Za-z0-9_`. Hyphens and Maven-coordinate dots are converted to
+  underscores in recipe IDs. Maven `groupId` and `artifactId` values inside
+  recipe bodies remain unchanged.
+- **Corporate overlays may change the prefix.** The default prefix is
+  `org.finos.osera.risknav`, but company overlays can replace it with an
+  internal package prefix as long as generated recipe IDs keep the same
+  Java-safe segment rules and avoid hyphens.
 
 ```yaml
 ---
 type: specs.openrewrite.org/v1beta/recipe
-name: com.example.risk-navigator.UpgradeBundle.platform-engineering.ch_qos_logback__logback_classic
+name: org.finos.osera.risknav.UpgradeBundle_platform_engineering_ch_qos_logback__logback_classic
 displayName: Upgrade ch.qos.logback:logback-classic if 1.2.x is present
 description: |
   Conditional upgrade. Runs only on modules where FindDependency matches
@@ -973,7 +1149,7 @@ recipeList:
 
 ---
 type: specs.openrewrite.org/v1beta/recipe
-name: com.example.risk-navigator.UpgradeBundle.platform-engineering
+name: org.finos.osera.risknav.UpgradeBundle_platform_engineering
 displayName: Upgrade vulnerable Maven/Gradle dependencies -- Platform Engineering
 description: |
   Generated by Risk Navigator. Cart contains N libraries covering M CVEs
@@ -981,8 +1157,8 @@ description: |
   Each sub-recipe is preconditioned on FindDependency so the upgrade only
   fires on modules that actually contain the targeted FROM version.
 recipeList:
-  - com.example.risk-navigator.UpgradeBundle.platform-engineering.ch_qos_logback__logback_classic
-  - com.example.risk-navigator.UpgradeBundle.platform-engineering.<next-sub-recipe>
+  - org.finos.osera.risknav.UpgradeBundle_platform_engineering_ch_qos_logback__logback_classic
+  - org.finos.osera.risknav.UpgradeBundle_platform_engineering_<next_sub_recipe>
 ```
 
 **Why preconditions matter.** Without them, each `UpgradeDependencyVersion`
@@ -1079,11 +1255,13 @@ shippable.
 | `scripts/ingest_vulns.py` | OSV (preferred) / NVD / GHSA → normalized internal vuln table. Persists `summary/title/details/published/modified` in local SQLite (`data/vulns.db`) so dataset builds can enrich CVE detail text and dates. |
 | `scripts/fetch_external.py` | CISA KEV (direct download) + FIRST.org EPSS (batched API calls keyed by CVE ID — bulk gzip is often proxy-blocked) → `data/external/{kev,epss}.json`. |
 | `scripts/extract_org.py` | Your org's project list + dep trees → six raw CSVs per scope under `data/raw/<scope>/`. |
+| `scripts/scan_repos_to_sbom.py` | Optional public-repo scanner wrapper. Clones selected repos locally and runs `cdxgen` or `syft` to emit CycloneDX SBOM JSON under `data/sboms/<scope>/`. |
 | `scripts/build_dataset.py` | Joins all five inputs (raw CSVs + external + vuln catalogue), enriches `library.cves[]` with CVE metadata from `--vuln-db` plus optional `data/external/cve_metadata.json`, enriches version chains with release timestamps from deps.dev, supports `--meta-overlay` for shallow `meta` merge, supports `--amplifiers-preaggregated` for inventories without full parent-edge attribution, computes amplifiers + frameworks + project index, emits `data/<scope>.json`. |
 | `data/external/cve_metadata.json` | Optional CVE narrative/date overlay (`title/summary/description/published/modified`). Used for local corrections/supplemental context without mutating the vuln DB. |
 | `data/external/depsdev_versions_cache.json` | Local package-level release-date cache (gitignored). Stores full version timelines fetched from deps.dev and is refreshed only when newer observed package versions appear. |
 | `tool/risk-navigator.html` | Self-contained viewer. Vanilla JS, no build step. ~70 KB. |
 | `tool/manifest.json` | Lists available `data/<scope>.json` files for the dropdown picker. Viewer also supports `?manifest=<url>` override and fallback manifest discovery. |
+| `data/sboms/<scope>/*.cdx.json` | Optional CycloneDX input files used when demonstrating or adopting the SBOM-import path. |
 
 ---
 
@@ -1428,6 +1606,12 @@ python3 -m http.server 5173
 
 - **Treat this SPEC + README as the source of truth.** If you find ambiguity,
   prefer the simpler interpretation.
+- **Keep published docs in sync with this SPEC.** Any change to dataset shape,
+  pipeline requirements, UI behavior, demo datasets, prerequisites, or
+  customization guidance must update `SPEC.md` and the corresponding
+  Docusaurus page under `docs/` in the same change. If a docs page is only a
+  summary, link back to the authoritative SPEC section instead of duplicating
+  detailed requirements.
 - **The HTML is vanilla JS deliberately.** Do not introduce React / Vue /
   Svelte / a bundler. A single ~70 KB self-contained file is part of the
   product.
@@ -1453,6 +1637,23 @@ If you find ambiguity that this SPEC + the example shapes in §14 don't
 resolve, open an issue rather than guessing — the schema in §4.1 is the
 contract between the data pipeline and the HTML viewer, and silent
 drift between the two breaks the tool in confusing ways.
+
+### 15.1 Documentation synchronization rule
+
+Treat the Docusaurus docs as the published operating manual and this SPEC as
+the authoritative build contract. When adding or changing a requirement:
+
+1. Update the relevant SPEC section first.
+2. Update the matching docs page under `docs/`.
+3. Update README quick-start text if commands, prerequisites, or bundled
+   datasets changed.
+4. Update examples, metadata overlays, and tests when the dataset shape or
+   pipeline behavior changed.
+5. Run `npm test` and `npm run docs:build`.
+
+Avoid copying long requirement blocks into docs pages unless the docs page is
+the operational home for that material. Prefer concise summaries plus links to
+the SPEC or the data-pipeline page to reduce drift.
 
 ---
 
@@ -1519,6 +1720,20 @@ This model helps companies:
 - maintain a local build with internal data connectors,
 - stay aligned with latest upstream spec evolution,
 - isolate custom logic from upstream merges.
+
+Recommended agent workflow:
+
+- Point an LLM coding agent at this upstream repository.
+- Give it the company's inventory, SBOM, vulnerability, ownership, and
+  deployment requirements.
+- Instruct it to create a separate customization overlay rather than modifying
+  upstream directly.
+- Keep company-specific adapters, credentials, deployment config, and metadata
+  mappings in the overlay.
+- Require the overlay to keep producing `data/<scope>.json` files that satisfy
+  §4.1 and pass `scripts/validate_dataset.py`.
+- Require docs and published dataset metadata to use portable commands and
+  repo-relative paths, not local workstation paths.
 
 Reference pattern inspiration (TraderX):
 

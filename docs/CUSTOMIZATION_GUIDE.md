@@ -64,6 +64,25 @@ Use an overlay repo with upstream as a submodule.
 
 This mirrors proven FINOS overlay patterns used in TraderX customization.
 
+Recommended agent workflow:
+
+1. Point your LLM coding agent at this upstream repository.
+2. Give it your inventory, SBOM, vulnerability, ownership, and environment requirements.
+3. Instruct it to create a separate customization overlay repository rather than modifying upstream directly.
+4. Keep company-specific adapters, credentials, deployment config, and metadata mappings in the overlay.
+5. Keep the final output contract unchanged: the overlay should still build `data/<scope>.json` files compatible with `SPEC.md` section 4.1.
+
+A useful starter instruction is:
+
+```text
+Use this Risk Navigator repository as the upstream reference. Create a company
+customization overlay that preserves the viewer and dataset contract, replaces
+the extractor inputs with our internal inventory/SBOM/vulnerability sources,
+adds our ownership metadata, and documents the build and validation pipeline.
+Do not put secrets or local workstation paths in upstream files or published
+dataset metadata.
+```
+
 Reference architecture guidance:
 
 - [Customizing TraderX](https://finos.github.io/traderX/docs/spec-kit/customizing-traderx)
@@ -109,3 +128,5 @@ your-company-risk-nav-overlay/
 - Project references and ownership mappings render correctly.
 - Top fixes and detail panes still produce readable/structured output.
 - OpenRewrite cart behavior is clear (direct dependencies in current iteration).
+- If the OpenRewrite package prefix is customized, generated recipe IDs still
+  use Java-safe `A-Za-z0-9_` class-style segments and contain no hyphens.

@@ -6,7 +6,13 @@ title: Build and Run
 ## Prerequisites
 
 - Node.js 20 or later for local development tooling.
+- npm 10 or later for package scripts.
 - Python 3.11 or later for the data pipeline and tests.
+- Git for optional public repository scans.
+- Optional `cdxgen` or `syft` for regenerating scanner-based SBOM inputs.
+
+For the data contract, raw CSV shapes, SBOM input format, and sample dataset
+provenance, see [Data Pipeline and Formats](./data-pipeline).
 
 ## First-time setup
 
@@ -24,6 +30,62 @@ npm run build:all
 ```
 
 This rebuilds local vulnerability inputs, fetches KEV and EPSS signals, generates the OSERA demo scope, builds `data/finos-sample-platform.json`, and validates the dataset schema.
+
+## Build the SBOM scan demo dataset
+
+```bash
+npm run build:all:finos-sbom-demo
+```
+
+This rebuilds local vulnerability inputs, fetches KEV and EPSS signals, imports committed CycloneDX SBOM files from `data/sboms/finos-sbom-demo/`, builds `data/finos-sbom-demo.json`, and validates the dataset schema.
+
+The SBOM demo path is:
+
+1. `data/sboms/finos-sbom-demo/*.cdx.json` supplies project components and dependency graph edges.
+2. `scripts/extract_org.py --source cyclonedx` converts SBOM components into `data/raw/finos-sbom-demo/*.csv`.
+3. `scripts/build_dataset.py --scope finos-sbom-demo --meta-overlay data/meta/finos-sbom-demo-meta.json` joins raw project inventory with OSV, CISA KEV, FIRST EPSS, and deps.dev release metadata.
+4. `scripts/validate_dataset.py data/finos-sbom-demo.json` checks the final static dataset contract.
+
+## Regenerate SBOM inputs from public repos
+
+```bash
+npm run scan:finos-sbom-demo
+npm run build:all:finos-sbom-demo
+```
+
+The scanner wrapper uses `scripts/scan_repos_to_sbom.py` and expects `cdxgen` on `PATH` by default. It clones public FINOS repositories under `data/local/repo-scan/finos-sbom-demo/` and writes CycloneDX JSON to `data/sboms/finos-sbom-demo/`.
+
+You can also run the wrapper with `--scanner syft` if Syft is installed:
+
+```bash
+python3 scripts/scan_repos_to_sbom.py --scope finos-sbom-demo --org finos --default-demo-repos --scanner syft
+```
+
+Scanner output is close-to-realistic, not complete. Coverage depends on supported ecosystems, lockfiles, public repository contents, private registry access, and whether build-time dependency resolution is required.
+
+## Build the FINOS GitHub org snapshot
+
+```bash
+npm run build:all:finos-org:full-osv
+```
+
+This is the recommended refresh path for the committed `FINOS GitHub Org Snapshot` dataset. It lists public FINOS repositories through the GitHub REST API, keeps active non-fork repositories, extracts supported dependency manifests, builds an observed package allowlist, ingests matching OSV records, fetches KEV and EPSS signals, and validates `data/finos-github-org.json`.
+
+Use authenticated GitHub API access, for example `gh auth login` or a token in the standard GitHub environment variables, to avoid unauthenticated API rate limits.
+
+The current committed snapshot includes:
+
+- 132 active non-fork public FINOS repositories.
+- 97 repositories with extracted dependency edges.
+- 4,040 dependency edges.
+- 72 distinct vulnerable libraries in the final viewer dataset.
+- 2 KEV-listed libraries.
+
+For a faster smoke test, this command uses the sample OSV seed and produces lower vulnerability coverage:
+
+```bash
+npm run build:all:finos-org
+```
 
 ## Run tests
 
@@ -48,4 +110,4 @@ npm run docs:build
 
 The generated Docusaurus output is written to `website/build/`.
 
-During the Docusaurus build, `website/scripts/copy-tool-assets.mjs` copies the static viewer, manifest, and OSERA demo dataset into `website/static/`. GitHub Pages therefore publishes both the documentation and the playable demo under the same site.
+During the Docusaurus build, `website/scripts/copy-tool-assets.mjs` copies the static viewer, manifest, and demo datasets into `website/static/`. GitHub Pages therefore publishes both the documentation and the playable demos under the same site.

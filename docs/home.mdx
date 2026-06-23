@@ -11,19 +11,26 @@ The prototype combines open vulnerability intelligence, dependency inventory, an
 
 - A static single-file viewer at `tool/risk-navigator.html`.
 - A reproducible sample dataset at `data/finos-sample-platform.json`.
+- A second SBOM-derived demo dataset at `data/finos-sbom-demo.json`.
+- A larger public FINOS org snapshot at `data/finos-github-org.json`.
 - Python pipeline scripts under `scripts/`.
 - Validation tests under `tests/`.
 - The authoritative build contract in `SPEC.md`.
+- Data shape and pipeline documentation in [Data Pipeline and Formats](./data-pipeline).
 
-## Try it on GitHub Pages
+`SPEC.md` is the source of truth for requirements. The docs site summarizes
+and operationalizes that contract; spec changes should update the relevant docs
+page in the same change.
 
-The published Docusaurus site includes the interactive viewer and sample dataset:
+## Try it from the docs site
+
+The published Docusaurus site includes the interactive viewer and sample datasets:
 
 ```text
-https://finos-backpatch.github.io/risk-navigator/tool/risk-navigator.html
+/tools/risk-navigator.html
 ```
 
-Use the OSERA demo dataset from the selector to explore the prototype directly in the browser.
+Use the dataset selector to explore the OSERA curated sample, the FINOS SBOM scan demo, or the larger FINOS GitHub org snapshot directly in the browser.
 
 ## Core workflows
 
@@ -33,6 +40,12 @@ Use the OSERA demo dataset from the selector to explore the prototype directly i
 4. Add Maven direct dependencies to the OpenRewrite cart.
 5. Export YAML or generate impact-analysis prompts.
 
+## Data pipeline
+
+See [Data Pipeline and Formats](./data-pipeline) for the viewer JSON contract,
+raw CSV inputs, CycloneDX SBOM import path, and how the bundled sample datasets
+are produced.
+
 ## Local start
 
 ```bash
@@ -41,6 +54,8 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
 npm run build:all
+npm run build:all:finos-sbom-demo
+npm run build:all:finos-org:full-osv
 npm run dev
 ```
 

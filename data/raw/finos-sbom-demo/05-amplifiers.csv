@@ -1,0 +1,7 @@
+cve_lib_id,cve_lib_coords,amplifier_id,amplifier_coords,root_projects_affected
+maven|io.netty|netty-codec-http2|4.1.99.Final,maven/io.netty/netty-codec-http2@4.1.99.Final,maven|io.projectreactor.netty|reactor-netty-http|1.0.39,maven/io.projectreactor.netty/reactor-netty-http@1.0.39,1
+maven|org.apache.activemq|activemq-client|5.17.2,maven/org.apache.activemq/activemq-client@5.17.2,maven|org.apache.camel|camel-activemq|3.20.6,maven/org.apache.camel/camel-activemq@3.20.6,1
+maven|org.springframework|spring-beans|5.3.17,maven/org.springframework/spring-beans@5.3.17,maven|org.springframework.boot|spring-boot-starter-web|2.7.18,maven/org.springframework.boot/spring-boot-starter-web@2.7.18,1
+maven|org.springframework|spring-context|5.3.39,maven/org.springframework/spring-context@5.3.39,maven|org.springframework.boot|spring-boot-starter-web|2.7.18,maven/org.springframework.boot/spring-boot-starter-web@2.7.18,1
+maven|org.springframework|spring-web|5.3.39,maven/org.springframework/spring-web@5.3.39,maven|org.springframework.boot|spring-boot-starter-web|2.7.18,maven/org.springframework.boot/spring-boot-starter-web@2.7.18,1
+maven|org.yaml|snakeyaml|1.33,maven/org.yaml/snakeyaml@1.33,maven|org.springframework.boot|spring-boot-starter-web|2.7.18,maven/org.springframework.boot/spring-boot-starter-web@2.7.18,1

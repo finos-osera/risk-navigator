@@ -1,0 +1,133 @@
+id,namespace,meta,proj,release,project_ref,eonid,department,tai_system
+github|finos|morphir-rust,github,finos,morphir-rust,main,github/finos/morphir-rust,FINOS-10000,FINOS OSS,MORPHIR_RUST
+github|finos|legend,github,finos,legend,master,github/finos/legend,FINOS-10001,goldman-sachs,LEGEND
+github|finos|rune-python-generator,github,finos,rune-python-generator,main,github/finos/rune-python-generator,FINOS-10002,FINOS OSS,RUNE_PYTHON_GENERATOR
+github|finos|architecture-as-code,github,finos,architecture-as-code,main,github/finos/architecture-as-code,FINOS-10003,architecture,ARCHITECTURE_AS_CODE
+github|finos|legend-engine,github,finos,legend-engine,master,github/finos/legend-engine,FINOS-10004,legend,LEGEND_ENGINE
+github|finos|fluxnova-modeler,github,finos,fluxnova-modeler,develop,github/finos/fluxnova-modeler,FINOS-10005,FINOS OSS,FLUXNOVA_MODELER
+github|finos|morphir-scala,github,finos,morphir-scala,main,github/finos/morphir-scala,FINOS-10006,FINOS OSS,MORPHIR_SCALA
+github|finos|OpenMAMA,github,finos,OpenMAMA,next,github/finos/OpenMAMA,FINOS-10007,fintech,OPENMAMA
+github|finos|morphir-examples,github,finos,morphir-examples,main,github/finos/morphir-examples,FINOS-10008,FINOS OSS,MORPHIR_EXAMPLES
+github|finos|fluxnova-feel-scala,github,finos,fluxnova-feel-scala,main,github/finos/fluxnova-feel-scala,FINOS-10009,FINOS OSS,FLUXNOVA_FEEL_SCALA
+github|finos|fluxnova-examples,github,finos,fluxnova-examples,main,github/finos/fluxnova-examples,FINOS-10010,FINOS OSS,FLUXNOVA_EXAMPLES
+github|finos|opengris-scaler,github,finos,opengris-scaler,main,github/finos/opengris-scaler,FINOS-10011,FINOS OSS,OPENGRIS_SCALER
+github|finos|vuu,github,finos,vuu,main,github/finos/vuu,FINOS-10012,grids,VUU
+github|finos|legend-studio,github,finos,legend-studio,master,github/finos/legend-studio,FINOS-10013,data-modeling,LEGEND_STUDIO
+github|finos|common-domain-model,github,finos,common-domain-model,master,github/finos/common-domain-model,FINOS-10014,FINOS OSS,COMMON_DOMAIN_MODEL
+github|finos|rune-dsl,github,finos,rune-dsl,main,github/finos/rune-dsl,FINOS-10015,FINOS OSS,RUNE_DSL
+github|finos|fluxnova-bpm-release-parent,github,finos,fluxnova-bpm-release-parent,main,github/finos/fluxnova-bpm-release-parent,FINOS-10016,FINOS OSS,FLUXNOVA_BPM_RELEASE_PARENT
+github|finos|rune-testing,github,finos,rune-testing,main,github/finos/rune-testing,FINOS-10017,FINOS OSS,RUNE_TESTING
+github|finos|open-resource-broker,github,finos,open-resource-broker,main,github/finos/open-resource-broker,FINOS-10018,FINOS OSS,OPEN_RESOURCE_BROKER
+github|finos|rune-common,github,finos,rune-common,main,github/finos/rune-common,FINOS-10019,FINOS OSS,RUNE_COMMON
+github|finos|traderX,github,finos,traderX,main,github/finos/traderX,FINOS-10020,finos-hackathon-bmo,TRADERX
+github|finos|5-spot,github,finos,5-spot,main,github/finos/5-spot,FINOS-10021,FINOS OSS,5_SPOT
+github|finos|cdm-object-builder,github,finos,cdm-object-builder,main,github/finos/cdm-object-builder,FINOS-10022,FINOS OSS,CDM_OBJECT_BUILDER
+github|finos|FDC3-Sail,github,finos,FDC3-Sail,main,github/finos/FDC3-Sail,FINOS-10023,electron,FDC3_SAIL
+github|finos|ai-governance-framework,github,finos,ai-governance-framework,main,github/finos/ai-governance-framework,FINOS-10024,FINOS OSS,AI_GOVERNANCE_FRAMEWORK
+github|finos|fluxnova-bpm-platform,github,finos,fluxnova-bpm-platform,main,github/finos/fluxnova-bpm-platform,FINOS-10025,FINOS OSS,FLUXNOVA_BPM_PLATFORM
+github|finos|common-cloud-controls,github,finos,common-cloud-controls,main,github/finos/common-cloud-controls,FINOS-10026,banking,COMMON_CLOUD_CONTROLS
+github|finos|fluxnova-website,github,finos,fluxnova-website,main,github/finos/fluxnova-website,FINOS-10027,FINOS OSS,FLUXNOVA_WEBSITE
+github|finos|morphir-jvm,github,finos,morphir-jvm,main,github/finos/morphir-jvm,FINOS-10028,FINOS OSS,MORPHIR_JVM
+github|finos|morphir,github,finos,morphir,main,github/finos/morphir,FINOS-10029,business-knowledge,MORPHIR
+github|finos|tracdap,github,finos,tracdap,main,github/finos/tracdap,FINOS-10030,FINOS OSS,TRACDAP
+github|finos|SymphonyElectron,github,finos,SymphonyElectron,main,github/finos/SymphonyElectron,FINOS-10031,desktop-app,SYMPHONYELECTRON
+github|finos|git-proxy,github,finos,git-proxy,main,github/finos/git-proxy,FINOS-10032,gitops,GIT_PROXY
+github|finos|legend-pure,github,finos,legend-pure,master,github/finos/legend-pure,FINOS-10033,legend,LEGEND_PURE
+github|finos|software-project-blueprint,github,finos,software-project-blueprint,main,github/finos/software-project-blueprint,FINOS-10034,blueprint,SOFTWARE_PROJECT_BLUEPRINT
+github|finos|FDC3,github,finos,FDC3,main,github/finos/FDC3,FINOS-10035,FINOS OSS,FDC3
+github|finos|zenith,github,finos,zenith,main,github/finos/zenith,FINOS-10036,emerging,ZENITH
+github|finos|ipyregulartable,github,finos,ipyregulartable,main,github/finos/ipyregulartable,FINOS-10037,data-table,IPYREGULARTABLE
+github|finos|jupyterlab_templates,github,finos,jupyterlab_templates,main,github/finos/jupyterlab_templates,FINOS-10038,data-science,JUPYTERLAB_TEMPLATES
+github|finos|fluxnova-plugins,github,finos,fluxnova-plugins,main,github/finos/fluxnova-plugins,FINOS-10039,FINOS OSS,FLUXNOVA_PLUGINS
+github|finos|terraform-azurerm-cfi-postgresql,github,finos,terraform-azurerm-cfi-postgresql,main,github/finos/terraform-azurerm-cfi-postgresql,FINOS-10040,FINOS OSS,TERRAFORM_AZURERM_CFI_POSTGRESQL
+github|finos|SymphonyWindowsHwndHelper,github,finos,SymphonyWindowsHwndHelper,main,github/finos/SymphonyWindowsHwndHelper,FINOS-10041,FINOS OSS,SYMPHONYWINDOWSHWNDHELPER
+github|finos|pylegend,github,finos,pylegend,main,github/finos/pylegend,FINOS-10042,legend,PYLEGEND
+github|finos|symphony-bdk-python,github,finos,symphony-bdk-python,main,github/finos/symphony-bdk-python,FINOS-10043,bdk,SYMPHONY_BDK_PYTHON
+github|finos|a11y-theme-builder-sdk,github,finos,a11y-theme-builder-sdk,main,github/finos/a11y-theme-builder-sdk,FINOS-10044,a11y-tb,A11Y_THEME_BUILDER_SDK
+github|finos|calendar,github,finos,calendar,main,github/finos/calendar,FINOS-10045,FINOS OSS,CALENDAR
+github|finos|rune-python-runtime,github,finos,rune-python-runtime,main,github/finos/rune-python-runtime,FINOS-10046,FINOS OSS,RUNE_PYTHON_RUNTIME
+github|finos|legend-sdlc,github,finos,legend-sdlc,master,github/finos/legend-sdlc,FINOS-10047,legend,LEGEND_SDLC
+github|finos|open-source-readiness,github,finos,open-source-readiness,main,github/finos/open-source-readiness,FINOS-10048,FINOS OSS,OPEN_SOURCE_READINESS
+github|finos|waltz,github,finos,waltz,master,github/finos/waltz,FINOS-10049,angularjs,WALTZ
+github|finos|InnerSource,github,finos,InnerSource,master,github/finos/InnerSource,FINOS-10050,finos,INNERSOURCE
+github|finos|morphir-go,github,finos,morphir-go,main,github/finos/morphir-go,FINOS-10051,FINOS OSS,MORPHIR_GO
+github|finos|fluxnova-docs-manual,github,finos,fluxnova-docs-manual,main,github/finos/fluxnova-docs-manual,FINOS-10052,FINOS OSS,FLUXNOVA_DOCS_MANUAL
+github|finos|legend-depot,github,finos,legend-depot,master,github/finos/legend-depot,FINOS-10053,FINOS OSS,LEGEND_DEPOT
+github|finos|morphir-python,github,finos,morphir-python,main,github/finos/morphir-python,FINOS-10054,FINOS OSS,MORPHIR_PYTHON
+github|finos|fluxnova-release-parent,github,finos,fluxnova-release-parent,main,github/finos/fluxnova-release-parent,FINOS-10055,FINOS OSS,FLUXNOVA_RELEASE_PARENT
+github|finos|fluxnova-docs-theme,github,finos,fluxnova-docs-theme,main,github/finos/fluxnova-docs-theme,FINOS-10056,FINOS OSS,FLUXNOVA_DOCS_THEME
+github|finos|morphir-gleam,github,finos,morphir-gleam,main,github/finos/morphir-gleam,FINOS-10057,FINOS OSS,MORPHIR_GLEAM
+github|finos|morphir-moonbit,github,finos,morphir-moonbit,main,github/finos/morphir-moonbit,FINOS-10058,FINOS OSS,MORPHIR_MOONBIT
+github|finos|finos-parent-pom,github,finos,finos-parent-pom,main,github/finos/finos-parent-pom,FINOS-10059,FINOS OSS,FINOS_PARENT_POM
+github|finos|symphony-bdk-java,github,finos,symphony-bdk-java,main,github/finos/symphony-bdk-java,FINOS-10060,bdk,SYMPHONY_BDK_JAVA
+github|finos|legend-shared,github,finos,legend-shared,master,github/finos/legend-shared,FINOS-10061,legend,LEGEND_SHARED
+github|finos|regular-table,github,finos,regular-table,master,github/finos/regular-table,FINOS-10062,data-visualization,REGULAR_TABLE
+github|finos|a11y-theme-builder,github,finos,a11y-theme-builder,main,github/finos/a11y-theme-builder,FINOS-10063,a11y-tb,A11Y_THEME_BUILDER
+github|finos|backplane,github,finos,backplane,main,github/finos/backplane,FINOS-10064,desktop-agent-bridge,BACKPLANE
+github|finos|legend-engine-ide-lsp,github,finos,legend-engine-ide-lsp,main,github/finos/legend-engine-ide-lsp,FINOS-10065,FINOS OSS,LEGEND_ENGINE_IDE_LSP
+github|finos|FDC3-conformance-framework,github,finos,FDC3-conformance-framework,main,github/finos/FDC3-conformance-framework,FINOS-10066,fdc3,FDC3_CONFORMANCE_FRAMEWORK
+github|finos|symphony-api-spec,github,finos,symphony-api-spec,master,github/finos/symphony-api-spec,FINOS-10067,FINOS OSS,SYMPHONY_API_SPEC
+github|finos|ccc-managed-k8s,github,finos,ccc-managed-k8s,main,github/finos/ccc-managed-k8s,FINOS-10068,FINOS OSS,CCC_MANAGED_K8S
+github|finos|fluxnova-ai,github,finos,fluxnova-ai,main,github/finos/fluxnova-ai,FINOS-10069,FINOS OSS,FLUXNOVA_AI
+github|finos|technical-oversight-committee,github,finos,technical-oversight-committee,main,github/finos/technical-oversight-committee,FINOS-10070,FINOS OSS,TECHNICAL_OVERSIGHT_COMMITTEE
+github|finos|branding,github,finos,branding,master,github/finos/branding,FINOS-10071,internal,BRANDING
+github|finos|opengris-parfun,github,finos,opengris-parfun,main,github/finos/opengris-parfun,FINOS-10072,FINOS OSS,OPENGRIS_PARFUN
+github|finos|community,github,finos,community,main,github/finos/community,FINOS-10073,community,COMMUNITY
+github|finos|kdb,github,finos,kdb,main,github/finos/kdb,FINOS-10074,FINOS OSS,KDB
+github|finos|finos-landscape,github,finos,finos-landscape,main,github/finos/finos-landscape,FINOS-10075,FINOS OSS,FINOS_LANDSCAPE
+github|finos|messageml-utils,github,finos,messageml-utils,main,github/finos/messageml-utils,FINOS-10076,messageml,MESSAGEML_UTILS
+github|finos|ambassadors,github,finos,ambassadors,main,github/finos/ambassadors,FINOS-10077,FINOS OSS,AMBASSADORS
+github|finos|ai-reference-architecture-library,github,finos,ai-reference-architecture-library,main,github/finos/ai-reference-architecture-library,FINOS-10078,FINOS OSS,AI_REFERENCE_ARCHITECTURE_LIBRARY
+github|finos|spring-bot,github,finos,spring-bot,spring-bot-master,github/finos/spring-bot,FINOS-10079,bot,SPRING_BOT
+github|finos|fdc3-dotnet,github,finos,fdc3-dotnet,main,github/finos/fdc3-dotnet,FINOS-10080,FINOS OSS,FDC3_DOTNET
+github|finos|TimeBase-CE,github,finos,TimeBase-CE,main-6.1,github/finos/TimeBase-CE,FINOS-10081,database,TIMEBASE_CE
+github|finos|morphir-dotnet,github,finos,morphir-dotnet,main,github/finos/morphir-dotnet,FINOS-10082,FINOS OSS,MORPHIR_DOTNET
+github|finos|legend-pure-next,github,finos,legend-pure-next,main,github/finos/legend-pure-next,FINOS-10083,FINOS OSS,LEGEND_PURE_NEXT
+github|finos|morphir-elm,github,finos,morphir-elm,main,github/finos/morphir-elm,FINOS-10084,business-logic,MORPHIR_ELM
+github|finos|OpenMAMA-testdata,github,finos,OpenMAMA-testdata,master,github/finos/OpenMAMA-testdata,FINOS-10085,FINOS OSS,OPENMAMA_TESTDATA
+github|finos|legend-integration-morphir,github,finos,legend-integration-morphir,main,github/finos/legend-integration-morphir,FINOS-10086,FINOS OSS,LEGEND_INTEGRATION_MORPHIR
+github|finos|OSLC-handbook,github,finos,OSLC-handbook,master,github/finos/OSLC-handbook,FINOS-10087,FINOS OSS,OSLC_HANDBOOK
+github|finos|openmama.github.io,github,finos,openmama.github.io,master,github/finos/openmama.github.io,FINOS-10088,FINOS OSS,OPENMAMA.GITHUB.IO
+github|finos|legend-community-delta,github,finos,legend-community-delta,main,github/finos/legend-community-delta,FINOS-10089,data,LEGEND_COMMUNITY_DELTA
+github|finos|curref-data,github,finos,curref-data,master,github/finos/curref-data,FINOS-10090,FINOS OSS,CURREF_DATA
+github|finos|legend-juju-gitlab-integrator,github,finos,legend-juju-gitlab-integrator,main,github/finos/legend-juju-gitlab-integrator,FINOS-10091,charm,LEGEND_JUJU_GITLAB_INTEGRATOR
+github|finos|legend-juju-db-operator,github,finos,legend-juju-db-operator,main,github/finos/legend-juju-db-operator,FINOS-10092,charm,LEGEND_JUJU_DB_OPERATOR
+github|finos|legend-juju-sdlc-server-operator,github,finos,legend-juju-sdlc-server-operator,main,github/finos/legend-juju-sdlc-server-operator,FINOS-10093,charm,LEGEND_JUJU_SDLC_SERVER_OPERATOR
+github|finos|legend-juju-engine-server-operator,github,finos,legend-juju-engine-server-operator,main,github/finos/legend-juju-engine-server-operator,FINOS-10094,charm,LEGEND_JUJU_ENGINE_SERVER_OPERATOR
+github|finos|SwiftSearch,github,finos,SwiftSearch,master,github/finos/SwiftSearch,FINOS-10095,FINOS OSS,SWIFTSEARCH
+github|finos|legend-juju-libs,github,finos,legend-juju-libs,master,github/finos/legend-juju-libs,FINOS-10096,FINOS OSS,LEGEND_JUJU_LIBS
+github|finos|legend-juju-studio-operator,github,finos,legend-juju-studio-operator,main,github/finos/legend-juju-studio-operator,FINOS-10097,charm,LEGEND_JUJU_STUDIO_OPERATOR
+github|finos|open-regtech-sig,github,finos,open-regtech-sig,master,github/finos/open-regtech-sig,FINOS-10098,FINOS OSS,OPEN_REGTECH_SIG
+github|finos|legend-juju-bundle,github,finos,legend-juju-bundle,main,github/finos/legend-juju-bundle,FINOS-10099,bundle,LEGEND_JUJU_BUNDLE
+github|finos|open-reg-tech-us-lcr,github,finos,open-reg-tech-us-lcr,main,github/finos/open-reg-tech-us-lcr,FINOS-10100,FINOS OSS,OPEN_REG_TECH_US_LCR
+github|finos|financial-objects,github,finos,financial-objects,master,github/finos/financial-objects,FINOS-10101,FINOS OSS,FINANCIAL_OBJECTS
+github|finos|legend-integration-juju,github,finos,legend-integration-juju,main,github/finos/legend-integration-juju,FINOS-10102,legend-juju,LEGEND_INTEGRATION_JUJU
+github|finos|ScreenShareIndicatorFrame,github,finos,ScreenShareIndicatorFrame,master,github/finos/ScreenShareIndicatorFrame,FINOS-10103,FINOS OSS,SCREENSHAREINDICATORFRAME
+github|finos|ScreenSnippet2,github,finos,ScreenSnippet2,master,github/finos/ScreenSnippet2,FINOS-10104,FINOS OSS,SCREENSNIPPET2
+github|finos|fin-ocr-train,github,finos,fin-ocr-train,main,github/finos/fin-ocr-train,FINOS-10105,FINOS OSS,FIN_OCR_TRAIN
+github|finos|devops-automation,github,finos,devops-automation,main,github/finos/devops-automation,FINOS-10106,FINOS OSS,DEVOPS_AUTOMATION
+github|finos|fin-ocr-sdk,github,finos,fin-ocr-sdk,main,github/finos/fin-ocr-sdk,FINOS-10107,FINOS OSS,FIN_OCR_SDK
+github|finos|fin-ocr-rest,github,finos,fin-ocr-rest,main,github/finos/fin-ocr-rest,FINOS-10108,FINOS OSS,FIN_OCR_REST
+github|finos|fin-ocr-browser,github,finos,fin-ocr-browser,main,github/finos/fin-ocr-browser,FINOS-10109,FINOS OSS,FIN_OCR_BROWSER
+github|finos|contrib-toolbox,github,finos,contrib-toolbox,main,github/finos/contrib-toolbox,FINOS-10110,FINOS OSS,CONTRIB_TOOLBOX
+github|finos|morphir-service,github,finos,morphir-service,main,github/finos/morphir-service,FINOS-10111,dapr,MORPHIR_SERVICE
+github|finos|opengris-pargraph,github,finos,opengris-pargraph,main,github/finos/opengris-pargraph,FINOS-10112,FINOS OSS,OPENGRIS_PARGRAPH
+github|finos|morphir-zig,github,finos,morphir-zig,main,github/finos/morphir-zig,FINOS-10113,FINOS OSS,MORPHIR_ZIG
+github|finos|open-source-talent-acceleration,github,finos,open-source-talent-acceleration,main,github/finos/open-source-talent-acceleration,FINOS-10114,FINOS OSS,OPEN_SOURCE_TALENT_ACCELERATION
+github|finos|.github,github,finos,.github,main,github/finos/.github,FINOS-10115,FINOS OSS,.GITHUB
+github|finos|legend-engine-ide-client-vscode,github,finos,legend-engine-ide-client-vscode,main,github/finos/legend-engine-ide-client-vscode,FINOS-10116,FINOS OSS,LEGEND_ENGINE_IDE_CLIENT_VSCODE
+github|finos|ai-readiness,github,finos,ai-readiness,main,github/finos/ai-readiness,FINOS-10117,FINOS OSS,AI_READINESS
+github|finos|aigf-mcp-server,github,finos,aigf-mcp-server,main,github/finos/aigf-mcp-server,FINOS-10118,FINOS OSS,AIGF_MCP_SERVER
+github|finos|opengris,github,finos,opengris,main,github/finos/opengris,FINOS-10119,FINOS OSS,OPENGRIS
+github|finos|fluxnova-deploy,github,finos,fluxnova-deploy,main,github/finos/fluxnova-deploy,FINOS-10120,FINOS OSS,FLUXNOVA_DEPLOY
+github|finos|waltz-integration-juju,github,finos,waltz-integration-juju,main,github/finos/waltz-integration-juju,FINOS-10121,waltz-juju,WALTZ_INTEGRATION_JUJU
+github|finos|generator-symphony,github,finos,generator-symphony,master,github/finos/generator-symphony,FINOS-10122,FINOS OSS,GENERATOR_SYMPHONY
+github|finos|fluxnova-testing-framework,github,finos,fluxnova-testing-framework,main,github/finos/fluxnova-testing-framework,FINOS-10123,FINOS OSS,FLUXNOVA_TESTING_FRAMEWORK
+github|finos|SymphonyMediaBridge,github,finos,SymphonyMediaBridge,master,github/finos/SymphonyMediaBridge,FINOS-10124,bandwidth-estimation,SYMPHONYMEDIABRIDGE
+github|finos|waltz-juju-bundle,github,finos,waltz-juju-bundle,main,github/finos/waltz-juju-bundle,FINOS-10125,bundle,WALTZ_JUJU_BUNDLE
+github|finos|fluxnova-modeler-plugins,github,finos,fluxnova-modeler-plugins,main,github/finos/fluxnova-modeler-plugins,FINOS-10126,FINOS OSS,FLUXNOVA_MODELER_PLUGINS
+github|finos|open-resource-broker-formation,github,finos,open-resource-broker-formation,main,github/finos/open-resource-broker-formation,FINOS-10127,FINOS OSS,OPEN_RESOURCE_BROKER_FORMATION
+github|finos|htc-grid,github,finos,htc-grid,main,github/finos/htc-grid,FINOS-10128,FINOS OSS,HTC_GRID
+github|finos|code-scanning,github,finos,code-scanning,main,github/finos/code-scanning,FINOS-10129,FINOS OSS,CODE_SCANNING
+github|finos|fin-ocr-cli,github,finos,fin-ocr-cli,main,github/finos/fin-ocr-cli,FINOS-10130,FINOS OSS,FIN_OCR_CLI
+github|finos|fin-ocr,github,finos,fin-ocr,main,github/finos/fin-ocr,FINOS-10131,FINOS OSS,FIN_OCR

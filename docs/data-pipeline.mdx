@@ -1,0 +1,420 @@
+---
+id: data-pipeline
+title: Data Pipeline and Formats
+---
+
+import Mermaid from '@theme/Mermaid';
+
+Risk Navigator is a static viewer. It does not call a backend after load; every
+screen is driven by one built JSON dataset selected from `tool/manifest.json`.
+
+The pipeline therefore has one job: convert vulnerability intelligence and
+project dependency inventory into `data/<scope>.json`.
+
+## Prerequisites
+
+The reference pipeline assumes:
+
+- Node.js 20 or later.
+- npm 10 or later.
+- Python 3.11 or later.
+- Git for optional public repository scans.
+- Optional `cdxgen` or `syft` for regenerating scanner-based SBOM inputs.
+
+Published documentation and sample dataset metadata should use portable commands
+and repo-relative paths, not local workstation paths.
+
+## Pipeline overview
+
+<Mermaid value={`
+flowchart LR
+  OSV["OSV vulnerability data"] --> INGEST["scripts/ingest_vulns.py"]
+  KEV["CISA KEV"] --> EXT["scripts/fetch_external.py"]
+  EPSS["FIRST EPSS"] --> EXT
+  REPOS["Repos / SBOMs / inventory"] --> EXTRACT["scripts/extract_org.py"]
+  SCAN["scripts/scan_repos_to_sbom.py"] --> SBOM["CycloneDX SBOM JSON"]
+  SBOM --> EXTRACT
+  INGEST --> DB[("data/vulns.db")]
+  EXT --> SIGNALS["data/external/*.json"]
+  EXTRACT --> RAW["data/raw/<scope>/*.csv"]
+  DB --> BUILD["scripts/build_dataset.py"]
+  SIGNALS --> BUILD
+  RAW --> BUILD
+  BUILD --> DATASET[("data/<scope>.json")]
+  DATASET --> VIEWER["tool/risk-navigator.html"]
+`} />
+
+## Final viewer input
+
+The viewer consumes a compact JSON file:
+
+```text
+data/<scope>.json
+```
+
+Each dataset must be listed in `tool/manifest.json`:
+
+```json
+{
+  "datasets": [
+    {
+      "label": "OSERA Demo Data (Example)",
+      "url": "../data/finos-sample-platform.json"
+    },
+    {
+      "label": "FINOS SBOM Scan Demo",
+      "url": "../data/finos-sbom-demo.json"
+    },
+    {
+      "label": "FINOS GitHub Org Snapshot",
+      "url": "../data/finos-github-org.json"
+    }
+  ]
+}
+```
+
+The top-level JSON shape is:
+
+| Field | Purpose |
+|---|---|
+| `meta` | Scope labels, freshness, source stats, filters, optional overlays, and counts. |
+| `departments` | Project grouping values used by filters. In enterprise usage this can be department, BU, platform, or team. |
+| `consumer_projects` | Project/repository inventory plus vulnerable-library rollups. |
+| `libraries` | Vulnerable package-version records, CVEs, safe-version analysis, consumers, and remediation signals. |
+| `amplifier_clusters` | Parent dependencies that introduce vulnerable transitive libraries across projects. |
+
+## Minimal final JSON example
+
+```json
+{
+  "meta": {
+    "scope_type": "repository-sbom-sample",
+    "scope_name": "finos-sbom-demo",
+    "scope_label": "FINOS SBOM Scan Demo",
+    "extracted_at": "2026-06-23T00:00:00Z",
+    "filters_applied": {
+      "tooling_qualifiers_excluded": ["build", "module-load", "test"],
+      "library_namespaces_excluded": [],
+      "cvss_min": 0.01
+    },
+    "external_signals": {
+      "kev_loaded": true,
+      "epss_loaded": true
+    },
+    "counts": {
+      "consumer_projects": 3,
+      "distinct_cve_libraries": 10,
+      "distinct_amplifier_clusters": 3
+    }
+  },
+  "departments": [
+    { "name": "SBOM Scan", "project_count": 3 }
+  ],
+  "consumer_projects": [
+    {
+      "id": "github|finos|legend-studio",
+      "project_ref": "github/finos/legend-studio",
+      "department": "SBOM Scan",
+      "vulnerable_library_ids": ["maven|org.springframework|spring-web|5.3.39"],
+      "vulnerable_library_count": 1,
+      "direct_vulnerable_library_count": 0,
+      "transitive_vulnerable_library_count": 1
+    }
+  ],
+  "libraries": [
+    {
+      "id": "maven|org.springframework|spring-web|5.3.39",
+      "namespace": "maven",
+      "meta": "org.springframework",
+      "proj": "spring-web",
+      "release": "5.3.39",
+      "max_cvss": 8.1,
+      "cve_count": 1,
+      "cves": [],
+      "is_kev_listed": false,
+      "epss_max": 0.0,
+      "consumer_project_ids": ["github|finos|legend-studio"],
+      "direct_consumer_project_ids": [],
+      "direct_consumer_count": 0,
+      "transitive_consumer_count": 1,
+      "total_consumer_count": 1,
+      "version_chain": [],
+      "nearest_safe_version": "5.3.40",
+      "max_safe_patch_same_minor": "5.3.40",
+      "distance_to_safe": "PATCH",
+      "effort_class": "PATCH"
+    }
+  ],
+  "amplifier_clusters": []
+}
+```
+
+The exact library object is richer than this example. The authoritative
+contract is the repository `SPEC.md`; the executable guardrail is:
+
+```bash
+python3 scripts/validate_dataset.py data/<scope>.json
+```
+
+## Raw scope input
+
+`scripts/build_dataset.py` reads normalized raw CSV files from:
+
+```text
+data/raw/<scope>/
+```
+
+The extractor is responsible for producing these files:
+
+| File | Required purpose |
+|---|---|
+| `01-consumer-projects.csv` | One row per project, repo, service, app, or other consumer. |
+| `02-dep-edges.csv` | Project-to-library edges with direct/transitive and parent dependency information. |
+| `03-cve-libs.csv` | Vulnerable library rows joined to CVE severity and ownership metadata. |
+| `04-version-chain.csv` | Known package versions used to find the nearest safe upgrade. |
+| `05-amplifiers.csv` | Parent libraries that introduce vulnerable transitive libraries. |
+| `06-cve-edges.csv` | Library-version to CVE rows. |
+
+Version values are normalized before joins. For PyPI and npm, Git-tag-style
+versions such as `v0.8.8` are canonicalized to registry versions such as
+`0.8.8`, and duplicate version-chain rows are collapsed. The detailed merge
+rule is defined in `SPEC.md`.
+
+Most custom integrations only need to focus on project inventory and dependency
+edges. The included extractors and builder can fill the CVE-specific files when
+they can join edges against `data/vulns.db`.
+
+## Project inventory CSV
+
+`01-consumer-projects.csv`:
+
+| Column | Meaning |
+|---|---|
+| `id` | Stable project ID. GitHub examples use `github|org|repo`. |
+| `namespace` | Project namespace, usually `github` for repo-backed samples. |
+| `meta` | Project owner or organization, such as `finos`. |
+| `proj` | Project or repository name. |
+| `release` | Version, branch, tag, or inventory release marker. |
+| `project_ref` | Human-readable source reference, such as `github/finos/legend-studio`. |
+| `eonid` | Optional enterprise/application portfolio ID. Demo data uses synthetic IDs. |
+| `department` | Project grouping used by filters. |
+| `tai_system` | Optional system/application name. |
+
+Example:
+
+```csv
+id,namespace,meta,proj,release,project_ref,eonid,department,tai_system
+github|finos|legend-studio,github,finos,legend-studio,main,github/finos/legend-studio,SBOM-1,SBOM Scan,legend-studio
+```
+
+## Dependency edge CSV
+
+`02-dep-edges.csv`:
+
+| Column | Meaning |
+|---|---|
+| `consumer_id` | Project ID from `01-consumer-projects.csv`. |
+| `library_id` | Package coordinate: `namespace|meta|proj|release`. |
+| `direct` | `1` for direct dependency, `0` for transitive dependency. |
+| `qualifier` | Typical values: `runtime`, `test`, `build`, `module-load`. |
+| `parent_id` | Parent package that introduces a transitive dependency. Empty for direct dependencies. |
+
+Example:
+
+```csv
+consumer_id,library_id,direct,qualifier,parent_id
+github|finos|legend-studio,maven|org.springframework.boot|spring-boot-starter-web|2.7.18,1,runtime,
+github|finos|legend-studio,maven|org.springframework|spring-web|5.3.39,0,runtime,maven|org.springframework.boot|spring-boot-starter-web|2.7.18
+```
+
+Direct/transitive accuracy matters. It drives direct-only filters, transitive
+exposure, amplifier analysis, and OpenRewrite cart eligibility.
+
+## SBOM input path
+
+Risk Navigator can import CycloneDX JSON SBOMs:
+
+```bash
+python3 scripts/extract_org.py \
+  --scope finos-sbom-demo \
+  --source cyclonedx \
+  --sbom-dir data/sboms/finos-sbom-demo
+```
+
+The importer reads:
+
+- `metadata.component`: project identity and optional VCS reference.
+- `components[*].purl`: package coordinates.
+- `components[*].scope`: runtime/test/build qualifier when present.
+- `dependencies[]`: direct and transitive graph relationships.
+
+The dependency graph is used to derive:
+
+- direct project dependencies,
+- transitive dependencies,
+- parent dependency IDs for amplifier analysis.
+
+CycloneDX files can come from a repo scanner:
+
+```bash
+python3 scripts/scan_repos_to_sbom.py \
+  --scope finos-sbom-demo \
+  --org finos \
+  --default-demo-repos
+```
+
+By default the wrapper expects `cdxgen`. It also supports Syft:
+
+```bash
+python3 scripts/scan_repos_to_sbom.py \
+  --scope finos-sbom-demo \
+  --org finos \
+  --default-demo-repos \
+  --scanner syft
+```
+
+Scanner output is realistic but not perfect. Completeness depends on lockfiles,
+ecosystem support, generated build files, private registry access, and whether
+the scanner resolves transitive dependencies for that repository.
+
+## Built-in datasets
+
+### OSERA Demo Data
+
+Label: `OSERA Demo Data (Example)`
+
+Built file:
+
+```text
+data/finos-sample-platform.json
+```
+
+Raw input:
+
+```text
+data/raw/finos-sample-platform/
+```
+
+Build command:
+
+```bash
+npm run build:all
+```
+
+This is the curated walkthrough dataset. It is intentionally small, stable, and
+hand-shaped to exercise the main UI modes: patch/minor/major upgrades,
+backpatch candidates, KEV/EPSS signals, framework grouping, and amplifiers.
+
+### FINOS SBOM Scan Demo
+
+Label: `FINOS SBOM Scan Demo`
+
+Built file:
+
+```text
+data/finos-sbom-demo.json
+```
+
+SBOM input:
+
+```text
+data/sboms/finos-sbom-demo/
+```
+
+Raw extract:
+
+```text
+data/raw/finos-sbom-demo/
+```
+
+Build command:
+
+```bash
+npm run build:all:finos-sbom-demo
+```
+
+This demonstrates the repo-scanner path. The committed SBOMs are compact
+CycloneDX files using FINOS public repository names and dependency graphs that
+align with the sample OSV seed. They are meant to show the data shape and
+pipeline mechanics without requiring a live GitHub clone during docs builds.
+
+Optional regeneration command:
+
+```bash
+npm run scan:finos-sbom-demo
+npm run build:all:finos-sbom-demo
+```
+
+### FINOS GitHub Org Snapshot
+
+Label: `FINOS GitHub Org Snapshot`
+
+Built file:
+
+```text
+data/finos-github-org.json
+```
+
+Raw extract:
+
+```text
+data/raw/finos-github-org/
+```
+
+Recommended refresh command:
+
+```bash
+npm run build:all:finos-org:full-osv
+```
+
+This is the larger realism dataset in the dropdown. It is generated from the
+public FINOS GitHub organization using the GitHub REST API, filtered to active
+non-fork repositories, and joined with full OSV records filtered by observed
+packages.
+
+The current committed snapshot includes:
+
+- 132 active non-fork public FINOS repositories.
+- 97 repositories with extracted dependency edges.
+- 4,040 dependency edges.
+- 72 distinct vulnerable libraries in the final viewer dataset.
+- 2 KEV-listed libraries.
+
+Use authenticated GitHub API access for refreshes to avoid public API rate
+limits. The extractor reads declared manifests and does not perform full
+build-system resolution for every ecosystem, so dependency coverage depends on
+the manifests present in public repositories and the ecosystems supported by
+`scripts/extract_org.py`.
+
+For a faster smoke test, this command uses the sample OSV seed and produces
+lower vulnerability coverage:
+
+```bash
+npm run build:all:finos-org
+```
+
+## Custom pipeline checklist
+
+For an enterprise or community deployment, the minimum custom pipeline is:
+
+1. Choose a scope name, for example `payments-platform`.
+2. Produce project inventory records.
+3. Produce dependency edges with direct/transitive fidelity.
+4. Ingest or provide vulnerability mappings.
+5. Fetch KEV and EPSS enrichment.
+6. Build `data/<scope>.json`.
+7. Validate it with `scripts/validate_dataset.py`.
+8. Add it to `tool/manifest.json`.
+
+Typical commands:
+
+```bash
+python3 scripts/ingest_vulns.py --write-sample
+python3 scripts/fetch_external.py
+python3 scripts/extract_org.py --scope <scope> --source cyclonedx --sbom-dir <sbom-dir>
+python3 scripts/build_dataset.py --scope <scope> --meta-overlay <meta-overlay-json>
+python3 scripts/validate_dataset.py data/<scope>.json
+```
+
+For production use, keep internal extractors and secrets outside this upstream
+repository and preserve the final JSON contract consumed by the static viewer.

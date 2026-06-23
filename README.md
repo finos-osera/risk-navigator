@@ -21,7 +21,12 @@ This folder now includes a working implementation:
 - Static viewer: `tool/risk-navigator.html`
 - Branded Docusaurus docs site: `website/`
 - Sample built dataset (`OSERA Demo Data (Example)`): `data/finos-sample-platform.json`
-- Optional real org built dataset: `data/finos-github-org.json` (generated locally, not checked in)
+- SBOM-derived demo dataset (`FINOS SBOM Scan Demo`): `data/finos-sbom-demo.json`
+- Full public FINOS org snapshot (`FINOS GitHub Org Snapshot`): `data/finos-github-org.json`
+  - 132 active non-fork public FINOS repositories
+  - 97 repositories with extracted dependency edges
+  - 4,040 dependency edges
+  - 72 distinct vulnerable libraries in the final viewer dataset
 - Validation/tests: `scripts/validate_dataset.py`, `tests/`
 - Architecture and data-pipeline decisions: `IMPLEMENTATION.md`
 - Company customization guide: `docs/CUSTOMIZATION_GUIDE.md`
@@ -43,6 +48,14 @@ This folder now includes a working implementation:
 
 From the repository root:
 
+Prerequisites:
+
+- Node.js 20 or later.
+- npm 10 or later.
+- Python 3.11 or later.
+- Git for optional public repository scans.
+- Optional `cdxgen` or `syft` for regenerating scanner-based SBOM inputs.
+
 ```bash
 npm install
 python3 -m venv .venv
@@ -52,10 +65,18 @@ python -m pip install -r requirements-dev.txt
 # sample/demo dataset
 npm run build:all
 
-# local FINOS GitHub org snapshot dataset
+# second demo dataset from committed CycloneDX SBOM inputs
+npm run build:all:finos-sbom-demo
+
+# optional: regenerate CycloneDX SBOM inputs from public FINOS repos
+# requires cdxgen on PATH; cloned repos are written under data/local/
+npm run scan:finos-sbom-demo
+
+# FINOS GitHub org snapshot using the sample OSV seed
 npm run build:all:finos-org
 
-# optimized full-OSV flow with local cache reuse
+# FINOS GitHub org snapshot with full OSV allowlist ingest (recommended refresh path)
+# use authenticated GitHub API access, for example `gh auth login`, to avoid rate limits
 npm run build:all:finos-org:full-osv
 
 # run tests
@@ -80,7 +101,7 @@ python3 scripts/build_dataset.py --scope finos-github-org \
   --vuln-db data/vulns.db \
   --cve-metadata-cache data/external/cve_metadata_cache.json \
   --depsdev-cache data/external/depsdev_versions_cache.json \
-  --meta-overlay data/meta/finos-org-meta.json \
+  --meta-overlay data/meta/finos-github-org-meta.json \
   --amplifiers-preaggregated
 ```
 
@@ -315,8 +336,32 @@ server, no build step, no framework. ~70 KB self-contained.
 
 Data policy:
 - Keep sample artifacts (`OSERA Demo Data (Example)`, file slug `finos-sample-platform`) in-repo for distribution.
+- Keep the small SBOM-derived demo (`FINOS SBOM Scan Demo`, file slug `finos-sbom-demo`) in-repo so the dataset dropdown can demonstrate scanner-based inventory without live cloning.
+- Keep the public FINOS org snapshot (`FINOS GitHub Org Snapshot`, file slug `finos-github-org`) in-repo as the larger realism dataset. Refresh it with the full-OSV path and authenticated GitHub API access.
 - Keep full OSV dump + live rebuilt org datasets local (gitignored) and regenerate as needed.
 - Keep deps.dev version-date cache local (gitignored); refresh a package only when a newer observed version appears in the raw scope.
+
+### SBOM scanner demo dataset
+
+The secondary demo dataset is built from CycloneDX SBOM files under `data/sboms/finos-sbom-demo/`.
+Those files are compact, committed inputs that mirror the shape produced by repo scanners such as `cdxgen` or `syft`.
+They preserve direct/transitive dependency relationships through the CycloneDX `dependencies` graph, which Risk Navigator uses for direct-only filters, transitive exposure, and amplifier analysis.
+
+To rebuild the committed SBOM demo dataset:
+
+```bash
+npm run build:all:finos-sbom-demo
+```
+
+To regenerate SBOM inputs from public FINOS repositories before rebuilding:
+
+```bash
+npm run scan:finos-sbom-demo
+npm run build:all:finos-sbom-demo
+```
+
+The scanner wrapper clones public repositories into `data/local/repo-scan/<scope>/`, emits SBOMs to `data/sboms/<scope>/`, and supports `--scanner cdxgen` or `--scanner syft`.
+Scanner output is close-to-realistic, not complete: coverage depends on public repo contents, lockfiles, supported ecosystems, and whether private registry or build-time resolution is required.
 
 ---
 

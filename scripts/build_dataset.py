@@ -19,6 +19,8 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 from common import (
+    canonical_library_id,
+    canonical_release,
     compare_versions,
     find_nearest_safe,
     is_ga_release,
@@ -43,6 +45,15 @@ OSV_BASE = "https://api.osv.dev/v1"
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def metadata_path(path: Optional[Path]) -> str:
+    if not path:
+        return ""
+    try:
+        return str(path.resolve().relative_to(ROOT))
+    except Exception:
+        return str(path)
 
 
 def read_csv(path: Path) -> List[Dict[str, str]]:
@@ -272,8 +283,8 @@ def enrich_cve_metadata_from_osv_source(
 
     stats = {
         "enabled": True,
-        "source_zip": str(source_zip or ""),
-        "source_dir": str(source_dir or ""),
+        "source_zip": metadata_path(source_zip),
+        "source_dir": metadata_path(source_dir),
         "source_zip_exists": bool(source_zip and source_zip.exists()),
         "source_dir_exists": bool(source_dir and source_dir.exists()),
         "considered": len(target_ids),
@@ -720,6 +731,18 @@ def build_dataset(
 
     project_by_id = {row["id"]: row for row in projects if row.get("id")}
 
+    normalized_dep_edges: List[Dict[str, str]] = []
+    for edge in dep_edges:
+        normalized = dict(edge)
+        lid = normalized.get("library_id", "")
+        if lid:
+            normalized["library_id"] = canonical_library_id(lid)
+        parent_id = normalized.get("parent_id", "")
+        if parent_id:
+            normalized["parent_id"] = canonical_library_id(parent_id)
+        normalized_dep_edges.append(normalized)
+    dep_edges = normalized_dep_edges
+
     dept_counts = Counter()
     for proj in projects:
         dept = proj.get("department", "Unknown") or "Unknown"
@@ -736,11 +759,17 @@ def build_dataset(
             dep_by_consumer[cid].append(edge)
 
     cves_by_lib: Dict[str, List[Dict[str, object]]] = defaultdict(list)
+    seen_cve_by_lib: set[Tuple[str, str]] = set()
     for row in cve_edges_rows:
         library_id = row.get("library_id", "")
         if not library_id:
             continue
+        library_id = canonical_library_id(library_id)
         cve_id = row.get("cve_id", "")
+        seen_key = (library_id, cve_id)
+        if seen_key in seen_cve_by_lib:
+            continue
+        seen_cve_by_lib.add(seen_key)
         epss_entry = epss_map.get(cve_id, {}) if isinstance(epss_map, dict) else {}
         cve_meta = cve_meta_map.get(cve_id, {})
         cve_info = {
@@ -761,16 +790,29 @@ def build_dataset(
         cves_by_lib[library_id].append(cve_info)
 
     version_by_pkg: Dict[Tuple[str, str, str], List[Dict[str, object]]] = defaultdict(list)
+    version_by_pkg_release: Dict[Tuple[str, str, str], Dict[str, Dict[str, object]]] = defaultdict(dict)
     for row in version_rows:
-        key = (row.get("namespace", ""), row.get("meta", ""), row.get("proj", ""))
-        version_by_pkg[key].append(
-            {
-                "release": row.get("release", ""),
-                "release_id": to_int(row.get("release_id"), 0),
-                "max_cvss": to_float(row.get("max_cvss"), 0.0),
-                "cve_count": to_int(row.get("cve_count"), 0),
-            }
-        )
+        namespace = row.get("namespace", "")
+        key = (namespace, row.get("meta", ""), row.get("proj", ""))
+        release = canonical_release(namespace, row.get("release", ""))
+        if not release:
+            continue
+        next_item = {
+            "release": release,
+            "release_id": to_int(row.get("release_id"), 0),
+            "max_cvss": to_float(row.get("max_cvss"), 0.0),
+            "cve_count": to_int(row.get("cve_count"), 0),
+        }
+        current = version_by_pkg_release[key].get(release)
+        if not current:
+            version_by_pkg_release[key][release] = next_item
+            continue
+        current["release_id"] = min(to_int(current.get("release_id"), 0), next_item["release_id"])
+        current["max_cvss"] = max(to_float(current.get("max_cvss"), 0.0), next_item["max_cvss"])
+        current["cve_count"] = max(to_int(current.get("cve_count"), 0), next_item["cve_count"])
+
+    for key, by_release in version_by_pkg_release.items():
+        version_by_pkg[key] = list(by_release.values())
 
     for chain in version_by_pkg.values():
         chain.sort(key=lambda x: x.get("release_id", 0))
@@ -788,6 +830,8 @@ def build_dataset(
         aid = row.get("amplifier_id", "")
         if not lid or not aid:
             continue
+        lid = canonical_library_id(lid)
+        aid = canonical_library_id(aid)
         a_ns, a_meta, a_proj, a_rel = parse_library_id(aid)
         amplifiers_by_lib[lid].append(
             {
@@ -828,22 +872,24 @@ def build_dataset(
     libraries: List[Dict[str, object]] = []
     effort_counts = Counter()
 
+    seen_library_ids: set[str] = set()
     for row in cve_libs_rows:
         lid = row.get("library_id", "")
         if not lid:
             continue
+        lid = canonical_library_id(lid)
+        if lid in seen_library_ids:
+            continue
+        seen_library_ids.add(lid)
 
         lib_edges = dep_by_lib.get(lid, [])
         if not lib_edges:
             # The vulnerable lib is not consumed in this scope after tooling filter.
             continue
 
-        namespace = row.get("namespace", "")
+        namespace, meta, proj, release = parse_library_id(lid)
         if namespace.lower() in excluded_ns:
             continue
-        meta = row.get("meta", "")
-        proj = row.get("proj", "")
-        release = row.get("release", "")
 
         consumers_all = sorted({e.get("consumer_id", "") for e in lib_edges if e.get("consumer_id", "")})
         consumers_direct = sorted(
