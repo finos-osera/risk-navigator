@@ -1,0 +1,52 @@
+name: PR checks
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/pr-checks.yml"
+      - "data/finos-sample-platform.json"
+      - "docs/**"
+      - "package.json"
+      - "requirements-dev.txt"
+      - "tests/**"
+      - "tool/**"
+      - "website/**"
+      - "netlify.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install website dependencies
+        run: npm ci --prefix website
+
+      - name: Install Python test dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Build Docusaurus site
+        run: npm run docs:build
+
+      - name: Run tests
+        run: python -m pytest -q
