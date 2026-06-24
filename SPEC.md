@@ -154,6 +154,11 @@ Every published dataset should be reproducible from documented inputs:
   was produced,
 - avoid machine-local absolute paths in final JSON metadata.
 
+Manifest entries require `label` and `url`. They may also include
+`description`, `source_type`, `coverage`, `limitations`, and `docs_url`; the
+viewer must use those fields, together with `data/<scope>.json`
+`meta.dataset_methodology`, to explain the active dataset in Help/About.
+
 For the bundled samples:
 
 - `data/finos-sample-platform.json` is produced from the synthetic extractor and
@@ -1021,9 +1026,10 @@ not flood browser history.
 - Provide a `Help` button in the top-right control area.
 - Provide a draggable divider between left and right panes so users can resize detail width.
 - Opening Help shows a modal documentation view.
-- Help modal provides two interactive tabs:
+- Help modal provides three interactive tabs:
   - `How to use` (workflow and navigation guidance)
   - `Glossary/About` (terminology and conceptual framing)
+  - `Data Sources` (active dataset provenance, coverage, limitations, and enrichment sources)
 - Switching Help tabs updates content in-place without closing the modal.
 - Documentation content is written in markdown and rendered in the browser.
 - Help must include a **dynamic heuristics section** generated from runtime scoring/policy constants
@@ -1039,6 +1045,7 @@ not flood browser history.
   - data source inventory used by the active pipeline (vulnerability, exploit, release metadata, and org inventory sources)
   - clickable source URLs and documentation URLs for each listed data source (shown in Help/About)
   - high-level org data acquisition approach (how projects and dependency edges are collected)
+  - active manifest dataset metadata and `meta.dataset_methodology` details, including source type, coverage, limitations, build inputs, and build command when present
 
 ---
 
@@ -1270,7 +1277,7 @@ shippable.
 | `data/external/cve_metadata.json` | Optional CVE narrative/date overlay (`title/summary/description/published/modified`). Used for local corrections/supplemental context without mutating the vuln DB. |
 | `data/external/depsdev_versions_cache.json` | Local package-level release-date cache (gitignored). Stores full version timelines fetched from deps.dev and is refreshed only when newer observed package versions appear. |
 | `tool/risk-navigator.html` | Self-contained viewer. Vanilla JS, no build step. ~70 KB. |
-| `tool/manifest.json` | Lists available `data/<scope>.json` files for the dropdown picker. Viewer also supports `?manifest=<url>` override and fallback manifest discovery. |
+| `tool/manifest.json` | Lists available `data/<scope>.json` files for the dropdown picker. Each entry requires `label` and `url` and may include `description`, `source_type`, `coverage`, `limitations`, and `docs_url` for Help/About provenance. Viewer also supports `?manifest=<url>` override and fallback manifest discovery. |
 | `data/sboms/<scope>/*.cdx.json` | Optional CycloneDX input files used when demonstrating or adopting the SBOM-import path. |
 
 ---

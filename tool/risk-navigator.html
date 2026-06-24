@@ -1214,6 +1214,7 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
     <div class="help-tabs modes">
       <button id="helpTabHowto" type="button" class="mode-btn help-tab active">About</button>
       <button id="helpTabGlossary" type="button" class="mode-btn help-tab">Glossary</button>
+      <button id="helpTabData" type="button" class="mode-btn help-tab">Data Sources</button>
     </div>
     <div id="docContent" class="doc-content"></div>
   </div>
@@ -1379,6 +1380,8 @@ Risk Navigator is part of OSERA's open source supply resiliency work.
 
 - The bundled **OSERA Demo Data (Example)** is a demo dataset.
 - **FINOS SBOM Scan Demo** is built from committed CycloneDX SBOM inputs that mirror repo-scanner output.
+- **FINOS Deep SBOM Demo** is a curated multi-ecosystem SBOM graph demo with direct/transitive dependency relationships.
+- **FINOS GitHub Org Snapshot** is a broad public-org snapshot built from public GitHub repository and manifest data.
 - Additional generated datasets can be added to tool/manifest.json.
 - Rebuild datasets with the local scripts in scripts/.
 `;
@@ -1393,6 +1396,8 @@ Risk Navigator helps teams prioritize dependency-risk remediation across project
 - Use the dataset selector in the top-right.
 - **OSERA Demo Data (Example)** is a demo dataset.
 - **FINOS SBOM Scan Demo** shows the repo-scanner/SBOM ingestion path.
+- **FINOS Deep SBOM Demo** shows richer direct/transitive SBOM graph relationships across multiple ecosystems.
+- **FINOS GitHub Org Snapshot** shows broader public FINOS organization coverage.
 - Additional locally generated datasets can be added to tool/manifest.json.
 - Last selected dataset and last active mode/tab are remembered across reloads (local browser storage).
 - The browser URL updates with dataset, active mode, and active filters so filtered views can be shared.
@@ -1639,6 +1644,7 @@ const els = {
   docContent: $("#docContent"),
   helpTabHowto: $("#helpTabHowto"),
   helpTabGlossary: $("#helpTabGlossary"),
+  helpTabData: $("#helpTabData"),
   versionModal: $("#versionModal"),
   versionModalBody: $("#versionModalBody"),
   versionModalTitle: $("#versionModalTitle"),
@@ -2751,20 +2757,118 @@ function markdownToHtml(md) {
   return out.join("\n");
 }
 
+function activeManifestDataset() {
+  const datasets = ((state.manifest || {}).datasets || []);
+  return datasets.find(d => d && d.url === state.datasetUrl) || null;
+}
+
+function listFromMaybeArray(value) {
+  if (Array.isArray(value)) return value.map(x => String(x || "").trim()).filter(Boolean);
+  const single = String(value || "").trim();
+  return single ? [single] : [];
+}
+
+function buildDataSourcesHelpMarkdown() {
+  const manifestEntry = activeManifestDataset() || {};
+  const meta = (state.dataset && state.dataset.meta) || {};
+  const method = (meta.dataset_methodology && typeof meta.dataset_methodology === "object") ? meta.dataset_methodology : {};
+  const counts = meta.counts || {};
+  const label = String(manifestEntry.label || meta.scope_label || meta.scope_name || state.datasetUrl || "Active dataset").trim();
+  const sourceType = String(manifestEntry.source_type || meta.scope_type || "dataset").trim();
+  const description = String(manifestEntry.description || method.summary || "").trim();
+  const coverage = String(manifestEntry.coverage || "").trim();
+  const limitations = [
+    ...listFromMaybeArray(manifestEntry.limitations),
+    ...listFromMaybeArray(method.limitations)
+  ];
+  const docsUrl = String(manifestEntry.docs_url || "").trim();
+
+  const lines = [
+    "# About Data Sources",
+    "",
+    `## Active dataset: ${label}`,
+    "",
+    `- **Dataset file**: \`${state.datasetUrl || "not loaded"}\``,
+    `- **Source type**: ${sourceType}`,
+  ];
+
+  if (description) lines.push(`- **Description**: ${description}`);
+  if (coverage) lines.push(`- **Coverage**: ${coverage}`);
+  if (docsUrl) lines.push(`- **Documentation**: [Data pipeline details](${docsUrl})`);
+
+  lines.push(
+    "",
+    "## Current dataset counts",
+    "",
+    `- Projects: ${counts.consumer_projects || 0}`,
+    `- Vulnerable libraries: ${counts.distinct_cve_libraries || 0}`,
+    `- Amplifier clusters: ${counts.distinct_amplifier_clusters || 0}`,
+    `- KEV-listed libraries: ${counts.kev_listed_libraries || 0}`,
+    ""
+  );
+
+  const methodRows = [
+    ["Summary", method.summary],
+    ["Generator script", method.generator_script],
+    ["Scanner script", method.scanner_script || method.optional_scanner_script],
+    ["SBOM directory", method.sbom_dir],
+    ["Repository source", method.repository_source],
+    ["Dependency source", method.dependency_source],
+    ["Vulnerability source", method.vulnerability_source],
+    ["Build command", method.build_command],
+  ].filter(([, value]) => String(value || "").trim());
+
+  if (methodRows.length) {
+    lines.push("## Methodology", "");
+    for (const [name, value] of methodRows) {
+      lines.push(`- **${name}**: ${String(value).trim()}`);
+    }
+    lines.push("");
+  }
+
+  const repos = listFromMaybeArray(method.repos);
+  if (repos.length) {
+    lines.push("## Selected repositories", "", ...repos.map(repo => `- \`${repo}\``), "");
+  }
+
+  if (limitations.length) {
+    lines.push("## Limitations", "", ...Array.from(new Set(limitations)).map(item => `- ${item}`), "");
+  }
+
+  lines.push(
+    "## External enrichment sources",
+    "",
+    "- **OSV**: vulnerability package/version mappings and advisory metadata. [Docs](https://osv.dev/docs/)",
+    "- **CISA KEV**: known-exploited vulnerability signal. [Catalog](https://www.cisa.gov/known-exploited-vulnerabilities-catalog)",
+    "- **FIRST EPSS**: exploit probability enrichment. [API docs](https://www.first.org/epss/api)",
+    "- **deps.dev**: package version history and release timestamps. [API docs](https://docs.deps.dev/api/)",
+    "",
+    "## Interpretation",
+    "",
+    "Dataset labels describe the source strategy, not a guarantee of complete coverage. Broad manifest snapshots can cover more repositories but may be shallow. SBOM or lockfile-derived datasets can preserve richer direct/transitive graph relationships for fewer repositories."
+  );
+  return lines.join("\n");
+}
+
 function renderHelpTabContent() {
-  const tab = state.helpTab === "glossary" ? "glossary" : "howto";
+  const tab = state.helpTab === "glossary" || state.helpTab === "data" ? state.helpTab : "howto";
   const titleEl = $("#docModalTitle");
-  if (titleEl) titleEl.textContent = tab === "glossary" ? "Risk Navigator Glossary" : "About Risk Navigator";
+  if (titleEl) {
+    titleEl.textContent = tab === "glossary"
+      ? "Risk Navigator Glossary"
+      : (tab === "data" ? "About Data Sources" : "About Risk Navigator");
+  }
   const markdown = tab === "glossary"
     ? HELP_GLOSSARY_MARKDOWN
-    : `${ABOUT_DOC_MARKDOWN}\n\n${HELP_DOC_MARKDOWN}\n\n${buildHeuristicsHelpMarkdown()}`;
+    : (tab === "data" ? buildDataSourcesHelpMarkdown() : `${ABOUT_DOC_MARKDOWN}\n\n${HELP_DOC_MARKDOWN}\n\n${buildHeuristicsHelpMarkdown()}`);
   els.docContent.innerHTML = markdownToHtml(markdown);
   els.helpTabHowto.classList.toggle("active", tab === "howto");
   els.helpTabGlossary.classList.toggle("active", tab === "glossary");
+  if (els.helpTabData) els.helpTabData.classList.toggle("active", tab === "data");
 }
 
 function openDocModal(initialTab = "howto") {
-  state.helpTab = initialTab === "glossary" ? "glossary" : "howto";
+  state.helpTab = initialTab === "glossary" || initialTab === "data" ? initialTab : "howto";
   renderHelpTabContent();
   els.docModal.classList.add("open");
 }
@@ -6466,15 +6570,22 @@ function bindEvents() {
       renderHelpTabContent();
     });
   }
+  if (els.helpTabData) {
+    els.helpTabData.addEventListener("click", e => {
+      e.preventDefault();
+      state.helpTab = "data";
+      renderHelpTabContent();
+    });
+  }
   if (els.docModal) {
     els.docModal.addEventListener("click", e => {
       const t = e.target;
       if (!(t instanceof Element)) return;
-      const tab = t.closest("#helpTabHowto, #helpTabGlossary");
+      const tab = t.closest("#helpTabHowto, #helpTabGlossary, #helpTabData");
       if (!tab) return;
       e.preventDefault();
       e.stopPropagation();
-      state.helpTab = tab.id === "helpTabGlossary" ? "glossary" : "howto";
+      state.helpTab = tab.id === "helpTabGlossary" ? "glossary" : (tab.id === "helpTabData" ? "data" : "howto");
       renderHelpTabContent();
     });
   }
@@ -6731,7 +6842,10 @@ async function init() {
 
   state.manifest = await fetchManifest();
   const datasets = state.manifest.datasets || [];
-  els.datasetSelect.innerHTML = datasets.map(d => `<option value="${d.url}">${d.label || d.url}</option>`).join("");
+  els.datasetSelect.innerHTML = datasets.map(d => {
+    const title = String(d.description || d.coverage || d.source_type || d.url || "");
+    return `<option value="${escapeHtml(d.url)}" title="${escapeHtml(title)}">${escapeHtml(d.label || d.url)}</option>`;
+  }).join("");
 
   const fromQuery = urlState.data;
   const fromStorage = localStorage.getItem(STORAGE_KEYS.lastDataset);

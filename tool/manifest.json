@@ -2,19 +2,39 @@
   "datasets": [
     {
       "label": "OSERA Demo Data (Example)",
-      "url": "../data/finos-sample-platform.json"
+      "url": "../data/finos-sample-platform.json",
+      "description": "Small curated walkthrough dataset shaped to exercise the main Risk Navigator workflows.",
+      "source_type": "synthetic-demo",
+      "coverage": "Synthetic project and dependency inventory with hand-shaped remediation scenarios.",
+      "limitations": "Demo data for UI walkthroughs; not derived from live FINOS repositories.",
+      "docs_url": "../docs/data-pipeline#osera-demo-data"
     },
     {
       "label": "FINOS SBOM Scan Demo",
-      "url": "../data/finos-sbom-demo.json"
+      "url": "../data/finos-sbom-demo.json",
+      "description": "Compact FINOS repository SBOM demo showing the CycloneDX import path.",
+      "source_type": "cyclonedx-sbom-demo",
+      "coverage": "Small selected FINOS repository names with committed CycloneDX dependency graphs aligned to the sample OSV seed.",
+      "limitations": "Compact demo inputs; full repo scans depend on scanner support, lockfiles, and available public repository metadata.",
+      "docs_url": "../docs/data-pipeline#finos-sbom-scan-demo"
     },
     {
       "label": "FINOS Deep SBOM Demo",
-      "url": "../data/finos-deep-sbom-demo.json"
+      "url": "../data/finos-deep-sbom-demo.json",
+      "description": "Curated multi-ecosystem FINOS demo with explicit direct/transitive SBOM graph relationships.",
+      "source_type": "curated-cyclonedx-sbom",
+      "coverage": "8 selected FINOS repositories; Maven, npm, PyPI, OCI base-image, and RPM child-package examples.",
+      "limitations": "Demo input, not an authoritative current SBOM for those repositories.",
+      "docs_url": "../docs/data-pipeline#finos-deep-sbom-demo"
     },
     {
       "label": "FINOS GitHub Org Snapshot",
-      "url": "../data/finos-github-org.json"
+      "url": "../data/finos-github-org.json",
+      "description": "Broad public FINOS GitHub organization snapshot built from public repository metadata and manifest extraction.",
+      "source_type": "public-github-org-manifest-snapshot",
+      "coverage": "132 active non-fork public FINOS repositories; 97 repositories with extracted dependency edges in the committed snapshot.",
+      "limitations": "Broad but often shallow: manifest extraction can be direct-only and does not fully resolve every build-system dependency graph.",
+      "docs_url": "../docs/data-pipeline#finos-github-org-snapshot"
     }
   ]
 }

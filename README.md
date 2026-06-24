@@ -431,6 +431,12 @@ sequenceDiagram
 | **LLM impact-analysis prompt** | Cart also generates a Claude/ChatGPT-ready prompt asking the model to identify deprecated APIs between FROM and TO versions and return a SECOND OpenRewrite recipe — using `FindDeprecatedUses`, `FindMethods`, `FindFields`, `FindTypes` — so you find consumers of the about-to-break APIs in your codebase before the upgrade lands. |
 | **Light / dark theme** | One token block in CSS. `prefers-color-scheme` on first load, `localStorage` after. |
 | **Multi-dataset** | `manifest.json` lists available scopes; the dropdown picker switches between them with an in-memory cache so back-and-forth is instant. |
+
+Manifest entries should include `label` and `url`, and can also include
+`description`, `source_type`, `coverage`, `limitations`, and `docs_url`. The
+viewer uses those fields, plus each dataset's `meta.dataset_methodology`, in
+the Help modal's **Data Sources** tab so users can distinguish broad snapshots
+from curated SBOM demos.
 | **Persistent cart** | Per-scope cart stored in `localStorage`. Survives refresh. |
 
 ---
