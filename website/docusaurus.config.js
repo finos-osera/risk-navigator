@@ -3,7 +3,7 @@ const darkCodeTheme = require("prism-react-renderer").themes.nightOwl;
 
 const isGitHubPages = process.env.GITHUB_PAGES === "true";
 const siteUrl = isGitHubPages
-  ? "https://finos-backpatch.github.io"
+  ? "https://finos-osera.github.io"
   : process.env.DEPLOY_PRIME_URL || process.env.URL || "https://risk-navigator.finos.org";
 const baseUrl = isGitHubPages ? "/risk-navigator/" : "/";
 const publicToolUrl = `${baseUrl}tools/risk-navigator.html`;
@@ -17,7 +17,7 @@ const config = {
   favicon: "img/favicon.ico",
   url: siteUrl,
   baseUrl,
-  organizationName: "finos-backpatch",
+  organizationName: "finos-osera",
   projectName: "risk-navigator",
   onBrokenLinks: "throw",
   markdown: {
@@ -36,7 +36,7 @@ const config = {
           path: "../docs",
           routeBasePath: "docs",
           sidebarPath: require.resolve("./sidebars.js"),
-          editUrl: ({ docPath }) => `https://github.com/finos-backpatch/risk-navigator/edit/main/docs/${docPath}`,
+          editUrl: ({ docPath }) => `https://github.com/finos-osera/risk-navigator/edit/main/docs/${docPath}`,
         },
         blog: false,
         theme: {
@@ -63,7 +63,7 @@ const config = {
         { href: "https://osera.finos.org", label: "OSERA", position: "right" },
         { type: "html", value: launchToolHtml, position: "right" },
         {
-          href: "https://github.com/finos-backpatch/risk-navigator",
+          href: "https://github.com/finos-osera/risk-navigator",
           label: "GitHub",
           position: "right",
         },
@@ -83,7 +83,7 @@ const config = {
             { label: "Overview", to: "/" },
             { label: "Docs", to: "/docs/home" },
             { html: launchToolFooterHtml },
-            { label: "GitHub", href: "https://github.com/finos-backpatch/risk-navigator" },
+            { label: "GitHub", href: "https://github.com/finos-osera/risk-navigator" },
           ],
         },
         {

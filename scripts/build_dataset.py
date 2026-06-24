@@ -1111,7 +1111,7 @@ def build_dataset(
                 },
                 "attribution": {
                     "text": "A FINOS community project.",
-                    "url": "https://github.com/finos-backpatch/community",
+                    "url": "https://github.com/finos-osera/community",
                 },
             },
             "extracted_at": now_iso(),

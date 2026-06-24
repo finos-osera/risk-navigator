@@ -115,13 +115,13 @@ The Docusaurus site is published by the GitHub Actions workflow in `.github/work
 On pushes to `main`, the workflow builds `website/` with the GitHub Pages base path, copies the viewer/sample dataset into the static site, and deploys to:
 
 ```text
-https://finos-backpatch.github.io/risk-navigator/
+https://finos-osera.github.io/risk-navigator/
 ```
 
 The playable tool is published at:
 
 ```text
-https://finos-backpatch.github.io/risk-navigator/tool/risk-navigator.html
+https://finos-osera.github.io/risk-navigator/tools/risk-navigator.html
 ```
 
 ### Overlay metadata hooks
