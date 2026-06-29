@@ -112,16 +112,16 @@ python3 scripts/build_dataset.py --scope finos-github-org \
 ## GitHub Pages
 
 The Docusaurus site is published by the GitHub Actions workflow in `.github/workflows/pages.yml`.
-On pushes to `main`, the workflow builds `website/` with the GitHub Pages base path, copies the viewer/sample dataset into the static site, and deploys to:
+On pushes to `main`, the workflow builds `website/`, copies the viewer/sample dataset into the static site, and deploys to the custom domain:
 
 ```text
-https://finos-osera.github.io/risk-navigator/
+https://risknav.osera.finos.org/
 ```
 
 The playable tool is published at:
 
 ```text
-https://finos-osera.github.io/risk-navigator/tools/risk-navigator.html
+https://risknav.osera.finos.org/tools/risk-navigator.html
 ```
 
 ### Overlay metadata hooks

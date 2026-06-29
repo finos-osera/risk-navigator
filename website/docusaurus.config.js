@@ -1,11 +1,12 @@
 const lightCodeTheme = require("prism-react-renderer").themes.github;
 const darkCodeTheme = require("prism-react-renderer").themes.nightOwl;
 
+const customDomain = "https://risknav.osera.finos.org";
 const isGitHubPages = process.env.GITHUB_PAGES === "true";
 const siteUrl = isGitHubPages
-  ? "https://finos-osera.github.io"
-  : process.env.DEPLOY_PRIME_URL || process.env.URL || "https://risk-navigator.finos.org";
-const baseUrl = isGitHubPages ? "/risk-navigator/" : "/";
+  ? customDomain
+  : process.env.DEPLOY_PRIME_URL || process.env.URL || customDomain;
+const baseUrl = "/";
 const publicToolUrl = `${baseUrl}tools/risk-navigator.html`;
 const launchToolHtml = `<a class="navbar__item navbar__link" href="${publicToolUrl}">Launch Tool</a>`;
 const launchToolFooterHtml = `<a class="footer__link-item" href="${publicToolUrl}">Launch Tool</a>`;
