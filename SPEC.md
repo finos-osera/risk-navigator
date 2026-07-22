@@ -662,6 +662,89 @@ Implemented extension: for libraries whose upgrade class is `MINOR` or
 `MAJOR`, an additional backpatch candidate row is emitted and qualified as
 `BACKPATCH_LIKELY` or `BACKPATCH_PROBABLE` using snapshot safe-path visibility.
 
+### 6.3.1 Codegenome-backed version diff
+
+The safe-version walker answers "which release is the nearest below-threshold
+candidate?" It does not prove that consumers can adopt that release. For CVE
+remediation planning, augment `distance_to_safe` with a structural diff between
+the vulnerable source tree and candidate safe source tree:
+
+1. Materialize the vulnerable release and candidate safe release into separate
+   workspaces.
+2. Run `codegenome analyze .` in each workspace.
+3. Export each graph as JSON.
+4. Run `scripts/codegenome_version_diff.py` with the two graph exports, the
+   `distance_to_safe` value from `find_nearest_safe`, and optional consumer
+   usage symbols.
+5. Attach the resulting CVE patch description to the library detail or
+   remediation ticket.
+
+The diff records public symbol removals, public symbol moves, changed public
+symbols, import changes, new circular dependencies, high-complexity changed
+areas, and any intersection with supplied consumer usage. Its primary
+classification is one of:
+
+- `PATCH_SAFE`
+- `MINOR_REQUIRES_REVIEW`
+- `LIKELY_BREAKING`
+- `BACKPATCH_LIKELY`
+- `BACKPATCH_PROBABLE`
+- `DEAD_END`
+
+Recommended command shape:
+
+```bash
+python scripts/codegenome_version_diff.py \
+  --vulnerable-graph /tmp/pkg-1.2.3/.genome/graph.json \
+  --candidate-graph /tmp/pkg-1.2.4/.genome/graph.json \
+  --consumer-usage /tmp/pkg-consumer-symbols.txt \
+  --distance PATCH \
+  --package maven/org.example/example-lib \
+  --current-release 1.2.3 \
+  --candidate-release 1.2.4 \
+  --cve CVE-2026-0001 \
+  --format markdown
+```
+
+This is a compatibility screen, not a replacement for tests. `PATCH_SAFE` means
+Codegenome found no structural breaking indicators in the exported graph; it
+still requires dependency-specific validation before rollout.
+
+Persisted analysis records live in optional sidecar files:
+
+```text
+data/codegenome/<scope>.json
+```
+
+Each sidecar contains an `analyses[]` array. Rows may identify the library by
+`library_id` (`namespace|meta|proj|release`) or by separate `namespace`,
+`meta`, `proj`, and `current_release` fields. A row should include:
+
+- `analysis_id`
+- `library_id`
+- `current_release`
+- `candidate_release`
+- `distance_to_safe`
+- `classification`
+- `classification_reasons[]`
+- `summary`
+- optional detail arrays such as `removed_public_symbols`,
+  `changed_public_symbols`, and `consumer_usage_impacts`
+
+After `scripts/build_dataset.py` emits `data/<scope>.json`, run:
+
+```bash
+python scripts/attach_codegenome_analysis.py data/<scope>.json \
+  --analysis data/codegenome/<scope>.json \
+  --in-place \
+  --allow-missing
+```
+
+The postprocessor attaches matching records as `library.codegenome_analyses[]`
+and records aggregate availability in
+`meta.external_signals.codegenome_analysis`. The UI renders this optional block
+in library details, full library details, and top-fix rationale panels.
+
 ### 6.3 Backpatch Priority Calculator
 
 Action-oriented ranking for OSERA patch investment decisions.

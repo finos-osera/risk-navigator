@@ -186,6 +186,29 @@ contract is the repository `SPEC.md`; the executable guardrail is:
 python3 scripts/validate_dataset.py data/<scope>.json
 ```
 
+## Optional Codegenome Postprocess
+
+Risk Navigator can preserve source-graph compatibility analysis as a sidecar
+dataset and attach it after the normal CVE dataset build.
+
+1. Materialize the vulnerable and candidate safe source trees.
+2. Run `codegenome analyze .` in each tree and export JSON graphs.
+3. Generate one or more rows with `scripts/codegenome_version_diff.py`.
+4. Store those rows in `data/codegenome/<scope>.json` under `analyses[]`.
+5. Attach them to the built scope dataset:
+
+```bash
+python3 scripts/attach_codegenome_analysis.py data/<scope>.json \
+  --analysis data/codegenome/<scope>.json \
+  --in-place \
+  --allow-missing
+```
+
+Attached records are stored on each matching library as
+`codegenome_analyses[]`. The static UI shows the classification, diff counts,
+consumer-usage intersections, and high-signal changed symbols in upgrade and
+backpatch decision views.
+
 ## Raw scope input
 
 `scripts/build_dataset.py` reads normalized raw CSV files from:

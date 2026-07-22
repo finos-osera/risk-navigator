@@ -1,0 +1,75 @@
+{
+  "analyses": [
+    {
+      "analysis_id": "sample-log4j-core-2.14.1-to-2.17.1",
+      "library_id": "maven|org.apache.logging.log4j|log4j-core|2.14.1",
+      "package": "maven/org.apache.logging.log4j/log4j-core",
+      "current_release": "2.14.1",
+      "candidate_release": "2.17.1",
+      "distance_to_safe": "MINOR",
+      "classification": "BACKPATCH_LIKELY",
+      "classification_reasons": [
+        "nearest safe version requires a minor upgrade",
+        "public plugin initialization symbols changed across the candidate line",
+        "consumer usage should be checked for custom appenders, lookups, and configuration plugins"
+      ],
+      "cves": ["CVE-2021-44228"],
+      "summary": {
+        "removed_public_symbols": 0,
+        "added_public_symbols": 8,
+        "moved_public_symbols": 1,
+        "changed_public_symbols": 6,
+        "consumer_usage_impacts": 2,
+        "high_complexity_changed_symbols": 3,
+        "new_circular_dependency_count": 0,
+        "removed_imports": 1,
+        "added_imports": 5
+      },
+      "changed_public_symbols": [
+        { "symbol": "org.apache.logging.log4j.core.lookup.JndiLookup", "file_path": "src/main/java/org/apache/logging/log4j/core/lookup/JndiLookup.java", "old_complexity": 11, "new_complexity": 3 },
+        { "symbol": "org.apache.logging.log4j.core.config.ConfigurationFactory", "file_path": "src/main/java/org/apache/logging/log4j/core/config/ConfigurationFactory.java", "old_complexity": 18, "new_complexity": 19 }
+      ],
+      "consumer_usage_impacts": [
+        { "symbol": "org.apache.logging.log4j.core.lookup.JndiLookup", "name": "JndiLookup", "kind": "class", "file_path": "src/main/java/org/apache/logging/log4j/core/lookup/JndiLookup.java", "complexity": 3 },
+        { "symbol": "org.apache.logging.log4j.core.config.ConfigurationFactory", "name": "ConfigurationFactory", "kind": "class", "file_path": "src/main/java/org/apache/logging/log4j/core/config/ConfigurationFactory.java", "complexity": 19 }
+      ],
+      "generated_at": "2026-07-22T00:00:00Z",
+      "source": "sample-codegenome-fixture"
+    },
+    {
+      "analysis_id": "sample-snakeyaml-1.33-to-2.0",
+      "library_id": "maven|org.yaml|snakeyaml|1.33",
+      "package": "maven/org.yaml/snakeyaml",
+      "current_release": "1.33",
+      "candidate_release": "2.0",
+      "distance_to_safe": "MAJOR",
+      "classification": "BACKPATCH_PROBABLE",
+      "classification_reasons": [
+        "nearest safe version is major-only",
+        "constructor and representer APIs changed in public surface",
+        "major-only path makes backpatch or constrained parser rollout a primary remediation option"
+      ],
+      "cves": ["CVE-2022-1471"],
+      "summary": {
+        "removed_public_symbols": 4,
+        "added_public_symbols": 11,
+        "moved_public_symbols": 2,
+        "changed_public_symbols": 9,
+        "consumer_usage_impacts": 3,
+        "high_complexity_changed_symbols": 4,
+        "new_circular_dependency_count": 0,
+        "removed_imports": 2,
+        "added_imports": 6
+      },
+      "removed_public_symbols": [
+        { "symbol": "org.yaml.snakeyaml.constructor.SafeConstructor", "name": "SafeConstructor", "kind": "class", "file_path": "src/main/java/org/yaml/snakeyaml/constructor/SafeConstructor.java", "complexity": 24 }
+      ],
+      "consumer_usage_impacts": [
+        { "symbol": "org.yaml.snakeyaml.constructor.SafeConstructor", "name": "SafeConstructor", "kind": "class", "file_path": "src/main/java/org/yaml/snakeyaml/constructor/SafeConstructor.java", "complexity": 24 },
+        { "symbol": "org.yaml.snakeyaml.LoaderOptions", "name": "LoaderOptions", "kind": "class", "file_path": "src/main/java/org/yaml/snakeyaml/LoaderOptions.java", "complexity": 12 }
+      ],
+      "generated_at": "2026-07-22T00:00:00Z",
+      "source": "sample-codegenome-fixture"
+    }
+  ]
+}
