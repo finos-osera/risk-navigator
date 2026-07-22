@@ -563,6 +563,26 @@ main.dashboard-layout #detail > h3 {
   padding: 0;
   font-size: 11px;
 }
+.codegenome-summary {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 6px;
+  margin: 8px 0;
+}
+.codegenome-summary div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px;
+  background: color-mix(in srgb, var(--panel) 80%, var(--chip) 20%);
+  min-width: 0;
+}
+.codegenome-summary strong {
+  display: block;
+  font-size: 14px;
+}
+@media (max-width: 768px) {
+  .codegenome-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
 textarea { width: 100%; min-height: 180px; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: var(--panel); color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; }
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; z-index: 50; }
 .modal.open { display: grid; place-items: center; }
@@ -2674,6 +2694,76 @@ function escapeHtml(text) {
     .replace(/'/g, "&#39;");
 }
 
+function codegenomeAnalyses(lib) {
+  return Array.isArray(lib && lib.codegenome_analyses) ? lib.codegenome_analyses.filter(a => a && typeof a === "object") : [];
+}
+
+function primaryCodegenomeAnalysis(lib) {
+  const analyses = codegenomeAnalyses(lib);
+  if (!analyses.length) return null;
+  const target = String(findPolicyThresholdTarget(lib).nearest || lib.nearest_safe_version || "").trim();
+  return analyses.find(a => String(a.candidate_release || "").trim() === target) || analyses[0];
+}
+
+function codegenomeClassificationBadge(classification) {
+  const cls = String(classification || "UNKNOWN").toUpperCase();
+  if (cls === "PATCH_SAFE") return `<span class="badge prio-green">PATCH_SAFE</span>`;
+  if (cls === "MINOR_REQUIRES_REVIEW") return `<span class="badge prio-yellow">MINOR_REQUIRES_REVIEW</span>`;
+  if (cls === "LIKELY_BREAKING") return `<span class="badge prio-orange">LIKELY_BREAKING</span>`;
+  if (cls === "BACKPATCH_LIKELY") return `<span class="badge kev">BACKPATCH_LIKELY</span>`;
+  if (cls === "BACKPATCH_PROBABLE") return `<span class="badge prio-red">BACKPATCH_PROBABLE</span>`;
+  if (cls === "DEAD_END") return `<span class="chip effort-DEAD_END">DEAD_END</span>`;
+  return `<span class="badge prio-gray">${escapeHtml(cls || "UNKNOWN")}</span>`;
+}
+
+function codegenomeRows(items, limit = 5) {
+  const rows = Array.isArray(items) ? items.slice(0, limit) : [];
+  if (!rows.length) return "";
+  return `
+    <table class="mini-table">
+      <thead><tr><th>Symbol</th><th>Kind</th><th>File</th><th>Complexity</th></tr></thead>
+      <tbody>
+        ${rows.map(item => `
+          <tr>
+            <td>${escapeHtml(item.symbol || item.name || "-")}</td>
+            <td>${escapeHtml(item.kind || "-")}</td>
+            <td>${escapeHtml(item.file_path || item.from_file_path || item.to_file_path || "-")}</td>
+            <td>${item.complexity ?? item.new_complexity ?? "-"}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderCodegenomeAnalysis(lib, title = "Codegenome upgrade analysis") {
+  const analysis = primaryCodegenomeAnalysis(lib);
+  if (!analysis) return "";
+  const summary = analysis.summary && typeof analysis.summary === "object" ? analysis.summary : {};
+  const details = analysis.details && typeof analysis.details === "object" ? analysis.details : {};
+  const reasons = Array.isArray(analysis.classification_reasons) ? analysis.classification_reasons : [];
+  const impacted = details.consumer_usage_impacts || analysis.consumer_usage_impacts || [];
+  const changed = details.changed_public_symbols || analysis.changed_public_symbols || [];
+  const removed = details.removed_public_symbols || analysis.removed_public_symbols || [];
+  return `
+    <div class="notice">
+      <h4>${escapeHtml(title)} ${codegenomeClassificationBadge(analysis.classification)}</h4>
+      <p>Structural diff from <code>${escapeHtml(analysis.current_release || lib.release || "-")}</code> to <code>${escapeHtml(analysis.candidate_release || lib.nearest_safe_version || "-")}</code>. Distance: <strong>${escapeHtml(analysis.distance_to_safe || lib.distance_to_safe || "UNKNOWN")}</strong>.</p>
+      <div class="codegenome-summary">
+        <div><strong>${Number(summary.removed_public_symbols || 0)}</strong><span class="small">removed public symbols</span></div>
+        <div><strong>${Number(summary.changed_public_symbols || 0)}</strong><span class="small">changed public symbols</span></div>
+        <div><strong>${Number(summary.consumer_usage_impacts || 0)}</strong><span class="small">consumer usage impacts</span></div>
+        <div><strong>${Number(summary.high_complexity_changed_symbols || 0)}</strong><span class="small">high-complexity changes</span></div>
+      </div>
+      ${reasons.length ? `<ul>${reasons.slice(0, 4).map(r => `<li>${escapeHtml(r)}</li>`).join("")}</ul>` : ""}
+      ${impacted.length ? `<details class="vc-block" open><summary>Consumer-usage intersections (${impacted.length})</summary>${codegenomeRows(impacted)}</details>` : ""}
+      ${removed.length ? `<details class="vc-block"><summary>Removed public symbols (${removed.length})</summary>${codegenomeRows(removed)}</details>` : ""}
+      ${changed.length ? `<details class="vc-block"><summary>Changed public symbols (${changed.length})</summary>${codegenomeRows(changed)}</details>` : ""}
+      <p class="small">Use this as an upgrade-planning signal; it does not replace consumer tests.</p>
+    </div>
+  `;
+}
+
 function findCveRow(cveId) {
   const id = String(cveId || "").trim();
   if (!id) return null;
@@ -3204,6 +3294,7 @@ function openLibraryDetailsModal(lib) {
     <div class="h-row" style="margin:8px 0;">
       <button data-open-version="${lib.id}" class="ghost">Open full version explorer</button>
     </div>
+    ${renderCodegenomeAnalysis(lib)}
     <details class="vc-block" open>
       <summary>Consumed/current versions (${consumedRows.length})</summary>
       ${renderVersionRowsTable(consumedRows)}
@@ -5306,6 +5397,7 @@ function renderDetail(item) {
         <button id="simLib">Simulate backport patch</button>
       </div>
       <div id="simOut"></div>
+      ${renderCodegenomeAnalysis(lib)}
       ${renderInlineVersionChain(lib, "Version chain")}
       <h4>CVEs (top 50)</h4>
       <ul class="list">${(lib.cves || []).map(c => `<li>${renderCveButton(c.cve_id)} <span class="chip">CVSS ${fmt(c.cvss,1)}</span> <span class="chip">EPSS ${fmt(c.epss,3)}</span> ${c.kev ? `<span class='badge kev-fire'>🔥 KEV</span> <a href="${kevSearchUrl(c.cve_id)}" target="_blank" rel="noreferrer">CISA KEV</a>` : ""}</li>`).join("")}</ul>
@@ -5382,6 +5474,7 @@ function renderDetail(item) {
           <div class="k">Transitive impact</div><div>${lib.transitive_consumer_count} projects</div>
           <div class="k">Uplift opportunity</div><div>Potentially clear ${lib.cve_count} CVEs across ${lib.total_consumer_count} projects.</div>
         </div>
+        ${renderCodegenomeAnalysis(lib)}
         ${renderInlineVersionChain(lib, "Version chain context")}
         <h4>CVEs addressed by this action</h4>
         <ul class="list">
@@ -5429,6 +5522,7 @@ function renderDetail(item) {
           <div class="k">Transitive impact</div><div>${lib.transitive_consumer_count} projects</div>
           <div class="k">Edge vulnerabilities</div><div>${assessment.edge_vulns_total} (DIR ${assessment.edge_vulns_direct} / TRA ${assessment.edge_vulns_transitive})</div>
         </div>
+        ${renderCodegenomeAnalysis(lib)}
         <h4>Decision considerations</h4>
         <ul class="list">${considerations.map(c => `<li>${c}</li>`).join("")}</ul>
         ${renderInlineVersionChain(lib, "Version chain context")}

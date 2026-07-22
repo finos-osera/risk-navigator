@@ -9,6 +9,7 @@ website/static/data/
 .pytest_cache/
 __pycache__/
 *.pyc
+.genome/
 .DS_Store
 .env.local
 .env.development.local
