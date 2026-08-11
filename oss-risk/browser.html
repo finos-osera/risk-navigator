@@ -1,0 +1,3447 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OSS Project Risk</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #00253f;
+  --cyan: #00b5e2;
+  --blue: #0086bf;
+  --green: #1f8b4c;
+  --amber: #b96a00;
+  --red: #b42318;
+  --bg: #f5f7fb;
+  --panel: #ffffff;
+  --ink: #16222e;
+  --muted: #5b6770;
+  --line: #e1e8ef;
+  --chip: #edf3f8;
+  --soft: #eef7fb;
+  --shadow: 0 16px 38px rgba(16, 33, 54, .10);
+  --project-top-height: 440px;
+  --project-headline-height: 238px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+header {
+  background: var(--navy);
+  color: #fff;
+  padding: 14px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .16);
+  flex: 0 0 auto;
+}
+.header-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand img {
+  height: 30px;
+  width: auto;
+  display: block;
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+.title {
+  font-family: "Montserrat", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.project-header-summary {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1 1 420px;
+  padding-left: 6px;
+}
+body.project-view .project-header-summary {
+  display: flex;
+}
+.project-header-copy {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+.project-header-title {
+  font-size: 17px;
+  font-weight: 850;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.project-header-pill {
+  display: inline-flex;
+  align-items: center;
+  max-width: 460px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  color: rgba(255, 255, 255, .78);
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.project-header-pill span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+.header-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  background: rgba(255, 255, 255, .08);
+}
+.header-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, .14);
+  text-decoration: none;
+}
+button.header-link {
+  font-family: inherit;
+  cursor: pointer;
+}
+.header-emoji {
+  display: inline-flex;
+  line-height: 1;
+}
+.action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  font-size: 14px;
+  line-height: 1;
+}
+.action-icon-img {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  display: block;
+}
+.header-link .action-icon-img {
+  background: rgba(255, 255, 255, .92);
+  border-radius: 999px;
+  padding: 1px;
+}
+.spacer { flex: 1; }
+.meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pill {
+  border: 1px solid rgba(255, 255, 255, .18);
+  background: rgba(255, 255, 255, .08);
+  color: rgba(255, 255, 255, .88);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+main {
+  padding: 12px;
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) minmax(300px, 520px);
+  gap: 12px;
+  align-items: stretch;
+  overflow: hidden;
+}
+body.project-view {
+  height: auto;
+  min-height: 100vh;
+  overflow: auto;
+  display: block;
+}
+body.project-view main {
+  grid-template-columns: minmax(0, 1120px);
+  justify-content: center;
+  align-items: start;
+  overflow: visible;
+}
+body.project-view .library-panel {
+  display: none;
+}
+body.project-view .meta-pills {
+  display: none;
+}
+body.project-view .spacer {
+  display: none;
+}
+body.project-view .detail {
+  width: 100%;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+body.project-view .detail-header {
+  display: none;
+}
+body.project-view .detail-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows:
+    var(--project-headline-height)
+    calc(var(--project-top-height) - var(--project-headline-height) - 16px)
+    auto
+    auto;
+  gap: 16px;
+  overflow: visible;
+}
+body.project-view .section {
+  display: block;
+  min-width: 0;
+}
+body.project-view .detail-body .section:first-child {
+  grid-column: 1;
+  grid-row: 1;
+}
+body.project-view .detail-body .section:nth-child(2) {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  height: var(--project-top-height);
+}
+body.project-view .detail-body .section:nth-child(3) {
+  grid-column: 1;
+  grid-row: 2;
+}
+body.project-view .detail-body .section:nth-child(4),
+body.project-view .detail-body .section:nth-child(5) {
+  grid-column: 1 / -1;
+}
+body.project-view .detail-body .section:nth-child(1),
+body.project-view .detail-body .section:nth-child(2),
+body.project-view .detail-body .section:nth-child(3) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+body.project-view .detail-body .section:nth-child(1) {
+  height: var(--project-headline-height);
+}
+body.project-view .detail-body .section:nth-child(3) {
+  height: calc(var(--project-top-height) - var(--project-headline-height) - 16px);
+}
+body.project-view .detail-body .section:nth-child(1) .section-content,
+body.project-view .detail-body .section:nth-child(2) .section-content,
+body.project-view .detail-body .section:nth-child(3) .section-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+body.project-view .section-content {
+  overflow: visible;
+}
+body.project-view .score-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+body.project-view .source-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+.library-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  flex-wrap: wrap;
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+  flex: 0 0 auto;
+  background: var(--panel);
+  z-index: 3;
+}
+label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+input, select, button {
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 8px 10px;
+}
+input[type="search"] {
+  min-width: 220px;
+}
+button {
+  cursor: pointer;
+  font-weight: 700;
+}
+button.primary {
+  background: var(--blue);
+  color: #fff;
+  border-color: var(--blue);
+}
+.table-wrap {
+  overflow: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th, td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+  font-size: 13px;
+}
+th {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  background: #f9fbfd;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: 0 1px 0 var(--line);
+}
+.sort-button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  text-align: left;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  font: inherit;
+}
+.sort-button:hover {
+  color: var(--ink);
+}
+.sort-indicator {
+  display: inline-flex;
+  width: 18px;
+  min-width: 18px;
+  flex: 0 0 18px;
+  justify-content: center;
+  color: var(--blue);
+  font-size: 12px;
+  line-height: 1;
+}
+tr[data-selected="true"] {
+  background: var(--soft);
+}
+tbody tr {
+  cursor: pointer;
+}
+tbody tr:hover {
+  background: #f7fbfd;
+}
+.project-name {
+  font-weight: 800;
+  margin-bottom: 3px;
+}
+.library-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+.library-text {
+  min-width: 0;
+}
+.pkg-icon-badge {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+.pkg-icon-badge.with-label {
+  width: auto;
+  height: 28px;
+  gap: 6px;
+  padding: 4px 8px;
+}
+.pkg-icon {
+  width: 19px;
+  height: 19px;
+  object-fit: contain;
+  display: block;
+}
+.pkg-icon-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+.pkg-icon-missing::after {
+  content: attr(data-fallback);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sub {
+  color: var(--muted);
+  font-size: 12px;
+}
+.exposure-breakdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.exposure-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.exposure-item.has-exposure {
+  color: var(--ink);
+  font-weight: 800;
+}
+.exposure-icon {
+  filter: grayscale(1);
+  opacity: .72;
+  font-size: 12px;
+  line-height: 1;
+}
+.exposure-item.has-exposure .exposure-icon {
+  filter: none;
+  opacity: 1;
+  font-size: 14px;
+}
+.exposure-item.direct.has-exposure .exposure-icon {
+  color: var(--blue);
+}
+.exposure-item.transitive.has-exposure .exposure-icon {
+  color: var(--teal-dark);
+}
+.exposure-count {
+  font-variant-numeric: tabular-nums;
+}
+.exposure-item.has-exposure .exposure-count {
+  color: var(--ink);
+}
+.score {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.bar {
+  display: grid;
+  gap: 4px;
+  min-width: 86px;
+}
+.bar-track {
+  height: 7px;
+  background: #e8eef4;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  background: var(--blue);
+  border-radius: 999px;
+}
+.bar-fill.risk {
+  background: var(--red);
+}
+.bar-fill.warn {
+  background: var(--amber);
+}
+.detail {
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.detail-header {
+  padding: 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  flex: 0 0 auto;
+  z-index: 2;
+}
+.detail-title {
+  margin: 0;
+  font-family: "Montserrat", system-ui, sans-serif;
+  font-size: 22px;
+  line-height: 1.15;
+}
+.links {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.detail-primary-link {
+  margin-left: auto;
+  border: 1px solid color-mix(in srgb, var(--blue) 45%, var(--line) 55%);
+  border-radius: 7px;
+  background: #eef8fc;
+  color: var(--navy);
+  font-weight: 850;
+  padding: 7px 10px;
+}
+.detail-primary-link:hover {
+  background: #e2f3fa;
+  text-decoration: none;
+}
+.icon-only-link {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #f8fafc;
+}
+.icon-only-link:hover {
+  border-color: color-mix(in srgb, var(--blue) 42%, var(--line) 58%);
+  background: #eef8fc;
+  text-decoration: none;
+}
+.header-link.icon-only-link {
+  min-height: 34px;
+  width: 34px;
+  padding: 0;
+  border-color: rgba(255, 255, 255, .2);
+  background: rgba(255, 255, 255, .08);
+}
+.header-link.icon-only-link:hover {
+  background: rgba(255, 255, 255, .14);
+}
+a {
+  color: #0b5fff;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+.detail-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.section h2 {
+  margin: 0;
+  padding: 11px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--line);
+  background: #f9fbfd;
+}
+.section-content {
+  padding: 12px;
+}
+.score-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 10px;
+}
+.metric {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  min-width: 0;
+  background: #fbfdff;
+}
+.metric-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.metric-value {
+  font-size: 24px;
+  font-weight: 800;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.metric-caption {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 6px;
+}
+.score-gauge {
+  display: grid;
+  grid-template-rows: 50px 10px 14px minmax(42px, auto);
+  gap: 7px;
+  min-width: 0;
+}
+.score-gauge-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 16px 28px;
+  gap: 5px;
+  align-items: center;
+  min-width: 0;
+  height: 50px;
+}
+.score-gauge .metric-label {
+  font-size: 10px;
+  justify-self: stretch;
+  letter-spacing: 0;
+  line-height: 1.15;
+  min-height: 16px;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+.score-gauge .metric-value {
+  margin-top: 0;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+.score-gauge-track {
+  width: 100%;
+  min-width: 0;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--line) 70%, #fff 30%);
+  background: linear-gradient(90deg, #f8d7d4, #fff3c6 48%, #d9f0e2);
+}
+.score-gauge-track.risk {
+  background: linear-gradient(90deg, #d9f0e2, #fff3c6 48%, #f8d7d4);
+}
+.score-gauge-fill {
+  display: block;
+  height: 100%;
+  width: var(--value, 0%);
+  max-width: 100%;
+  min-width: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--blue) 70%, #fff 30%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .34);
+}
+.score-gauge-fill.good {
+  background: color-mix(in srgb, var(--green) 68%, #fff 32%);
+}
+.score-gauge-fill.warn {
+  background: color-mix(in srgb, var(--amber) 66%, #fff 34%);
+}
+.score-gauge-fill.risk {
+  background: color-mix(in srgb, var(--red) 66%, #fff 34%);
+}
+.score-gauge-scale {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.1;
+  min-width: 0;
+}
+.score-gauge-scale span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+.score-gauge-scale span:last-child {
+  text-align: right;
+}
+.dimension {
+  display: grid;
+  grid-template-columns: 150px 1fr 42px;
+  gap: 10px;
+  align-items: center;
+  margin: 9px 0;
+}
+.formula {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--muted);
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  overflow-x: auto;
+}
+.score-note-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.score-note {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfdff;
+}
+.score-note strong {
+  display: block;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.score-note span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+.source-list {
+  display: grid;
+  gap: 8px;
+  align-items: start;
+}
+.source {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+  align-self: start;
+}
+.source.muted {
+  background: #f8fafc;
+}
+.source.alert {
+  border-color: color-mix(in srgb, var(--red) 30%, var(--line) 70%);
+}
+.source-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: start;
+}
+.source-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.source-icon-link {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+  text-decoration: none;
+}
+.source-icon-link:hover {
+  border-color: color-mix(in srgb, var(--blue) 45%, var(--line) 55%);
+  text-decoration: none;
+}
+.source-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+.source-icon-fallback {
+  color: var(--navy);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1;
+}
+.source-name {
+  font-weight: 800;
+}
+.source-kind {
+  color: var(--muted);
+  font-size: 12px;
+}
+.source-links {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.check-list {
+  display: grid;
+  gap: 7px;
+}
+.check-row {
+  display: grid;
+  grid-template-columns: minmax(58px, 112px) 1fr;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 7px;
+}
+.check-score {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.check-name {
+  font-weight: 800;
+}
+.check-reason {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.source-callout {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: #f8fafc;
+  color: var(--muted);
+  font-size: 12px;
+}
+.source-callout.alert {
+  background: #fff7f7;
+  border-color: color-mix(in srgb, var(--red) 28%, var(--line) 72%);
+  color: var(--ink);
+}
+.vulnerability-scroll {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+}
+.vulnerability-scroll .check-list {
+  gap: 0;
+}
+.vulnerability-scroll .check-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 7px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.status-pill.muted {
+  color: var(--muted);
+  background: #f8fafc;
+}
+.status-pill.warn {
+  color: var(--amber);
+}
+.status-pill.risk {
+  color: var(--red);
+}
+.confidence {
+  font-size: 12px;
+  font-weight: 800;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+.evidence-facts {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fact {
+  border-radius: 999px;
+  background: var(--chip);
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.source-summary {
+  display: grid;
+  gap: 9px;
+}
+.source-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 8px;
+}
+.source-metric {
+  min-width: 0;
+  border-left: 3px solid color-mix(in srgb, var(--blue) 46%, #fff 54%);
+  background: #f8fbfe;
+  border-radius: 6px;
+  padding: 7px 8px;
+}
+.source-metric.warn {
+  border-left-color: color-mix(in srgb, var(--amber) 64%, #fff 36%);
+}
+.source-metric.risk {
+  border-left-color: color-mix(in srgb, var(--red) 58%, #fff 42%);
+}
+.source-metric.good {
+  border-left-color: color-mix(in srgb, var(--green) 58%, #fff 42%);
+}
+.source-metric-label {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.source-metric-value {
+  font-size: 16px;
+  font-weight: 850;
+  line-height: 1.1;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.source-metric-note {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+.source-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+.source-panel {
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+.source-panel-title {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  line-height: 1.15;
+  margin-bottom: 7px;
+  text-transform: uppercase;
+}
+.source-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid #edf2f7;
+  padding: 6px 0;
+  font-size: 12px;
+}
+.source-row:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+.source-panel-title + .source-row {
+  border-top: 0;
+  padding-top: 0;
+}
+.source-row span:first-child {
+  color: var(--muted);
+}
+.source-row strong {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.source-stack {
+  height: 10px;
+  display: flex;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8eef4;
+}
+.source-stack-segment {
+  width: var(--value, 0%);
+  background: color-mix(in srgb, var(--blue) 66%, #fff 34%);
+}
+.source-stack-segment.indirect {
+  background: color-mix(in srgb, var(--green) 58%, #fff 42%);
+}
+.source-mini-bars {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  align-items: end;
+  height: 46px;
+}
+.source-mini-bar {
+  display: grid;
+  gap: 3px;
+  align-items: end;
+  min-width: 0;
+}
+.source-mini-track {
+  height: 30px;
+  display: flex;
+  align-items: end;
+  overflow: hidden;
+  border-radius: 5px;
+  background: #edf3f8;
+}
+.source-mini-fill {
+  width: 100%;
+  height: var(--value, 0%);
+  min-height: 2px;
+  border-radius: 5px 5px 0 0;
+  background: color-mix(in srgb, var(--blue) 68%, #fff 32%);
+}
+.source-mini-label {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.health-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfdff;
+  min-width: 0;
+}
+.health-card.wide {
+  grid-column: 1 / -1;
+}
+.health-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.health-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.health-value {
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.health-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  margin-top: 6px;
+}
+.health-bar {
+  height: 7px;
+  background: #e8eef4;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.health-fill {
+  height: 100%;
+  width: var(--value, 0%);
+  border-radius: 999px;
+  background: var(--blue);
+}
+.health-fill.good {
+  background: var(--green);
+}
+.health-fill.warn {
+  background: var(--amber);
+}
+.health-fill.risk {
+  background: var(--red);
+}
+.spark-bars {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  align-items: end;
+  height: 58px;
+  margin-top: 8px;
+}
+.spark-bar {
+  display: grid;
+  align-items: end;
+  gap: 4px;
+  min-width: 0;
+}
+.spark-track {
+  height: 44px;
+  display: flex;
+  align-items: end;
+  background: #edf3f8;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.spark-fill {
+  width: 100%;
+  height: var(--value, 0%);
+  min-height: 2px;
+  background: var(--blue);
+  border-radius: 6px 6px 0 0;
+}
+.spark-label {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+}
+.version-list {
+  display: grid;
+  gap: 8px;
+}
+.version {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+.version-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-weight: 800;
+}
+.risk-text { color: var(--red); }
+.warn-text { color: var(--amber); }
+.good-text { color: var(--green); }
+.empty {
+  padding: 18px;
+  color: var(--muted);
+}
+.method-dialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 48px));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0;
+  color: var(--ink);
+  box-shadow: 0 24px 80px rgba(0, 37, 63, .28);
+}
+.method-dialog::backdrop {
+  background: rgba(0, 37, 63, .48);
+}
+.method-dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+  background: #f9fbfd;
+}
+.method-dialog-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-family: "Montserrat", system-ui, sans-serif;
+  line-height: 1.2;
+}
+.method-close {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 8px;
+  font-size: 18px;
+  line-height: 1;
+}
+.method-dialog-body {
+  padding: 18px;
+  overflow: auto;
+  max-height: calc(min(760px, calc(100vh - 48px)) - 68px);
+}
+.method-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+.method-tab {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: #f8fafc;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+.method-tab[aria-selected="true"] {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+.method-tab-panel[hidden] {
+  display: none;
+}
+.method-dialog-body h3 {
+  margin: 18px 0 8px;
+  font-size: 14px;
+}
+.method-dialog-body h3:first-child {
+  margin-top: 0;
+}
+.method-dialog-body p,
+.method-dialog-body li {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.58;
+}
+.method-dialog-body ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+.weight-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+.weight-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfdff;
+}
+.weight-card strong {
+  display: block;
+  font-size: 17px;
+}
+.weight-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+.pipeline-flow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+.pipeline-node {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfdff;
+  position: relative;
+}
+.pipeline-node:not(:last-child)::after {
+  content: ">";
+  position: absolute;
+  right: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-weight: 800;
+}
+.pipeline-node strong {
+  display: block;
+  font-size: 12px;
+}
+.pipeline-node span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+.dimension-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.dimension-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfdff;
+}
+.dimension-card strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.dimension-card p {
+  margin: 0;
+}
+.source-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.source-card-link {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfdff;
+  color: var(--ink);
+  text-decoration: none;
+}
+.source-card-link:visited {
+  color: var(--ink);
+}
+.source-card-link:hover {
+  border-color: color-mix(in srgb, var(--blue) 38%, var(--line) 62%);
+  text-decoration: none;
+}
+.source-card-link .source-icon-link {
+  pointer-events: none;
+}
+.source-card-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+.source-card-meta {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+@media (max-width: 760px) {
+  body.project-view main {
+    grid-template-columns: 1fr;
+  }
+  body.project-view .detail-body {
+    columns: 1;
+  }
+  body.project-view .score-grid,
+  body.project-view .source-list {
+    grid-template-columns: 1fr;
+  }
+  .project-header-summary {
+    order: 4;
+    flex-basis: 100%;
+    padding-left: 0;
+  }
+  .project-header-actions {
+    margin-left: 0;
+  }
+  th:nth-child(4),
+  td:nth-child(4),
+  th:nth-child(5),
+  td:nth-child(5) {
+    display: none;
+  }
+  th, td {
+    padding: 9px 10px;
+  }
+  table {
+    table-layout: fixed;
+  }
+  th:first-child,
+  td:first-child {
+    width: 54%;
+  }
+  th:nth-child(2),
+  td:nth-child(2),
+  th:nth-child(3),
+  td:nth-child(3) {
+    width: 23%;
+  }
+  .sub {
+    overflow-wrap: anywhere;
+  }
+  .bar {
+    min-width: 58px;
+  }
+}
+@media (max-width: 620px) {
+  body {
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
+    display: block;
+  }
+  main {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+  .library-panel {
+    overflow: visible;
+  }
+  .table-wrap {
+    max-height: 62vh;
+  }
+  .detail {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+  .detail-body {
+    overflow: visible;
+  }
+  th {
+    top: 0;
+  }
+}
+@media (max-width: 620px) {
+  header {
+    padding: 12px;
+  }
+  main {
+    padding: 10px;
+  }
+  .title {
+    font-size: 17px;
+  }
+  input[type="search"] {
+    min-width: 100%;
+  }
+  .score-grid {
+    grid-template-columns: 1fr;
+  }
+  .source-metrics,
+  .source-split {
+    grid-template-columns: 1fr;
+  }
+  .health-grid {
+    grid-template-columns: 1fr;
+  }
+  .weight-grid {
+    grid-template-columns: 1fr;
+  }
+  .pipeline-flow {
+    grid-template-columns: 1fr;
+  }
+  .pipeline-node:not(:last-child)::after {
+    display: none;
+  }
+  .dimension {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  th:nth-child(4),
+  td:nth-child(4),
+  th:nth-child(5),
+  td:nth-child(5) {
+    display: none;
+  }
+  th, td {
+    padding: 9px 10px;
+  }
+  table {
+    table-layout: fixed;
+  }
+  th:first-child,
+  td:first-child {
+    width: 54%;
+  }
+  th:nth-child(2),
+  td:nth-child(2),
+  th:nth-child(3),
+  td:nth-child(3) {
+    width: 23%;
+  }
+  .sub {
+    overflow-wrap: anywhere;
+  }
+  .bar {
+    min-width: 58px;
+  }
+  .pkg-icon-badge {
+    width: 26px;
+    height: 26px;
+  }
+  .pkg-icon {
+    width: 17px;
+    height: 17px;
+  }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-row">
+    <div class="brand">
+      <img src="../tool/assets/osera-horizontal-color.svg" alt="OSERA">
+      <div class="title">OSS Project Risk</div>
+    </div>
+    <div class="project-header-summary" id="projectHeaderSummary" hidden></div>
+    <div class="spacer"></div>
+    <button class="header-link" id="methodButton" type="button"><span class="header-emoji" aria-hidden="true">📘</span><span>Methodology</span></button>
+    <a class="header-link" href="../tools/risk-navigator.html"><span class="header-emoji" aria-hidden="true">🧭</span><span>Risk Navigator</span></a>
+    <div class="meta-pills" id="summaryPills"></div>
+  </div>
+</header>
+<dialog class="method-dialog" id="methodDialog" aria-labelledby="methodDialogTitle">
+  <div class="method-dialog-header">
+    <h2 id="methodDialogTitle">How This Scorecard Is Built</h2>
+    <button class="method-close" id="methodCloseButton" type="button" aria-label="Close methodology dialog">&times;</button>
+  </div>
+  <div class="method-tabs" role="tablist" aria-label="Methodology sections">
+    <button class="method-tab" id="methodTabMethodology" type="button" role="tab" aria-selected="true" aria-controls="methodPanelMethodology">Methodology</button>
+    <button class="method-tab" id="methodTabSources" type="button" role="tab" aria-selected="false" aria-controls="methodPanelSources">Data Sources</button>
+  </div>
+  <div class="method-dialog-body">
+    <section class="method-tab-panel" id="methodPanelMethodology" role="tabpanel" aria-labelledby="methodTabMethodology">
+      <h3>Source Model</h3>
+      <p>
+        Each record combines upstream open source health signals, public security data, and an
+        enterprise exposure overlay. Source cards stay visible so every score can be traced back to
+        the collector or static input that produced it.
+      </p>
+      <div class="pipeline-flow" aria-label="OSS risk data flow">
+        <div class="pipeline-node"><strong>Library scope</strong><span>FINOS OSERA backpatch repos, package coordinates, upstream repositories.</span></div>
+        <div class="pipeline-node"><strong>Collectors</strong><span>GitHub API, OpenSSF Scorecard, deps.dev, npm, OSV, CISA KEV.</span></div>
+        <div class="pipeline-node"><strong>Score model</strong><span>Normalize evidence into vitality dimensions and source confidence.</span></div>
+        <div class="pipeline-node"><strong>Browser overlay</strong><span>Join Risk Navigator collections for internal exposure and prioritization.</span></div>
+      </div>
+      <ul>
+        <li>OpenSSF Scorecard supplies security posture checks and direct links to the Scorecard viewer.</li>
+        <li>GitHub API metadata supplies activity, releases, contributors, issue, and pull request signals.</li>
+        <li>deps.dev and npm downloads supply package registry health where the ecosystem supports it.</li>
+        <li>OSV supplies package vulnerability records; CISA KEV matches are derived from OSV CVE aliases.</li>
+        <li>FINOS OSERA backpatch metadata links each focused library to its OSERA fork and upstream repository.</li>
+        <li>Risk Navigator collections provide enterprise exposure by matching package coordinates from the selected dataset.</li>
+      </ul>
+
+      <h3>OSS Vitality Weights</h3>
+      <p>The browser computes OSS vitality as a weighted blend of five dimensions.</p>
+      <div class="weight-grid">
+        <div class="weight-card"><strong>25%</strong><span>Project vitality</span></div>
+        <div class="weight-card"><strong>25%</strong><span>Security health</span></div>
+        <div class="weight-card"><strong>20%</strong><span>Sustainability and governance</span></div>
+        <div class="weight-card"><strong>15%</strong><span>Dependency hygiene</span></div>
+        <div class="weight-card"><strong>15%</strong><span>Ecosystem resilience</span></div>
+      </div>
+      <p>
+        Enterprise priority then starts from the health gap, amplifies it by ecosystem criticality,
+        internal application exposure, deployed-version risk, and source confidence.
+      </p>
+
+      <h3>What The Vitality Terms Mean</h3>
+      <div class="dimension-list">
+        <div class="dimension-card">
+          <strong>Project vitality</strong>
+          <p>
+            Looks for recent project motion: commits, releases or tags, recent pushes, issue activity,
+            and contributor activity. These metrics come primarily from the GitHub API and indicate
+            whether the upstream is still moving.
+          </p>
+        </div>
+        <div class="dimension-card">
+          <strong>Security health</strong>
+          <p>
+            Looks for security process and vulnerability posture: OpenSSF Scorecard checks such as
+            maintained status, branch protection, code review, dependency update tooling, pinned
+            dependencies, SAST, security policy, signed releases, and vulnerability checks, plus OSV
+            package vulnerability records and CISA KEV matches.
+          </p>
+        </div>
+        <div class="dimension-card">
+          <strong>Sustainability and governance</strong>
+          <p>
+            Looks for maintainership and governance signals: contributor depth, review flow, licensing,
+            security policy presence, CII best-practices signal where Scorecard reports it, issue/PR
+            response indicators, and whether the repository appears active or archived. These come from
+            OpenSSF Scorecard and GitHub-derived CHAOSS-style metrics.
+          </p>
+        </div>
+        <div class="dimension-card">
+          <strong>Dependency hygiene</strong>
+          <p>
+            Looks for package maintenance and dependency-management health: latest/default version,
+            release age, deprecated versions, Scorecard dependency update tooling, pinned dependency
+            checks, and package vulnerability checks. These come from deps.dev, npm where relevant,
+            and OpenSSF Scorecard.
+          </p>
+        </div>
+        <div class="dimension-card">
+          <strong>Ecosystem resilience</strong>
+          <p>
+            Looks for how widely used and resilient the package appears to be: dependent counts,
+            download signal where available, stars/forks, contributor base, and recent activity.
+            These metrics come from deps.dev, npm downloads, and GitHub metadata. It is a proxy for
+            ecosystem importance and support capacity, not a guarantee of safety.
+          </p>
+        </div>
+      </div>
+
+      <h3>CHAOSS-Derived Health</h3>
+      <p>
+        The CHAOSS card is not a separate external score. It visualizes GitHub-derived maintainership
+        and flow indicators: contributor depth, commit velocity, issue closure, pull request merge
+        ratio, and median merge latency. These are health indicators used to interpret undermaintenance
+        pressure, not proof of project quality by themselves.
+      </p>
+      <h3>Undermaintenance Pressure</h3>
+      <p>
+        Undermaintenance pressure is a derived triage signal, not a headline score. It compares
+        downstream demand against observed maintainer capacity: package dependents, npm download signal
+        where available, and internal application usage increase demand; active maintainers and recent
+        contributors increase capacity. Higher values mean many consumers appear to depend on a project
+        relative to the visible maintainer/contributor base. It is useful for finding projects that may
+        need stewardship, backpatch attention, or deeper review, but it is not currently a table column.
+        The default grid sort is OSS vitality ascending, so weaker upstream health appears first.
+      </p>
+
+      <h3>Not Applicable Versus Error</h3>
+      <p>
+        Muted source cards mean the package coordinate does not apply to that collector. For example,
+        generic system packages such as <code>system/openssl</code> need distro-specific OSV ecosystems
+        such as <code>Debian/openssl</code>, <code>Ubuntu/openssl</code>, or
+        <code>AlmaLinux/openssl</code>. A muted OSV card is therefore a coordinate-scope signal, not a
+        vulnerability clean bill of health.
+      </p>
+    </section>
+    <section class="method-tab-panel" id="methodPanelSources" role="tabpanel" aria-labelledby="methodTabSources" hidden>
+      <h3>Data Sources</h3>
+      <p>
+        These are the public and local data sources used by the collectors, score model, and
+        enterprise overlay. The icons match the source badges shown in Source Provenance.
+      </p>
+      <div class="source-grid">
+        <a class="source-card-link" href="https://osera.finos.org/" target="_blank" rel="noreferrer">
+          <span class="source-icon-link"><img class="source-icon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=osera.finos.org" alt=""><span class="source-icon-fallback" hidden>OSR</span></span>
+          <span><span class="source-card-title">FINOS OSERA backpatch forks</span><span class="source-card-meta">Defines the initial focused library universe and links OSERA forks to upstream repositories.</span></span>
+        </a>
+        <a class="source-card-link" href="../tools/risk-navigator.html" target="_blank" rel="noreferrer">
+          <span class="source-icon-link"><img class="source-icon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=osera.finos.org" alt=""><span class="source-icon-fallback" hidden>RN</span></span>
+          <span><span class="source-card-title">Risk Navigator collections</span><span class="source-card-meta">Supplies enterprise exposure overlays from the same collection manifest used by the main tool.</span></span>
+        </a>
+        <a class="source-card-link" href="https://docs.github.com/en/rest" target="_blank" rel="noreferrer">
+          <span class="source-icon-link"><img class="source-icon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=github.com" alt=""><span class="source-icon-fallback" hidden>GH</span></span>
+          <span><span class="source-card-title">GitHub API</span><span class="source-card-meta">Repository activity, releases, contributors, issues, pull requests, stars, forks, and archival state.</span></span>
+        </a>
+        <a class="source-card-link" href="https://scorecard.dev/" target="_blank" rel="noreferrer">
+          <span class="source-icon-link"><img class="source-icon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=openssf.org" alt=""><span class="source-icon-fallback" hidden>SSF</span></span>
+          <span><span class="source-card-title">OpenSSF Scorecard</span><span class="source-card-meta">Security posture checks and links to the Scorecard viewer and API response.</span></span>
+        </a>
+        <a class="source-card-link" href="https://github.com/ossf/criticality_score" target="_blank" rel="noreferrer">
+          <span class="source-icon-link"><img class="source-icon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=openssf.org" alt=""><span class="source-icon-fallback" hidden>CS</span></span>
+          <span><span class="source-card-title">OpenSSF Criticality Score</span><span class="source-card-meta">Ecosystem criticality input used separately from upstream project health.</span></span>
+        </a>
+        <a class="source-card-link" href="https://chaoss.community/" target="_blank" rel="noreferrer">
+          <span class="source-icon-link"><img class="source-icon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=chaoss.community" alt=""><span class="source-icon-fallback" hidden>CH</span></span>
+          <span><span class="source-card-title">CHAOSS</span><span class="source-card-meta">Reference model for contributor, activity, responsiveness, and maintainer-health signals.</span></span>
+        </a>
+        <a class="source-card-link" href="https://deps.dev/" target="_blank" rel="noreferrer">
+          <span class="source-icon-link"><img class="source-icon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=deps.dev" alt=""><span class="source-icon-fallback" hidden>pkg</span></span>
+          <span><span class="source-card-title">deps.dev</span><span class="source-card-meta">Package metadata, versions, dependency reach, and dependent counts where supported.</span></span>
+        </a>
+        <a class="source-card-link" href="https://docs.npmjs.com/about-npm" target="_blank" rel="noreferrer">
+          <span class="source-icon-link"><img class="source-icon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=npmjs.com" alt=""><span class="source-icon-fallback" hidden>npm</span></span>
+          <span><span class="source-card-title">npm registry downloads</span><span class="source-card-meta">Download signal for npm packages when the package ecosystem supports it.</span></span>
+        </a>
+        <a class="source-card-link" href="https://osv.dev/" target="_blank" rel="noreferrer">
+          <span class="source-icon-link"><img class="source-icon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=osv.dev" alt=""><span class="source-icon-fallback" hidden>OSV</span></span>
+          <span><span class="source-card-title">OSV</span><span class="source-card-meta">Package vulnerability records and CVE aliases for supported package ecosystems.</span></span>
+        </a>
+        <a class="source-card-link" href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank" rel="noreferrer">
+          <span class="source-icon-link"><img class="source-icon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=cisa.gov" alt=""><span class="source-icon-fallback" hidden>KEV</span></span>
+          <span><span class="source-card-title">CISA KEV</span><span class="source-card-meta">Known exploited vulnerability matches derived from OSV CVE aliases.</span></span>
+        </a>
+        <a class="source-card-link" href="https://www.first.org/epss/" target="_blank" rel="noreferrer">
+          <span class="source-icon-link"><img class="source-icon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=first.org" alt=""><span class="source-icon-fallback" hidden>EP</span></span>
+          <span><span class="source-card-title">FIRST EPSS</span><span class="source-card-meta">Exploit probability enrichment used where vulnerability-level scoring is attached.</span></span>
+        </a>
+        <a class="source-card-link" href="https://opensource.guide/leadership-and-governance/" target="_blank" rel="noreferrer">
+          <span class="source-icon-link"><img class="source-icon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=opensource.guide" alt=""><span class="source-icon-fallback" hidden>gov</span></span>
+          <span><span class="source-card-title">Governance docs</span><span class="source-card-meta">Source family for governance, policy, maintainership, and project documentation evidence.</span></span>
+        </a>
+      </div>
+    </section>
+  </div>
+</dialog>
+<main>
+  <section class="panel library-panel">
+    <div class="toolbar">
+      <label>
+        Search
+        <input id="searchInput" type="search" placeholder="Project, package, ecosystem">
+      </label>
+      <label>
+        Ecosystem
+        <select id="ecosystemFilter">
+          <option value="">All</option>
+        </select>
+      </label>
+      <label>
+        Enterprise overlay
+        <select id="overlaySelect">
+          <option value="">Loading collections...</option>
+        </select>
+      </label>
+      <label>
+        Load JSON
+        <input id="fileInput" type="file" accept="application/json,.json">
+      </label>
+      <button id="resetButton" type="button">Reset</button>
+    </div>
+    <div class="table-wrap">
+      <table aria-label="OSS library scorecards">
+        <thead>
+          <tr>
+            <th aria-sort="none"><button class="sort-button" type="button" data-sort-key="name">Library <span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th aria-sort="ascending"><button class="sort-button" type="button" data-sort-key="oss_vitality">Vitality <span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th aria-sort="none"><button class="sort-button" type="button" data-sort-key="enterprise_priority_risk">Enterprise Priority <span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th aria-sort="none"><button class="sort-button" type="button" data-sort-key="ecosystem_criticality">Criticality <span class="sort-indicator" aria-hidden="true"></span></button></th>
+            <th aria-sort="none"><button class="sort-button" type="button" data-sort-key="application_count">Exposure <span class="sort-indicator" aria-hidden="true"></span></button></th>
+          </tr>
+        </thead>
+        <tbody id="recordsBody"></tbody>
+      </table>
+    </div>
+  </section>
+  <aside class="panel detail" id="detailPanel"></aside>
+</main>
+<script>
+const DIMENSION_WEIGHTS = {
+  project_vitality: 0.25,
+  security_health: 0.25,
+  sustainability_governance: 0.20,
+  dependency_hygiene: 0.15,
+  ecosystem_resilience: 0.15
+};
+
+const DIMENSION_LABELS = {
+  project_vitality: "Project vitality",
+  security_health: "Security health",
+  sustainability_governance: "Sustainability and governance",
+  dependency_hygiene: "Dependency hygiene",
+  ecosystem_resilience: "Ecosystem resilience"
+};
+
+const SOURCE_LABELS = {
+  openssf_scorecard: "OpenSSF Scorecard",
+  openssf_criticality: "OpenSSF Criticality",
+  chaoss_derived: "CHAOSS-derived health",
+  osv: "OSV",
+  cisa_kev: "CISA KEV",
+  epss: "FIRST EPSS",
+  github: "Repository metadata",
+  package_registry: "Package registry",
+  governance_docs: "Governance docs",
+  model_extracted: "Model-extracted evidence",
+  finos_osera_backpatch: "FINOS OSERA backpatch fork"
+};
+
+const SOURCE_META = {
+  openssf_scorecard: {
+    label: "OpenSSF",
+    url: "https://openssf.org/",
+    domain: "openssf.org",
+    fallback: "SSF"
+  },
+  openssf_criticality: {
+    label: "OpenSSF Criticality",
+    url: "https://github.com/ossf/criticality_score",
+    domain: "openssf.org",
+    fallback: "CS"
+  },
+  chaoss_derived: {
+    label: "CHAOSS",
+    url: "https://chaoss.community/",
+    domain: "chaoss.community",
+    fallback: "CH"
+  },
+  osv: {
+    label: "OSV",
+    url: "https://osv.dev/",
+    domain: "osv.dev",
+    fallback: "OSV"
+  },
+  cisa_kev: {
+    label: "CISA KEV",
+    url: "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+    domain: "cisa.gov",
+    fallback: "KEV"
+  },
+  epss: {
+    label: "FIRST EPSS",
+    url: "https://www.first.org/epss/",
+    domain: "first.org",
+    fallback: "EP"
+  },
+  github: {
+    label: "GitHub",
+    url: "https://github.com/",
+    domain: "github.com",
+    fallback: "GH"
+  },
+  package_registry: {
+    label: "deps.dev",
+    url: "https://deps.dev/",
+    domain: "deps.dev",
+    fallback: "pkg"
+  },
+  governance_docs: {
+    label: "Governance docs",
+    url: "https://opensource.guide/leadership-and-governance/",
+    domain: "opensource.guide",
+    fallback: "gov"
+  },
+  model_extracted: {
+    label: "Model extraction",
+    url: "https://github.com/finos-osera/risk-navigator",
+    domain: "github.com",
+    fallback: "AI"
+  },
+  finos_osera_backpatch: {
+    label: "FINOS OSERA",
+    url: "https://osera.finos.org/",
+    domain: "osera.finos.org",
+    fallback: "OSR"
+  }
+};
+
+const DEVICON_BASE = "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons";
+
+const PACKAGE_TYPE_REGISTRY = {
+  maven: { label: "Maven", icon: "maven", fallback: "MVN" },
+  npm: { label: "npm", icon: "npm", fallback: "npm" },
+  pypi: { label: "PyPI", icon: "pypi", fallback: "py" },
+  python: { label: "Python", icon: "python", fallback: "py" },
+  system: { label: "System", icon: "linux", fallback: "sys" },
+  linux: { label: "Linux", icon: "linux", fallback: "linux" },
+  rpm: { label: "RPM", icon: "linux", fallback: "rpm" },
+  debian: { label: "Debian", icon: "debian", fallback: "deb" },
+  ubuntu: { label: "Ubuntu", icon: "ubuntu", fallback: "ubu" },
+  almalinux: { label: "AlmaLinux", icon: "linux", fallback: "alma" },
+  rocky: { label: "Rocky Linux", icon: "linux", fallback: "rocky" },
+  oci: { label: "OCI", icon: "docker", fallback: "oci" },
+  docker: { label: "Docker", icon: "docker", fallback: "docker" },
+  nuget: { label: "NuGet", icon: "nuget", fallback: "nuget" },
+  go: { label: "Go", icon: "go", fallback: "go" },
+  golang: { label: "Go", icon: "go", fallback: "go" },
+  cargo: { label: "Cargo", icon: "rust", fallback: "rs" },
+  rust: { label: "Rust", icon: "rust", fallback: "rs" },
+  gem: { label: "RubyGems", icon: "ruby", fallback: "gem" },
+  rubygems: { label: "RubyGems", icon: "ruby", fallback: "gem" },
+  packagist: { label: "Packagist", icon: "php", fallback: "php" },
+  php: { label: "PHP", icon: "php", fallback: "php" },
+  github: { label: "GitHub", icon: "github", fallback: "gh" }
+};
+
+let allRecords = [];
+let baseRecords = [];
+let viewRecords = [];
+let selectedId = "";
+let pendingScrollToSelected = false;
+let overlayManifest = null;
+let activeOverlay = null;
+
+const recordsBody = document.getElementById("recordsBody");
+const detailPanel = document.getElementById("detailPanel");
+const projectHeaderSummary = document.getElementById("projectHeaderSummary");
+const summaryPills = document.getElementById("summaryPills");
+const searchInput = document.getElementById("searchInput");
+const ecosystemFilter = document.getElementById("ecosystemFilter");
+const overlaySelect = document.getElementById("overlaySelect");
+const fileInput = document.getElementById("fileInput");
+const resetButton = document.getElementById("resetButton");
+const methodButton = document.getElementById("methodButton");
+const methodDialog = document.getElementById("methodDialog");
+const methodCloseButton = document.getElementById("methodCloseButton");
+const methodTabs = [...document.querySelectorAll(".method-tab")];
+const methodPanels = [...document.querySelectorAll(".method-tab-panel")];
+const pageParams = new URLSearchParams(location.search);
+const projectParam = pageParams.get("p") || "";
+const selectedParam = pageParams.get("selected") || "";
+pendingScrollToSelected = Boolean(selectedParam && !projectParam);
+document.body.classList.toggle("project-view", Boolean(projectParam));
+let sortState = { key: "oss_vitality", direction: "asc" };
+
+const SORT_CONFIG = {
+  name: { defaultDirection: "asc", label: "Library" },
+  oss_vitality: { defaultDirection: "asc", label: "Vitality" },
+  enterprise_priority_risk: { defaultDirection: "desc", label: "Enterprise Priority" },
+  ecosystem_criticality: { defaultDirection: "desc", label: "Criticality" },
+  application_count: { defaultDirection: "desc", label: "Exposure" }
+};
+
+function clamp(value, low = 0, high = 100) {
+  return Math.max(low, Math.min(high, Number(value) || 0));
+}
+
+function score(record, key) {
+  return clamp(record.scores?.[key] || 0);
+}
+
+function calculateOssVitality(record) {
+  let total = 0;
+  for (const [key, weight] of Object.entries(DIMENSION_WEIGHTS)) {
+    total += score(record, key) * weight;
+  }
+  return Math.round(clamp(total) * 10) / 10;
+}
+
+function exposureFactor(enterprise) {
+  const appCount = Number(enterprise.application_count || 0);
+  const directCount = Number(enterprise.direct_dependency_count || 0);
+  const tier1Count = Number(enterprise.tier1_application_count || 0);
+  const internetCount = Number(enterprise.internet_facing_application_count || 0);
+  const regulatedCount = Number(enterprise.regulated_application_count || 0);
+  const base = Math.min(1, Math.log1p(appCount) / Math.log(1001));
+  const direct = Math.min(0.25, (directCount / Math.max(appCount, 1)) * 0.25);
+  const business = Math.min(0.35, (tier1Count * 0.08) + (internetCount * 0.03) + (regulatedCount * 0.04));
+  return 0.5 + Math.min(0.5, base * 0.35 + direct + business);
+}
+
+function versionRiskFactor(enterprise) {
+  const versions = Math.max(1, (enterprise.versions_in_use || []).length);
+  const unsupported = Number(enterprise.unsupported_version_count || 0);
+  const vulnerable = Number(enterprise.known_vulnerable_version_count || 0);
+  return 0.75 + Math.min(0.45, (unsupported / versions * 0.2) + (vulnerable / versions * 0.25));
+}
+
+function undermaintenancePressure(record) {
+  const registry = record.evidence?.package_registry || {};
+  const github = record.evidence?.github || {};
+  const enterprise = record.enterprise || {};
+  const dependents = Number(registry.dependents || registry.dependent_count || 0);
+  const downloads = Number(registry.monthly_downloads || registry.npm_monthly_downloads || 0);
+  const maintainers = Number(github.active_maintainers || github.active_contributors_365d || 0);
+  const contributors = Number(github.recent_contributors_90d || github.active_contributors_90d || 0);
+  const apps = Number(enterprise.application_count || 0);
+  const downstreamWeight = dependents + Math.sqrt(downloads) + apps * 10;
+  const capacity = maintainers + contributors;
+  if (downstreamWeight <= 0) return 0;
+  return Math.round((Math.log1p(downstreamWeight) / Math.log(2 + Math.max(capacity, 0))) * 100) / 100;
+}
+
+function enterprisePriority(record, vitality) {
+  const criticality = score(record, "ecosystem_criticality") / 100;
+  const confidence = Number(record.scores?.confidence || 0.7);
+  const confidenceFactor = 0.85 + Math.min(0.15, Math.max(0, confidence) * 0.15);
+  const raw = (100 - vitality)
+    * (0.65 + 0.7 * criticality)
+    * exposureFactor(record.enterprise || {})
+    * versionRiskFactor(record.enterprise || {})
+    * confidenceFactor;
+  return Math.round(clamp(raw) * 10) / 10;
+}
+
+function scoreRecords(records) {
+  return records.map(record => {
+    const copy = structuredClone(record);
+    copy.scores = copy.scores || {};
+    if (copy.scores.oss_vitality === undefined) {
+      copy.scores.oss_vitality = calculateOssVitality(copy);
+    }
+    if (copy.scores.enterprise_priority_risk === undefined) {
+      copy.scores.enterprise_priority_risk = enterprisePriority(copy, copy.scores.oss_vitality);
+    }
+    if (copy.scores.undermaintenance_pressure === undefined) {
+      copy.scores.undermaintenance_pressure = undermaintenancePressure(copy);
+    }
+    copy._id = `${copy.project?.ecosystem || ""}|${copy.project?.package || ""}|${copy.project?.repository || ""}`;
+    return copy;
+  });
+}
+
+function refreshDerivedScores(record) {
+  record.scores = record.scores || {};
+  record.scores.oss_vitality = record.scores.oss_vitality === undefined
+    ? calculateOssVitality(record)
+    : Number(record.scores.oss_vitality);
+  record.scores.enterprise_priority_risk = enterprisePriority(record, record.scores.oss_vitality);
+  record.scores.undermaintenance_pressure = undermaintenancePressure(record);
+}
+
+function numberFormat(value) {
+  return new Intl.NumberFormat("en-US").format(Number(value || 0));
+}
+
+function compactNumber(value) {
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1
+  }).format(Number(value || 0));
+}
+
+function percentConfidence(value) {
+  return `${Math.round(Number(value || 0) * 100)}%`;
+}
+
+function percent(value) {
+  return `${Math.round(Number(value || 0) * 100)}%`;
+}
+
+function formatDate(value) {
+  if (!value) return "n/a";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toISOString().slice(0, 10);
+}
+
+function daysSince(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return Math.max(0, Math.round((Date.now() - date.getTime()) / 86400000));
+}
+
+function agePhrase(value) {
+  const days = daysSince(value);
+  if (days === null) return "date not observed";
+  if (days < 1) return "today";
+  if (days < 31) return `${days}d ago`;
+  if (days < 730) return `${Math.round(days / 30)}mo ago`;
+  return `${Math.round(days / 365)}y ago`;
+}
+
+function freshnessTone(value, warnDays, riskDays) {
+  const days = daysSince(value);
+  if (days === null) return "warn";
+  if (days >= riskDays) return "risk";
+  if (days >= warnDays) return "warn";
+  return "good";
+}
+
+function bar(scoreValue, risk = false) {
+  const value = clamp(scoreValue);
+  const tone = risk && value >= 20 ? "risk" : value < 70 && !risk ? "warn" : "";
+  return `
+    <div class="bar">
+      <div class="score">${value.toFixed(1)}</div>
+      <div class="bar-track"><div class="bar-fill ${tone}" style="width:${value}%"></div></div>
+    </div>
+  `;
+}
+
+function exposureBreakdown(directCount, transitiveCount) {
+  const directValue = Number(directCount || 0);
+  const transitiveValue = Number(transitiveCount || 0);
+  const direct = numberFormat(directValue);
+  const transitive = numberFormat(transitiveValue);
+  return `
+    <span class="exposure-breakdown" aria-label="${direct} direct dependencies, ${transitive} transitive dependencies">
+      <span class="exposure-item direct ${directValue > 0 ? "has-exposure" : ""}" title="Direct dependencies: applications that declare this library directly">
+        <span class="exposure-icon" aria-hidden="true">➡️</span>
+        <span class="exposure-count">${direct}</span>
+      </span>
+      <span class="exposure-item transitive ${transitiveValue > 0 ? "has-exposure" : ""}" title="Transitive dependencies: applications that receive this library through another dependency">
+        <span class="exposure-icon" aria-hidden="true">🔀</span>
+        <span class="exposure-count">${transitive}</span>
+      </span>
+    </span>
+  `;
+}
+
+function scoreTone(value, risk = false) {
+  const numeric = clamp(value);
+  if (risk) {
+    if (numeric >= 60) return "risk";
+    if (numeric >= 25) return "warn";
+    return "good";
+  }
+  if (numeric >= 75) return "good";
+  if (numeric >= 45) return "warn";
+  return "risk";
+}
+
+function headlineMetric(label, value, options = {}) {
+  const numeric = clamp(value);
+  const risk = Boolean(options.risk);
+  const tone = scoreTone(numeric, risk);
+  const low = risk ? "Low risk" : "Weak";
+  const high = risk ? "High risk" : "Healthy";
+  const fullLabel = options.fullLabel || label;
+  return `
+    <div class="metric">
+      <div class="score-gauge">
+        <div class="score-gauge-top">
+          <div class="metric-label" title="${escapeHtml(fullLabel)}" aria-label="${escapeHtml(fullLabel)}">${escapeHtml(label)}</div>
+          <div class="metric-value">${escapeHtml(options.format ? options.format(numeric) : numeric.toFixed(1))}</div>
+        </div>
+        <div class="score-gauge-track ${risk ? "risk" : ""}">
+          <div class="score-gauge-fill ${tone}" style="--value:${numeric}%"></div>
+        </div>
+        <div class="score-gauge-scale">
+          <span>${escapeHtml(low)}</span>
+          <span>${escapeHtml(high)}</span>
+        </div>
+        ${options.caption ? `<div class="metric-caption">${escapeHtml(options.caption)}</div>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function packageTypeMeta(ecosystem) {
+  const key = String(ecosystem || "").trim().toLowerCase();
+  return PACKAGE_TYPE_REGISTRY[key] || {
+    label: key || "Unknown",
+    icon: "",
+    fallback: (key || "?").slice(0, 3)
+  };
+}
+
+function projectParamValue(record) {
+  const project = record.project || {};
+  return `${project.ecosystem || ""}:${project.package || ""}`;
+}
+
+function browserViewHref(record = null) {
+  const url = new URL(location.href);
+  url.searchParams.delete("p");
+  const selectedRecord = record || allRecords.find(item => item._id === selectedId);
+  if (selectedRecord) {
+    url.searchParams.set("selected", projectParamValue(selectedRecord));
+  }
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function projectViewHref(record) {
+  const url = new URL(location.href);
+  url.searchParams.set("p", projectParamValue(record));
+  url.searchParams.delete("selected");
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function updateSelectedProjectParam(record) {
+  if (projectParam || !record) return;
+  const url = new URL(location.href);
+  url.searchParams.set("selected", projectParamValue(record));
+  history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function compactUrl(value) {
+  if (!value) return "";
+  try {
+    const url = new URL(value);
+    return `${url.hostname.replace(/^www\./, "")}${url.pathname.replace(/\/$/, "")}`;
+  } catch {
+    return String(value);
+  }
+}
+
+function renderActionIcon(icon) {
+  if (icon === "back") return `<span class="action-icon" aria-hidden="true">←</span>`;
+  if (icon === "github") {
+    return `<span class="action-icon" aria-hidden="true"><img class="action-icon-img" src="${escapeHtml(deviconUrl("github"))}" alt="" loading="lazy" decoding="async"></span>`;
+  }
+  if (icon === "globe") return `<span class="action-icon" aria-hidden="true">🌐</span>`;
+  if (icon === "open") return `<span class="action-icon" aria-hidden="true">↗</span>`;
+  return "";
+}
+
+function actionLink(label, href, options = {}) {
+  const classes = [
+    options.className || "",
+    options.primary ? "detail-primary-link" : "",
+    options.iconOnly ? "icon-only-link" : ""
+  ].filter(Boolean).join(" ");
+  const className = classes ? ` class="${escapeHtml(classes)}"` : "";
+  const target = options.external ? ` target="_blank" rel="noreferrer"` : "";
+  const icon = options.icon ? renderActionIcon(options.icon) : "";
+  const title = options.iconOnly ? ` title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}"` : "";
+  const text = options.iconOnly ? "" : `<span>${escapeHtml(label)}</span>`;
+  return `<a${className} href="${escapeHtml(href)}"${target}${title}>${icon}${text}</a>`;
+}
+
+function matchesProjectParam(record, value) {
+  const query = String(value || "").trim().toLowerCase();
+  if (!query) return false;
+  const project = record.project || {};
+  const ecosystem = String(project.ecosystem || "").toLowerCase();
+  const pkg = String(project.package || "").toLowerCase();
+  const name = String(project.name || "").toLowerCase();
+  const firstColon = query.indexOf(":");
+  if (firstColon > 0) {
+    const queryEcosystem = query.slice(0, firstColon);
+    const queryPackage = query.slice(firstColon + 1);
+    return queryEcosystem === ecosystem && queryPackage === pkg;
+  }
+  return query === pkg || query === name;
+}
+
+function splitCoordinate(record) {
+  const ecosystem = String(record.project?.ecosystem || "").toLowerCase();
+  const pkg = String(record.project?.package || "");
+  if (ecosystem === "maven") {
+    const [group = "", artifact = ""] = pkg.split(":");
+    return { namespace: "maven", meta: group, proj: artifact };
+  }
+  return { namespace: ecosystem, meta: "", proj: pkg };
+}
+
+function cveIdsForLibrary(lib) {
+  const ids = new Set();
+  for (const cve of lib.cves || []) {
+    if (typeof cve === "string") ids.add(cve);
+    else if (cve && typeof cve === "object") ids.add(cve.cve || cve.id || cve.cve_id || "");
+  }
+  return [...ids].filter(Boolean);
+}
+
+function emptyEnterpriseOverlay(source = "No Risk Navigator collection selected") {
+  return {
+    versions_in_use: [],
+    application_count: 0,
+    direct_dependency_count: 0,
+    transitive_dependency_count: 0,
+    tier1_application_count: 0,
+    internet_facing_application_count: 0,
+    regulated_application_count: 0,
+    unsupported_version_count: 0,
+    known_vulnerable_version_count: 0,
+    overlay_source: source,
+    overlay_matched_libraries: 0
+  };
+}
+
+function deriveEnterpriseOverlay(record, dataset, overlayLabel) {
+  if (!dataset || !Array.isArray(dataset.libraries)) {
+    return emptyEnterpriseOverlay("No Risk Navigator collection selected");
+  }
+  const coord = splitCoordinate(record);
+  const matches = dataset.libraries.filter(lib =>
+    String(lib.namespace || "").toLowerCase() === coord.namespace &&
+    String(lib.meta || "") === coord.meta &&
+    String(lib.proj || "") === coord.proj
+  );
+  if (!matches.length) {
+    return emptyEnterpriseOverlay(`${overlayLabel}: no matching package-version rows`);
+  }
+
+  const appIds = new Set();
+  const directIds = new Set();
+  const vulnerableVersions = new Set();
+  const versions = [];
+  for (const lib of matches) {
+    for (const id of lib.consumer_project_ids || []) appIds.add(id);
+    for (const id of lib.direct_consumer_project_ids || []) directIds.add(id);
+    const release = String(lib.release || "");
+    const cves = cveIdsForLibrary(lib);
+    if (cves.length || Number(lib.cve_count || 0) > 0) vulnerableVersions.add(release);
+    versions.push({
+      version: release,
+      application_count: Number(lib.total_consumer_count ?? (lib.consumer_project_ids || []).length ?? 0),
+      direct_dependency_count: Number(lib.direct_consumer_count ?? (lib.direct_consumer_project_ids || []).length ?? 0),
+      transitive_dependency_count: Number(lib.transitive_consumer_count || 0),
+      known_cves: cves.length ? cves : (Number(lib.cve_count || 0) ? [`${Number(lib.cve_count)} CVE(s) in Risk Navigator`] : []),
+      unsupported: false
+    });
+  }
+  const transitiveIds = new Set([...appIds].filter(id => !directIds.has(id)));
+  return {
+    versions_in_use: versions.sort((a, b) => b.application_count - a.application_count || a.version.localeCompare(b.version)),
+    application_count: appIds.size,
+    direct_dependency_count: directIds.size,
+    transitive_dependency_count: transitiveIds.size,
+    tier1_application_count: 0,
+    internet_facing_application_count: 0,
+    regulated_application_count: 0,
+    unsupported_version_count: 0,
+    known_vulnerable_version_count: vulnerableVersions.size,
+    overlay_source: overlayLabel,
+    overlay_matched_libraries: matches.length
+  };
+}
+
+function applyEnterpriseOverlay() {
+  allRecords = baseRecords.map(record => {
+    const copy = structuredClone(record);
+    copy.enterprise = deriveEnterpriseOverlay(copy, activeOverlay?.dataset, activeOverlay?.label || "");
+    refreshDerivedScores(copy);
+    return copy;
+  });
+  applyFilters();
+}
+
+function deviconUrl(name, variant = "original") {
+  const clean = String(name || "").trim();
+  if (!clean) return "";
+  return `${DEVICON_BASE}/${encodeURIComponent(clean)}/${encodeURIComponent(clean)}-${variant}.svg`;
+}
+
+function sourceFaviconUrl(domain) {
+  const clean = String(domain || "").trim();
+  if (!clean) return "";
+  return `https://www.google.com/s2/favicons?sz=32&domain=${encodeURIComponent(clean)}`;
+}
+
+function renderSourceBadge(key) {
+  const meta = SOURCE_META[key] || {
+    label: SOURCE_LABELS[key] || key,
+    url: "",
+    domain: "",
+    fallback: String(key || "?").slice(0, 3)
+  };
+  const label = escapeHtml(meta.label || SOURCE_LABELS[key] || key);
+  const fallback = escapeHtml(meta.fallback || label.slice(0, 3));
+  const iconUrl = sourceFaviconUrl(meta.domain);
+  const icon = iconUrl
+    ? `<img class="source-icon" src="${escapeHtml(iconUrl)}" alt="" decoding="async" onerror="this.remove(); this.nextElementSibling.hidden=false">`
+    : "";
+  const fallbackHtml = `<span class="source-icon-fallback" ${icon ? "hidden" : ""}>${fallback}</span>`;
+  const contents = `${icon}${fallbackHtml}`;
+  if (!meta.url) {
+    return `<span class="source-icon-link" title="${label}" aria-label="${label}">${contents}</span>`;
+  }
+  return `<a class="source-icon-link" href="${escapeHtml(meta.url)}" target="_blank" rel="noreferrer" title="${label}" aria-label="${label}">${contents}</a>`;
+}
+
+function renderPackageBadge(ecosystem, showLabel = false) {
+  const meta = packageTypeMeta(ecosystem);
+  const src = meta.icon ? deviconUrl(meta.icon) : "";
+  const label = escapeHtml(meta.label);
+  const fallback = escapeHtml(meta.fallback || meta.label || "?");
+  const labelHtml = showLabel ? `<span class="pkg-icon-label">${label}</span>` : "";
+  const imgHtml = src
+    ? `<img class="pkg-icon" src="${src}" alt="" loading="lazy" decoding="async" onerror="this.remove(); this.parentElement.classList.add('pkg-icon-missing')">`
+    : "";
+  return `<span class="pkg-icon-badge ${showLabel ? "with-label" : ""}" title="${label}" aria-label="${label}" data-fallback="${fallback}">${imgHtml}${labelHtml}</span>`;
+}
+
+function renderProjectHeader(record) {
+  if (!projectParam) {
+    projectHeaderSummary.hidden = true;
+    projectHeaderSummary.innerHTML = "";
+    return;
+  }
+
+  projectHeaderSummary.hidden = false;
+  if (!record) {
+    projectHeaderSummary.innerHTML = `
+      <div class="project-header-copy">
+        <div class="project-header-title">Project not found</div>
+        <div class="project-header-meta">
+          <span class="project-header-pill"><span>${escapeHtml(projectParam)}</span></span>
+        </div>
+      </div>
+      <div class="project-header-actions">
+        ${actionLink("Back to browser", browserViewHref(), { className: "header-link", icon: "back" })}
+      </div>
+    `;
+    return;
+  }
+
+  const project = record.project || {};
+  const packageLabel = packageTypeMeta(project.ecosystem).label;
+  const repositoryLabel = compactUrl(project.repository);
+  projectHeaderSummary.innerHTML = `
+    ${renderPackageBadge(project.ecosystem)}
+    <div class="project-header-copy">
+      <div class="project-header-title">${escapeHtml(project.name)}</div>
+      <div class="project-header-meta">
+        <span class="project-header-pill"><span>${escapeHtml(packageLabel)}</span></span>
+        <span class="project-header-pill" title="${escapeHtml(project.package)}"><span>${escapeHtml(project.package)}</span></span>
+        ${repositoryLabel ? `<span class="project-header-pill" title="${escapeHtml(project.repository)}"><span>${escapeHtml(repositoryLabel)}</span></span>` : ""}
+      </div>
+    </div>
+    <div class="project-header-actions">
+      ${actionLink("Back to browser", browserViewHref(), { className: "header-link", icon: "back" })}
+      ${project.repository ? actionLink("Repository", project.repository, { className: "header-link", icon: "github", iconOnly: true, external: true }) : ""}
+      ${project.homepage ? actionLink("Homepage", project.homepage, { className: "header-link", icon: "globe", iconOnly: true, external: true }) : ""}
+    </div>
+  `;
+}
+
+function sourceFacts(source) {
+  const hidden = new Set(["source", "url", "observed_at", "confidence", "api", "repo_api", "release_api", "commit_api", "issue_api", "pull_api", "package_api", "dependents_api", "checks", "matches", "vulnerabilities", "error"]);
+  return Object.entries(source || {})
+    .filter(([key, value]) => !hidden.has(key) && value !== "" && value !== null && value !== undefined)
+    .map(([key, value]) => {
+      const label = key.replaceAll("_", " ");
+      let rendered = "";
+      if (typeof value === "number") {
+        rendered = numberFormat(value);
+      } else if (Array.isArray(value)) {
+        if (!value.length) rendered = "none";
+        else if (value.every(item => typeof item !== "object")) rendered = value.slice(0, 8).join(", ") + (value.length > 8 ? ` +${value.length - 8}` : "");
+        else rendered = `${numberFormat(value.length)} items`;
+      } else if (typeof value === "object") {
+        rendered = `${numberFormat(Object.keys(value).length)} fields`;
+      } else {
+        rendered = String(value);
+      }
+      return `<span class="fact">${escapeHtml(label)}: ${escapeHtml(rendered)}</span>`;
+    })
+    .join("");
+}
+
+function githubProjectUri(repositoryUrl) {
+  try {
+    const parsed = new URL(repositoryUrl);
+    if (parsed.hostname !== "github.com") return "";
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    if (parts.length < 2) return "";
+    return `github.com/${parts[0]}/${parts[1]}`;
+  } catch {
+    return "";
+  }
+}
+
+function scorecardViewerUrl(record) {
+  const uri = githubProjectUri(record.project?.repository || "");
+  if (!uri) return "";
+  return `https://securityscorecards.dev/viewer/?uri=${encodeURIComponent(uri)}`;
+}
+
+function renderSourceLinks(key, source, record) {
+  const links = [];
+  if (key === "openssf_scorecard") {
+    const viewerUrl = scorecardViewerUrl(record);
+    if (viewerUrl) {
+      links.push(`<a href="${escapeHtml(viewerUrl)}" target="_blank" rel="noreferrer">Scorecard viewer</a>`);
+    }
+    if (source.url) {
+      links.push(`<a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">API response</a>`);
+    }
+  } else if (key === "finos_osera_backpatch") {
+    if (source.url) {
+      links.push(`<a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">OSERA fork</a>`);
+    }
+    if (source.upstream_repository) {
+      links.push(`<a href="${escapeHtml(source.upstream_repository)}" target="_blank" rel="noreferrer">Upstream repository</a>`);
+    }
+  } else if (key === "cisa_kev") {
+    if (source.url) {
+      links.push(`<a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">CISA KEV catalog</a>`);
+    }
+  } else if (key === "osv") {
+    links.push(`<a href="https://osv.dev/" target="_blank" rel="noreferrer">OSV</a>`);
+  } else if (source.url) {
+    links.push(`<a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">Open source</a>`);
+  }
+  return links.length ? `<div class="source-links">${links.join("")}</div>` : "";
+}
+
+function sourceMetric(label, value, note = "", tone = "") {
+  return `
+    <div class="source-metric ${escapeHtml(tone)}">
+      <div class="source-metric-label" title="${escapeHtml(label)}">${escapeHtml(label)}</div>
+      <div class="source-metric-value" title="${escapeHtml(value)}">${escapeHtml(value)}</div>
+      ${note ? `<div class="source-metric-note">${escapeHtml(note)}</div>` : ""}
+    </div>
+  `;
+}
+
+function sourceRows(rows) {
+  const validRows = rows.filter(row => row && row[1] !== "" && row[1] !== null && row[1] !== undefined);
+  if (!validRows.length) return "";
+  return validRows.map(([label, value]) => `
+    <div class="source-row">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </div>
+  `).join("");
+}
+
+function renderSourceMiniBars(values, labels) {
+  const numericValues = values.map(value => Number(value || 0));
+  const maxValue = Math.max(1, ...numericValues);
+  return `
+    <div class="source-mini-bars">
+      ${numericValues.map((value, index) => `
+        <div class="source-mini-bar" title="${escapeHtml(labels[index])}: ${numberFormat(value)}">
+          <div class="source-mini-track">
+            <div class="source-mini-fill" style="--value:${Math.max(4, Math.round((value / maxValue) * 100))}%"></div>
+          </div>
+          <div class="source-mini-label">${escapeHtml(labels[index])}</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderGitHubDetails(source) {
+  if (!source || source.source === "disabled") return "";
+  const issueClosure = source.issue_closure_ratio_365d === null || source.issue_closure_ratio_365d === undefined
+    ? "n/a"
+    : percent(source.issue_closure_ratio_365d);
+  const prMerge = source.pr_merge_ratio === null || source.pr_merge_ratio === undefined
+    ? "n/a"
+    : percent(source.pr_merge_ratio);
+  const commits = [
+    Number(source.commits_365d || 0),
+    Number(source.commits_180d || 0),
+    Number(source.commits_90d || 0),
+    Number(source.commits_30d || 0)
+  ];
+  const contributors = [
+    Number(source.active_contributors_365d || 0),
+    Number(source.active_contributors_180d || 0),
+    Number(source.active_contributors_90d || 0),
+    Number(source.active_contributors_30d || 0)
+  ];
+  const rows = sourceRows([
+    ["Default branch", source.default_branch || "n/a"],
+    ["Repository created", formatDate(source.created_at)],
+    ["Latest release", source.latest_release || "n/a"],
+    ["Release date", formatDate(source.latest_release_at)],
+    ["PR merge ratio", prMerge],
+    ["Issue closure", issueClosure],
+    ["PR sample", `${numberFormat(source.merged_pr_sample || 0)} merged / ${numberFormat(source.closed_pr_sample || 0)} closed`]
+  ]);
+  return `
+    <div class="source-summary">
+      <div class="source-metrics">
+        ${sourceMetric("Stars", compactNumber(source.stars), `${numberFormat(source.forks)} forks`)}
+        ${sourceMetric("Open issues", numberFormat(source.open_issues), `${issueClosure} closure`, Number(source.open_issues || 0) > 100 ? "warn" : "")}
+        ${sourceMetric("Last push", formatDate(source.pushed_at), agePhrase(source.pushed_at), freshnessTone(source.pushed_at, 45, 180))}
+        ${sourceMetric("Latest release", source.latest_release || "n/a", agePhrase(source.latest_release_at), freshnessTone(source.latest_release_at, 180, 730))}
+      </div>
+      <div class="source-split">
+        <div class="source-panel">
+          <div class="source-panel-title">Commits by window</div>
+          ${renderSourceMiniBars(commits, ["365d", "180d", "90d", "30d"])}
+        </div>
+        <div class="source-panel">
+          <div class="source-panel-title">Contributors by window</div>
+          ${renderSourceMiniBars(contributors, ["365d", "180d", "90d", "30d"])}
+        </div>
+      </div>
+      <div class="source-panel">
+        <div class="source-panel-title">Repository signals</div>
+        ${rows}
+      </div>
+      ${source.commit_sample_truncated ? `<div class="source-callout alert">Commit collection was truncated by API pagination; activity counts should be treated as lower-bound signals.</div>` : ""}
+    </div>
+  `;
+}
+
+function renderPackageRegistryDetails(source, record) {
+  if (!source || source.source === "disabled") return "";
+  const direct = Number(source.direct_dependent_count || 0);
+  const indirect = Number(source.indirect_dependent_count || 0);
+  const totalDependents = Number(source.dependent_count || source.dependents || direct + indirect || 0);
+  const directPct = totalDependents ? Math.round((direct / totalDependents) * 100) : 0;
+  const indirectPct = totalDependents ? Math.max(0, 100 - directPct) : 0;
+  const latestDefault = source.latest_is_default === true ? "Default" : source.latest_is_default === false ? "Not default" : "Unknown";
+  const latestDefaultTone = source.latest_is_default === true ? "good" : source.latest_is_default === false ? "warn" : "";
+  const deprecatedTone = Number(source.deprecated_version_count || 0) > 0 ? "warn" : "good";
+  const rows = sourceRows([
+    ["Registry system", source.system || packageTypeMeta(record.project?.ecosystem).label],
+    ["Package", record.project?.package || "n/a"],
+    ["Latest published", formatDate(source.latest_published_at)],
+    ["Latest is default", latestDefault],
+    ["Direct dependents", numberFormat(direct)],
+    ["Indirect dependents", numberFormat(indirect)]
+  ]);
+  return `
+    <div class="source-summary">
+      <div class="source-metrics">
+        ${sourceMetric("Latest version", source.latest_version || "n/a", agePhrase(source.latest_published_at), freshnessTone(source.latest_published_at, 180, 730))}
+        ${sourceMetric("Versions", numberFormat(source.version_count), `${numberFormat(source.deprecated_version_count || 0)} deprecated`, deprecatedTone)}
+        ${sourceMetric("Dependents", compactNumber(totalDependents), `${numberFormat(direct)} direct / ${numberFormat(indirect)} transitive`)}
+        ${sourceMetric("Default status", latestDefault, "latest package marker", latestDefaultTone)}
+      </div>
+      <div class="source-panel">
+        <div class="source-panel-title">Dependent reach</div>
+        <div class="source-stack" title="${numberFormat(direct)} direct dependents, ${numberFormat(indirect)} indirect dependents">
+          <div class="source-stack-segment" style="--value:${directPct}%"></div>
+          <div class="source-stack-segment indirect" style="--value:${indirectPct}%"></div>
+        </div>
+        <div class="evidence-facts">
+          <span class="fact">direct ${directPct}%</span>
+          <span class="fact">indirect ${indirectPct}%</span>
+        </div>
+      </div>
+      <div class="source-panel">
+        <div class="source-panel-title">Registry signals</div>
+        ${rows}
+      </div>
+    </div>
+  `;
+}
+
+function renderScorecardDetails(source) {
+  if (!source || source.source === "disabled") return "";
+  const scorePart = source.score !== undefined && source.score !== null
+    ? `<span class="fact">score: ${escapeHtml(Number(source.score).toFixed(1))}/10</span>`
+    : "";
+  const versionPart = source.scorecard_version
+    ? `<span class="fact">version: ${escapeHtml(source.scorecard_version)}</span>`
+    : "";
+  const datePart = source.scorecard_date
+    ? `<span class="fact">scorecard date: ${escapeHtml(source.scorecard_date)}</span>`
+    : "";
+  const checks = Array.isArray(source.checks) ? source.checks : [];
+  const scoredChecks = checks
+    .filter(check => typeof check.score === "number")
+    .sort((a, b) => {
+      const aScore = a.score < 0 ? 999 : a.score;
+      const bScore = b.score < 0 ? 999 : b.score;
+      return aScore - bScore || String(a.name || "").localeCompare(String(b.name || ""));
+    })
+    .slice(0, 8);
+  const checkHtml = scoredChecks.length ? `
+    <div class="check-list">
+      ${scoredChecks.map(check => {
+        const scoreText = check.score < 0 ? "n/a" : `${Number(check.score).toFixed(0)}/10`;
+        const docs = check.documentation_url
+          ? ` <a href="${escapeHtml(check.documentation_url)}" target="_blank" rel="noreferrer">docs</a>`
+          : "";
+        return `
+          <div class="check-row">
+            <div class="check-score">${escapeHtml(scoreText)}</div>
+            <div>
+              <div class="check-name">${escapeHtml(check.name || "Check")}${docs}</div>
+              <div class="check-reason">${escapeHtml(check.reason || "")}</div>
+            </div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  ` : "";
+  return `
+    <div class="evidence-facts">${scorePart}${versionPart}${datePart}</div>
+    ${checkHtml}
+  `;
+}
+
+function renderBackpatchDetails(source) {
+  const repositoryState = source.is_archived ? "Archived" : "Active";
+  const relationship = source.is_fork === true ? "GitHub fork" : source.is_fork === false ? "Standalone repo" : "Unknown";
+  const upstreamName = source.upstream_repository
+    ? source.upstream_repository.replace(/^https:\/\/github\.com\//, "")
+    : "n/a";
+  const rows = sourceRows([
+    ["Backpatch repository", source.backpatch_repository || "n/a"],
+    ["Backpatch name", source.backpatch_name || "n/a"],
+    ["Library name", source.library_name || "n/a"],
+    ["Coordinate source", source.coordinate_source || "n/a"],
+    ["Primary language", source.primary_language || "not reported"],
+    ["Observed", formatDate(source.observed_at)]
+  ]);
+  const description = source.description ? `<div class="source-callout">${escapeHtml(source.description)}</div>` : "";
+  return `
+    <div class="source-summary">
+      <div class="source-metrics">
+        ${sourceMetric("OSERA fork", source.backpatch_repository || "n/a", relationship, source.is_archived ? "risk" : "good")}
+        ${sourceMetric("Upstream", upstreamName, "source repository")}
+        ${sourceMetric("Repository state", repositoryState, relationship, source.is_archived ? "risk" : "good")}
+        ${sourceMetric("Coordinate", source.coordinate_source || "n/a", "package mapping source")}
+      </div>
+      ${description}
+      <div class="source-panel">
+        <div class="source-panel-title">OSERA mapping</div>
+        ${rows}
+      </div>
+    </div>
+  `;
+}
+
+function renderOsvDetails(source, record) {
+  const unsupported = source.error || source.source === "disabled" || source.source === "not-applicable";
+  if (unsupported) {
+    const ecosystem = escapeHtml(record.project?.ecosystem || "unknown");
+    const pkg = escapeHtml(record.project?.package || "");
+    const hint = ecosystem === "system"
+      ? "OSV needs a concrete distro ecosystem for system packages, such as Debian/openssl, Ubuntu/openssl, AlmaLinux/openssl, or Rocky Linux/openssl. A generic system/openssl or rpm/openssl coordinate is too broad to query reliably."
+      : `No OSV package query is configured for ${ecosystem}/${pkg}.`;
+    return `<div class="source-callout">${hint}</div>`;
+  }
+  const kevSource = record.evidence?.cisa_kev || null;
+  const vulnCount = Number(source.vulnerability_count || 0);
+  const cveCount = Number(source.cve_count || 0);
+  const status = vulnCount
+    ? `<span class="status-pill warn">${numberFormat(vulnCount)} OSV record(s)</span>`
+    : `<span class="status-pill muted">No OSV records returned</span>`;
+  const cves = Array.isArray(source.cves) ? source.cves : [];
+  const cveHtml = cves.length
+    ? `<div class="evidence-facts">${cves.slice(0, 12).map(cve => `<span class="fact">${escapeHtml(cve)}</span>`).join("")}${cves.length > 12 ? `<span class="fact">+${numberFormat(cves.length - 12)} more</span>` : ""}</div>`
+    : "";
+  const vulns = Array.isArray(source.vulnerabilities) ? source.vulnerabilities.slice(0, 6) : [];
+  const vulnHtml = vulns.length ? `
+    <div class="vulnerability-scroll">
+      <div class="check-list">
+        ${vulns.map(vuln => `
+          <div class="check-row">
+            <div class="check-score">${escapeHtml((vuln.aliases || []).find(alias => String(alias).startsWith("CVE-")) || vuln.id || "")}</div>
+            <div>
+              <div class="check-name"><a href="https://osv.dev/vulnerability/${encodeURIComponent(vuln.id || "")}" target="_blank" rel="noreferrer">${escapeHtml(vuln.id || "OSV record")}</a></div>
+              <div class="check-reason">${escapeHtml(vuln.summary || "")}</div>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  ` : "";
+  return `
+    <div class="evidence-facts">${status}<span class="fact">${numberFormat(cveCount)} CVE alias(es)</span></div>
+    ${renderKevSummary(kevSource)}
+    ${cveHtml}
+    ${vulnHtml}
+  `;
+}
+
+function renderKevSummary(source) {
+  if (!source || source.source === "disabled") {
+    return `<div class="source-callout">CISA KEV matching is disabled because no CVE aliases were available from OSV for this record.</div>`;
+  }
+  const matched = Number(source.matched_count || 0);
+  const status = matched
+    ? `<span class="status-pill risk">${numberFormat(matched)} CISA KEV match(es)</span>`
+    : `<span class="status-pill muted">No CISA KEV matches</span>`;
+  return `
+    <div class="source-callout ${matched ? "alert" : ""}">
+      <div class="evidence-facts">${status}<span class="fact">catalog entries: ${numberFormat(source.catalog_count || 0)}</span></div>
+    </div>
+  `;
+}
+
+function renderKevDetails(source) {
+  if (!source || source.source === "disabled") {
+    return `<div class="source-callout">KEV matching is disabled because no CVE aliases were available from OSV for this record.</div>`;
+  }
+  const matches = Array.isArray(source.matches) ? source.matches : [];
+  const matched = Number(source.matched_count || 0);
+  const status = matched
+    ? `<span class="status-pill risk">${numberFormat(matched)} KEV match(es)</span>`
+    : `<span class="status-pill muted">No KEV matches</span>`;
+  const facts = `<div class="evidence-facts">${status}<span class="fact">catalog entries: ${numberFormat(source.catalog_count || 0)}</span></div>`;
+  const rows = matches.slice(0, 8).map(match => {
+    const cve = match.cveID || "";
+    const cisaUrl = `https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=${encodeURIComponent(cve)}`;
+    return `
+      <div class="check-row">
+        <div class="check-score"><a href="${cisaUrl}" target="_blank" rel="noreferrer">${escapeHtml(cve)}</a></div>
+        <div>
+          <div class="check-name">${escapeHtml([match.vendorProject, match.product].filter(Boolean).join(" / ") || "CISA KEV entry")}</div>
+          <div class="check-reason">${escapeHtml(match.shortDescription || "")}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+  return `${facts}${rows ? `<div class="check-list">${rows}</div>` : ""}`;
+}
+
+function toneForRatio(value, warnAt = 0.5, goodAt = 0.75) {
+  const numeric = Number(value || 0);
+  if (numeric >= goodAt) return "good";
+  if (numeric >= warnAt) return "warn";
+  return "risk";
+}
+
+function renderHealthBar(value, tone = "") {
+  return `
+    <div class="health-bar">
+      <div class="health-fill ${tone}" style="--value:${clamp(value * 100)}%"></div>
+    </div>
+  `;
+}
+
+function renderSparkBars(values, labels) {
+  const maxValue = Math.max(1, ...values.map(value => Number(value || 0)));
+  return `
+    <div class="spark-bars">
+      ${values.map((value, index) => `
+        <div class="spark-bar" title="${escapeHtml(labels[index])}: ${numberFormat(value)}">
+          <div class="spark-track">
+            <div class="spark-fill" style="--value:${Math.max(4, Math.round((Number(value || 0) / maxValue) * 100))}%"></div>
+          </div>
+          <div class="spark-label">${escapeHtml(labels[index])}</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderChaossDetails(source) {
+  const contributors = [
+    Number(source.active_contributors_365d || 0),
+    Number(source.active_contributors_180d || 0),
+    Number(source.active_contributors_90d || 0),
+    Number(source.active_contributors_30d || 0)
+  ];
+  const commits = [
+    Number(source.commits_365d || 0),
+    Number(source.commits_180d || 0),
+    Number(source.commits_90d || 0),
+    Number(source.commits_30d || 0)
+  ];
+  const contributorRetention = contributors[0] ? contributors[3] / contributors[0] : 0;
+  const commitMomentum = commits[0] ? Math.min(1, (commits[3] * 12) / commits[0]) : 0;
+  const issueClosure = Number(source.issue_closure_ratio_365d || 0);
+  const prMerge = Number(source.pr_merge_ratio || 0);
+  const hasMergeDays = source.median_pr_merge_days !== null && source.median_pr_merge_days !== undefined && source.median_pr_merge_days !== "";
+  const mergeDays = Number(source.median_pr_merge_days || 0);
+  const mergeLatencyScore = mergeDays <= 1 ? 1 : mergeDays <= 7 ? 0.7 : mergeDays <= 30 ? 0.35 : 0.1;
+  const sample = `${numberFormat(source.merged_pr_sample || 0)} merged / ${numberFormat(source.closed_pr_sample || 0)} closed PRs`;
+
+  return `
+    <div class="health-grid">
+      <div class="health-card wide">
+        <div class="health-top">
+          <div class="health-label">Contributor depth</div>
+          <div class="health-value">${numberFormat(contributors[0])}</div>
+        </div>
+        ${renderSparkBars(contributors, ["365d", "180d", "90d", "30d"])}
+        ${renderHealthBar(contributorRetention, toneForRatio(contributorRetention, 0.12, 0.25))}
+        <div class="health-note">${numberFormat(contributors[3])} active contributors in the last 30 days; ${percent(contributorRetention)} of the annual contributor pool remains recently active.</div>
+      </div>
+      <div class="health-card wide">
+        <div class="health-top">
+          <div class="health-label">Commit velocity</div>
+          <div class="health-value">${numberFormat(commits[0])}</div>
+        </div>
+        ${renderSparkBars(commits, ["365d", "180d", "90d", "30d"])}
+        ${renderHealthBar(commitMomentum, toneForRatio(commitMomentum, 0.45, 0.8))}
+        <div class="health-note">${numberFormat(commits[3])} commits in the last 30 days; annualized current pace is ${percent(commitMomentum)} of the trailing year.</div>
+      </div>
+      <div class="health-card">
+        <div class="health-top">
+          <div class="health-label">Issue closure</div>
+          <div class="health-value">${percent(issueClosure)}</div>
+        </div>
+        ${renderHealthBar(issueClosure, toneForRatio(issueClosure, 0.35, 0.65))}
+        <div class="health-note">${numberFormat(source.issues_closed_365d || 0)} closed / ${numberFormat(source.issues_opened_365d || 0)} opened issues in the trailing year.</div>
+      </div>
+      <div class="health-card">
+        <div class="health-top">
+          <div class="health-label">PR flow</div>
+          <div class="health-value">${percent(prMerge)}</div>
+        </div>
+        ${renderHealthBar(prMerge, toneForRatio(prMerge, 0.55, 0.8))}
+        <div class="health-note">${escapeHtml(sample)}; median merge latency ${hasMergeDays ? `${mergeDays.toFixed(1)} days` : "not observed"}.</div>
+      </div>
+      <div class="health-card wide">
+        <div class="health-top">
+          <div class="health-label">Merge latency</div>
+          <div class="health-value">${hasMergeDays ? `${mergeDays.toFixed(1)}d` : "n/a"}</div>
+        </div>
+        ${renderHealthBar(mergeLatencyScore, toneForRatio(mergeLatencyScore, 0.45, 0.75))}
+        <div class="health-note">${source.commit_sample_truncated ? "Commit sample was truncated by API pagination; velocity should be treated as a lower-bound signal." : "Commit sample was not truncated for this collector window."}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderGenericUnavailable(source) {
+  if (!source || !source.error) return "";
+  return `<div class="source-callout">This source is not available for the current package coordinate.</div>`;
+}
+
+function renderCustomSourceDetails(key, source, record) {
+  if (key === "github") return renderGitHubDetails(source);
+  if (key === "package_registry") return renderPackageRegistryDetails(source, record);
+  if (key === "openssf_scorecard") return renderScorecardDetails(source);
+  if (key === "finos_osera_backpatch") return renderBackpatchDetails(source);
+  if (key === "osv") return renderOsvDetails(source, record);
+  if (key === "cisa_kev") return renderKevDetails(source);
+  if (key === "chaoss_derived") return renderChaossDetails(source);
+  return renderGenericUnavailable(source);
+}
+
+function sourceCardClass(key, source) {
+  if (key === "cisa_kev" && Number(source.matched_count || 0) > 0) return "source alert";
+  if ((key === "osv" && (source.error || source.source === "disabled" || source.source === "not-applicable")) ||
+      (key === "cisa_kev" && Number(source.matched_count || 0) === 0) ||
+      source.source === "not-collected" ||
+      source.source === "not-applicable" ||
+      source.error) {
+    return "source muted";
+  }
+  return "source";
+}
+
+function shouldRenderSource(key, source) {
+  if (key === "cisa_kev") {
+    return Number(source?.matched_count || 0) > 0;
+  }
+  if (key !== "openssf_criticality") return true;
+  if (!source || typeof source !== "object") return false;
+  const ignored = new Set(["source", "confidence", "note", "observed_at", "error"]);
+  return Object.entries(source).some(([field, value]) => {
+    if (ignored.has(field)) return false;
+    if (Array.isArray(value)) return value.length > 0;
+    if (value && typeof value === "object") return Object.keys(value).length > 0;
+    return value !== null && value !== undefined && value !== "";
+  });
+}
+
+function sortValue(record, key) {
+  const project = record.project || {};
+  const scores = record.scores || {};
+  if (key === "name") return String(project.name || project.package || "").toLowerCase();
+  if (key === "application_count") return Number(record.enterprise?.application_count || 0);
+  return Number(scores[key] || 0);
+}
+
+function compareRecords(a, b) {
+  const aValue = sortValue(a, sortState.key);
+  const bValue = sortValue(b, sortState.key);
+  const direction = sortState.direction === "asc" ? 1 : -1;
+  if (typeof aValue === "string" || typeof bValue === "string") {
+    const compared = String(aValue).localeCompare(String(bValue));
+    if (compared !== 0) return compared * direction;
+  } else if (aValue !== bValue) {
+    return (aValue - bValue) * direction;
+  }
+  return String(a.project?.name || "").localeCompare(String(b.project?.name || ""));
+}
+
+function setSort(key) {
+  const config = SORT_CONFIG[key];
+  if (!config) return;
+  if (sortState.key === key) {
+    sortState = {
+      key,
+      direction: sortState.direction === "asc" ? "desc" : "asc"
+    };
+  } else {
+    sortState = {
+      key,
+      direction: config.defaultDirection
+    };
+  }
+  applyFilters();
+}
+
+function selectMethodTab(tab) {
+  const targetId = tab.getAttribute("aria-controls");
+  methodTabs.forEach(item => {
+    item.setAttribute("aria-selected", String(item === tab));
+  });
+  methodPanels.forEach(panel => {
+    panel.hidden = panel.id !== targetId;
+  });
+}
+
+function applyFilters() {
+  const query = searchInput.value.trim().toLowerCase();
+  const ecosystem = ecosystemFilter.value;
+
+  viewRecords = allRecords.filter(record => {
+    const project = record.project || {};
+    const haystack = [
+      project.name,
+      project.ecosystem,
+      project.package,
+      project.repository
+    ].join(" ").toLowerCase();
+    return (!query || haystack.includes(query)) && (!ecosystem || project.ecosystem === ecosystem);
+  });
+
+  viewRecords.sort(compareRecords);
+
+  if (projectParam) {
+    selectedId = allRecords.find(record => matchesProjectParam(record, projectParam))?._id || "";
+  } else if (!selectedId && selectedParam) {
+    const selectedRecord = allRecords.find(record => matchesProjectParam(record, selectedParam));
+    selectedId = selectedRecord && viewRecords.some(record => record._id === selectedRecord._id) ? selectedRecord._id : "";
+  } else if (!selectedId || !viewRecords.some(record => record._id === selectedId)) {
+    selectedId = viewRecords[0]?._id || "";
+  }
+
+  render();
+}
+
+function populateEcosystems() {
+  const ecosystems = [...new Set(baseRecords.map(record => record.project?.ecosystem).filter(Boolean))].sort();
+  ecosystemFilter.innerHTML = '<option value="">All</option>' + ecosystems
+    .map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+    .join("");
+}
+
+function renderSummary() {
+  const totalApps = allRecords.reduce((sum, record) => sum + Number(record.enterprise?.application_count || 0), 0);
+  const matchedRecords = allRecords.filter(record => Number(record.enterprise?.overlay_matched_libraries || 0) > 0).length;
+  const avgVitality = allRecords.length
+    ? allRecords.reduce((sum, record) => sum + Number(record.scores?.oss_vitality || 0), 0) / allRecords.length
+    : 0;
+  const avgPriority = allRecords.length
+    ? allRecords.reduce((sum, record) => sum + Number(record.scores?.enterprise_priority_risk || 0), 0) / allRecords.length
+    : 0;
+  summaryPills.innerHTML = `
+    <span class="pill">${numberFormat(allRecords.length)} records</span>
+    <span class="pill">${numberFormat(matchedRecords)} matched overlay</span>
+    <span class="pill">${numberFormat(totalApps)} internal apps</span>
+    <span class="pill">avg vitality ${avgVitality.toFixed(1)}</span>
+    <span class="pill">avg priority ${avgPriority.toFixed(1)}</span>
+  `;
+}
+
+function renderSortHeaders() {
+  document.querySelectorAll("th .sort-button").forEach(button => {
+    const key = button.dataset.sortKey;
+    const th = button.closest("th");
+    const indicator = button.querySelector(".sort-indicator");
+    const active = key === sortState.key;
+    const directionLabel = sortState.direction === "asc" ? "ascending" : "descending";
+    th.setAttribute("aria-sort", active ? directionLabel : "none");
+    indicator.textContent = active ? (sortState.direction === "asc" ? "🔼" : "🔽") : "";
+    button.title = active
+      ? `Sorted ${directionLabel}. Click to reverse.`
+      : `Sort by ${SORT_CONFIG[key]?.label || key}`;
+  });
+}
+
+function renderTable() {
+  renderSortHeaders();
+  if (!viewRecords.length) {
+    recordsBody.innerHTML = `<tr><td colspan="5" class="empty">No records match the current filters.</td></tr>`;
+    return;
+  }
+  recordsBody.innerHTML = viewRecords.map(record => {
+    const project = record.project || {};
+    const scores = record.scores || {};
+    const enterprise = record.enterprise || {};
+    return `
+      <tr data-id="${escapeHtml(record._id)}" data-selected="${record._id === selectedId}">
+        <td>
+          <div class="library-cell">
+            ${renderPackageBadge(project.ecosystem)}
+            <div class="library-text">
+              <div class="project-name">${escapeHtml(project.name)}</div>
+              <div class="sub">${escapeHtml(packageTypeMeta(project.ecosystem).label)} / ${escapeHtml(project.package)}</div>
+            </div>
+          </div>
+        </td>
+        <td>${bar(scores.oss_vitality)}</td>
+        <td>${bar(scores.enterprise_priority_risk, true)}</td>
+        <td>${bar(scores.ecosystem_criticality)}</td>
+        <td>
+          <div class="score">${numberFormat(enterprise.application_count)}</div>
+          ${exposureBreakdown(enterprise.direct_dependency_count, enterprise.transitive_dependency_count)}
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  recordsBody.querySelectorAll("tr[data-id]").forEach(row => {
+    row.addEventListener("click", () => {
+      selectedId = row.dataset.id;
+      updateSelectedProjectParam(allRecords.find(record => record._id === selectedId));
+      render();
+    });
+  });
+
+  if (pendingScrollToSelected && selectedId) {
+    const selectedRow = recordsBody.querySelector(`tr[data-id="${CSS.escape(selectedId)}"]`);
+    if (selectedRow) {
+      requestAnimationFrame(() => selectedRow.scrollIntoView({ block: "center" }));
+      pendingScrollToSelected = false;
+    }
+  }
+}
+
+function renderDimensions(record) {
+  return Object.entries(DIMENSION_WEIGHTS).map(([key, weight]) => `
+    <div class="dimension">
+      <div>
+        <strong>${DIMENSION_LABELS[key]}</strong>
+        <div class="sub">Weight ${Math.round(weight * 100)}%</div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${score(record, key)}%"></div></div>
+      <div class="score">${score(record, key).toFixed(0)}</div>
+    </div>
+  `).join("");
+}
+
+function renderSources(record) {
+  const evidence = record.evidence || {};
+  const sources = Object.entries(evidence)
+    .filter(([key, source]) => source && typeof source === "object" && shouldRenderSource(key, source));
+  if (!sources.length) {
+    return `<div class="sub">No evidence sources attached.</div>`;
+  }
+  return `<div class="source-list">` + sources.map(([key, source]) => {
+    const links = renderSourceLinks(key, source, record);
+    const facts = ["github", "package_registry", "openssf_scorecard", "finos_osera_backpatch", "osv", "cisa_kev", "chaoss_derived"].includes(key) ? "" : sourceFacts(source);
+    const customDetails = renderCustomSourceDetails(key, source, record);
+    return `
+      <div class="${sourceCardClass(key, source)}">
+        <div class="source-top">
+          <div class="source-title">
+            ${renderSourceBadge(key)}
+            <div>
+              <div class="source-name">${escapeHtml(SOURCE_LABELS[key] || key)}</div>
+              <div class="source-kind">${escapeHtml(source.source || "source")}${source.observed_at ? `, observed ${escapeHtml(source.observed_at)}` : ""}</div>
+            </div>
+          </div>
+          <div class="confidence">${percentConfidence(source.confidence)}</div>
+        </div>
+        ${links}
+        ${facts ? `<div class="evidence-facts">${facts}</div>` : ""}
+        ${customDetails}
+      </div>
+    `;
+  }).join("") + `</div>`;
+}
+
+function renderVersions(record) {
+  const versions = record.enterprise?.versions_in_use || [];
+  if (!versions.length) {
+    return `<div class="sub">${escapeHtml(record.enterprise?.overlay_source || "No deployed version data attached.")}</div>`;
+  }
+  return `<div class="version-list">` + versions.map(version => {
+    const cves = version.known_cves?.length ? version.known_cves.join(", ") : "No known CVEs in fixture";
+    return `
+      <div class="version">
+        <div class="version-top">
+          <span>${escapeHtml(version.version)}</span>
+          <span class="${version.unsupported ? "risk-text" : "good-text"}">${version.unsupported ? "Unsupported" : "Supported"}</span>
+        </div>
+        <div class="sub">${numberFormat(version.application_count)} apps ${exposureBreakdown(version.direct_dependency_count, version.transitive_dependency_count)}</div>
+        <div class="sub">${escapeHtml(cves)}</div>
+      </div>
+    `;
+  }).join("") + `</div>`;
+}
+
+function renderDetail() {
+  const record = allRecords.find(item => item._id === selectedId);
+  renderProjectHeader(record);
+  if (!record) {
+    detailPanel.innerHTML = projectParam
+      ? `<div class="empty">No project record matched <strong>${escapeHtml(projectParam)}</strong>. ${actionLink("Back to browser", browserViewHref(), { icon: "back" })}</div>`
+      : `<div class="empty">Select a record to inspect scoring and sources.</div>`;
+    document.title = "OSS Project Risk";
+    return;
+  }
+  const project = record.project || {};
+  const scores = record.scores || {};
+  const enterprise = record.enterprise || {};
+  const pressure = Number(scores.undermaintenance_pressure || 0);
+  const notes = record.notes?.length
+    ? `<ul>${record.notes.map(note => `<li>${escapeHtml(note)}</li>`).join("")}</ul>`
+    : `<div class="sub">No notes.</div>`;
+  const detailModeLinks = projectParam
+    ? actionLink("Back to browser", browserViewHref(), { icon: "back" })
+    : actionLink("Full Details", projectViewHref(record), { icon: "open", primary: true });
+  const detailUtilityLinks = `
+    ${project.repository ? actionLink("Repository", project.repository, { icon: "github", iconOnly: true, external: true }) : ""}
+    ${project.homepage ? actionLink("Homepage", project.homepage, { icon: "globe", iconOnly: true, external: true }) : ""}
+  `;
+  document.title = projectParam ? `${project.name} - OSS Project Risk` : "OSS Project Risk";
+
+  detailPanel.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-title-row">
+        ${renderPackageBadge(project.ecosystem)}
+        <h1 class="detail-title">${escapeHtml(project.name)}</h1>
+      </div>
+      <div class="sub">${escapeHtml(packageTypeMeta(project.ecosystem).label)} / ${escapeHtml(project.package)}</div>
+      <div class="links">
+        ${detailUtilityLinks}
+        ${detailModeLinks}
+      </div>
+    </div>
+    <div class="detail-body">
+      <section class="section">
+        <h2>Headline Scores</h2>
+        <div class="section-content">
+          <div class="score-grid">
+            ${headlineMetric("OSS vitality", scores.oss_vitality, {
+              caption: "Higher means stronger observed upstream health."
+            })}
+            ${headlineMetric("Enterprise priority", scores.enterprise_priority_risk, {
+              risk: true,
+              caption: "Higher means more enterprise attention needed."
+            })}
+            ${headlineMetric("Confidence", Number(scores.confidence || 0) * 100, {
+              format: value => `${Math.round(value)}%`,
+              caption: "Evidence completeness and collector confidence."
+            })}
+          </div>
+        </div>
+      </section>
+      <section class="section">
+        <h2>Dimension Breakdown</h2>
+        <div class="section-content">
+          ${renderDimensions(record)}
+          <div class="formula">V = .25 vitality + .25 security + .20 governance + .15 dependency hygiene + .15 ecosystem resilience</div>
+        </div>
+      </section>
+      <section class="section">
+        <h2>Enterprise Overlay</h2>
+        <div class="section-content">
+          <div class="sub">${escapeHtml(enterprise.overlay_source || activeOverlay?.label || "No Risk Navigator collection selected")}${enterprise.overlay_matched_libraries ? `, ${numberFormat(enterprise.overlay_matched_libraries)} matching package-version row(s)` : ""}</div>
+          <div style="height:10px"></div>
+          <div class="score-grid">
+            <div class="metric">
+              <div class="metric-label">Applications</div>
+              <div class="metric-value">${numberFormat(enterprise.application_count)}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Tier-1 apps</div>
+              <div class="metric-value">${numberFormat(enterprise.tier1_application_count)}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Internet-facing</div>
+              <div class="metric-value">${numberFormat(enterprise.internet_facing_application_count)}</div>
+            </div>
+          </div>
+          <div style="height:10px"></div>
+          ${renderVersions(record)}
+        </div>
+      </section>
+      <section class="section">
+        <h2>Source Provenance</h2>
+        <div class="section-content">${renderSources(record)}</div>
+      </section>
+      <section class="section">
+        <h2>Scoring Notes</h2>
+        <div class="section-content">
+          ${notes}
+          <div class="score-note-grid">
+            <div class="score-note">
+              <strong>${pressure.toFixed(2)}</strong>
+              <span>Undermaintenance pressure: downstream demand divided by visible maintainer capacity. Higher means more consumers relative to maintainers and recent contributors.</span>
+            </div>
+            <div class="score-note">
+              <strong>${SORT_CONFIG[sortState.key]?.label || sortState.key}</strong>
+              <span>Current grid sort: ${sortState.direction === "asc" ? "ascending" : "descending"}. Default is Vitality ascending, which puts weaker upstream health first.</span>
+            </div>
+          </div>
+          <div class="formula">Enterprise priority = health gap x ecosystem criticality x internal exposure x version risk x confidence</div>
+          <div class="formula">Undermaintenance pressure = log(1 + dependents + sqrt(downloads) + internal apps x 10) / log(2 + maintainer/contributor capacity)</div>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function render() {
+  renderSummary();
+  renderTable();
+  renderDetail();
+}
+
+function loadPayload(payload) {
+  const records = Array.isArray(payload) ? payload : payload.records;
+  if (!Array.isArray(records)) {
+    throw new Error("Expected a JSON array or object with records[]");
+  }
+  baseRecords = scoreRecords(records);
+  selectedId = "";
+  populateEcosystems();
+  applyEnterpriseOverlay();
+}
+
+async function fetchJsonIfPresent(url) {
+  const response = await fetch(url);
+  if (!response.ok) return null;
+  return response.json();
+}
+
+async function loadOverlayManifest() {
+  const manifestUrl = "../tool/manifest.json";
+  const manifest = await fetchJsonIfPresent(manifestUrl);
+  overlayManifest = manifest || { datasets: [] };
+  const datasets = overlayManifest.datasets || [];
+  overlaySelect.innerHTML = '<option value="">No Risk Navigator overlay</option>' + datasets.map(entry =>
+    `<option value="${escapeHtml(entry.url)}">${escapeHtml(entry.label || entry.url)}</option>`
+  ).join("");
+  const stored = localStorage.getItem("risk-nav-last-dataset") || "";
+  const initial = datasets.some(entry => entry.url === stored) ? stored : (datasets[0]?.url || "");
+  if (initial) {
+    overlaySelect.value = initial;
+    await loadEnterpriseOverlay(initial);
+  }
+}
+
+async function loadEnterpriseOverlay(datasetUrl) {
+  const datasets = overlayManifest?.datasets || [];
+  const entry = datasets.find(item => item.url === datasetUrl);
+  if (!datasetUrl || !entry) {
+    activeOverlay = null;
+    applyEnterpriseOverlay();
+    return;
+  }
+  overlaySelect.disabled = true;
+  const previousLabel = overlaySelect.selectedOptions[0]?.textContent || "Risk Navigator collection";
+  activeOverlay = { label: `Loading ${previousLabel}...`, url: datasetUrl, dataset: null };
+  applyEnterpriseOverlay();
+  try {
+    const resolvedUrl = new URL(entry.url, new URL("../tool/manifest.json", location.href)).href;
+    const dataset = await fetchJsonIfPresent(resolvedUrl);
+    if (!dataset) throw new Error(`Unable to load Risk Navigator dataset: ${entry.label || entry.url}`);
+    activeOverlay = {
+      label: entry.label || entry.url,
+      url: entry.url,
+      dataset
+    };
+    localStorage.setItem("risk-nav-last-dataset", entry.url);
+    applyEnterpriseOverlay();
+  } finally {
+    overlaySelect.disabled = false;
+  }
+}
+
+async function loadDefault() {
+  const payload = await fetchJsonIfPresent("./data/finos-osera-backpatch-scorecards.json")
+    || await fetchJsonIfPresent("./data/collected-library-scorecards.json")
+    || await fetchJsonIfPresent("./examples/library-scorecards.json");
+  if (!payload) {
+    throw new Error("Unable to load collected or example scorecards");
+  }
+  loadPayload(payload);
+  await loadOverlayManifest();
+}
+
+searchInput.addEventListener("input", applyFilters);
+ecosystemFilter.addEventListener("change", applyFilters);
+document.querySelectorAll("th .sort-button").forEach(button => {
+  button.addEventListener("click", () => setSort(button.dataset.sortKey));
+});
+methodTabs.forEach(tab => {
+  tab.addEventListener("click", () => selectMethodTab(tab));
+});
+overlaySelect.addEventListener("change", event => {
+  loadEnterpriseOverlay(event.target.value).catch(error => {
+    activeOverlay = null;
+    applyEnterpriseOverlay();
+    detailPanel.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+  });
+});
+methodButton.addEventListener("click", () => {
+  selectMethodTab(methodTabs[0]);
+  if (typeof methodDialog.showModal === "function") {
+    methodDialog.showModal();
+  } else {
+    methodDialog.setAttribute("open", "");
+  }
+});
+methodCloseButton.addEventListener("click", () => {
+  methodDialog.close();
+});
+methodDialog.addEventListener("click", event => {
+  if (event.target === methodDialog) {
+    methodDialog.close();
+  }
+});
+resetButton.addEventListener("click", () => {
+  searchInput.value = "";
+  ecosystemFilter.value = "";
+  sortState = { key: "oss_vitality", direction: "asc" };
+  overlaySelect.value = activeOverlay?.url || "";
+  applyFilters();
+});
+fileInput.addEventListener("change", async () => {
+  const file = fileInput.files?.[0];
+  if (!file) return;
+  const payload = JSON.parse(await file.text());
+  loadPayload(payload);
+});
+
+loadDefault().catch(error => {
+  detailPanel.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+});
+</script>
+</body>
+</html>

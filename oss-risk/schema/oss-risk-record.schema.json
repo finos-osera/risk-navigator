@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://osera.dev/schemas/oss-risk-record.schema.json",
+  "title": "OSS Library Risk Record",
+  "type": "object",
+  "required": ["schema_version", "project", "scores", "evidence", "enterprise"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "project": {
+      "type": "object",
+      "required": ["name", "ecosystem", "package", "repository"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "ecosystem": { "type": "string" },
+        "package": { "type": "string" },
+        "repository": { "type": "string" },
+        "homepage": { "type": "string" }
+      }
+    },
+    "scores": {
+      "type": "object",
+      "required": [
+        "project_vitality",
+        "security_health",
+        "sustainability_governance",
+        "dependency_hygiene",
+        "ecosystem_resilience",
+        "ecosystem_criticality",
+        "confidence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "project_vitality": { "$ref": "#/$defs/score" },
+        "security_health": { "$ref": "#/$defs/score" },
+        "sustainability_governance": { "$ref": "#/$defs/score" },
+        "dependency_hygiene": { "$ref": "#/$defs/score" },
+        "ecosystem_resilience": { "$ref": "#/$defs/score" },
+        "ecosystem_criticality": { "$ref": "#/$defs/score" },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "oss_vitality": { "$ref": "#/$defs/score" },
+        "enterprise_priority_risk": { "$ref": "#/$defs/score" },
+        "undermaintenance_pressure": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "openssf_scorecard": { "$ref": "#/$defs/sourceObject" },
+        "openssf_criticality": { "$ref": "#/$defs/sourceObject" },
+        "chaoss_derived": { "$ref": "#/$defs/sourceObject" },
+        "osv": { "$ref": "#/$defs/sourceObject" },
+        "cisa_kev": { "$ref": "#/$defs/sourceObject" },
+        "epss": { "$ref": "#/$defs/sourceObject" },
+        "github": { "$ref": "#/$defs/sourceObject" },
+        "package_registry": { "$ref": "#/$defs/sourceObject" },
+        "governance_docs": { "$ref": "#/$defs/sourceObject" },
+        "model_extracted": { "$ref": "#/$defs/sourceObject" },
+        "finos_osera_backpatch": { "$ref": "#/$defs/sourceObject" }
+      }
+    },
+    "enterprise": {
+      "type": "object",
+      "required": [
+        "versions_in_use",
+        "application_count",
+        "direct_dependency_count",
+        "transitive_dependency_count",
+        "tier1_application_count",
+        "internet_facing_application_count",
+        "regulated_application_count",
+        "unsupported_version_count",
+        "known_vulnerable_version_count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "versions_in_use": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["version", "application_count"],
+            "additionalProperties": false,
+            "properties": {
+              "version": { "type": "string" },
+              "application_count": { "type": "integer", "minimum": 0 },
+              "direct_dependency_count": { "type": "integer", "minimum": 0 },
+              "transitive_dependency_count": { "type": "integer", "minimum": 0 },
+              "known_cves": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "unsupported": { "type": "boolean" }
+            }
+          }
+        },
+        "application_count": { "type": "integer", "minimum": 0 },
+        "direct_dependency_count": { "type": "integer", "minimum": 0 },
+        "transitive_dependency_count": { "type": "integer", "minimum": 0 },
+        "tier1_application_count": { "type": "integer", "minimum": 0 },
+        "internet_facing_application_count": { "type": "integer", "minimum": 0 },
+        "regulated_application_count": { "type": "integer", "minimum": 0 },
+        "unsupported_version_count": { "type": "integer", "minimum": 0 },
+        "known_vulnerable_version_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "sourceObject": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "source": { "type": "string" },
+        "url": { "type": "string" },
+        "observed_at": { "type": "string" },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    }
+  }
+}

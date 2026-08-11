@@ -8,8 +8,11 @@ const siteUrl = isGitHubPages
   : process.env.DEPLOY_PRIME_URL || process.env.URL || customDomain;
 const baseUrl = "/";
 const publicToolUrl = `${baseUrl}tools/risk-navigator.html`;
+const publicOssRiskUrl = `${baseUrl}oss-risk/browser.html`;
 const launchToolHtml = `<a class="navbar__item navbar__link" href="${publicToolUrl}">Launch Tool</a>`;
+const ossRiskHtml = `<a class="navbar__item navbar__link" href="${publicOssRiskUrl}">OSS Project Risk</a>`;
 const launchToolFooterHtml = `<a class="footer__link-item" href="${publicToolUrl}">Launch Tool</a>`;
+const ossRiskFooterHtml = `<a class="footer__link-item" href="${publicOssRiskUrl}">OSS Project Risk</a>`;
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -62,6 +65,7 @@ const config = {
         { to: "/", label: "Overview", position: "right" },
         { to: "/docs/home", label: "Docs", position: "right" },
         { href: "https://osera.finos.org", label: "OSERA", position: "right" },
+        { type: "html", value: ossRiskHtml, position: "right" },
         { type: "html", value: launchToolHtml, position: "right" },
         {
           href: "https://github.com/finos-osera/risk-navigator",
@@ -84,6 +88,7 @@ const config = {
             { label: "Overview", to: "/" },
             { label: "Docs", to: "/docs/home" },
             { html: launchToolFooterHtml },
+            { html: ossRiskFooterHtml },
             { label: "GitHub", href: "https://github.com/finos-osera/risk-navigator" },
           ],
         },

@@ -1,0 +1,3069 @@
+{
+  "schema_version": "0.1",
+  "generated_at": "2026-08-11T17:29:00Z",
+  "source": "github-org:finos-osera",
+  "repository_prefix": "backpatch-",
+  "records": [
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "activemq",
+        "ecosystem": "maven",
+        "package": "org.apache.activemq:activemq-client",
+        "repository": "https://github.com/apache/activemq",
+        "homepage": "https://github.com/apache/activemq"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-activemq",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-activemq",
+          "backpatch_name": "backpatch-activemq",
+          "library_name": "activemq",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/activemq",
+          "description": "Apache ActiveMQ"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "avatica-core",
+        "ecosystem": "maven",
+        "package": "org.apache.calcite.avatica:avatica-core",
+        "repository": "https://github.com/apache/calcite-avatica",
+        "homepage": "https://github.com/apache/calcite-avatica"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-avatica-core",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-avatica-core",
+          "backpatch_name": "backpatch-avatica-core",
+          "library_name": "avatica-core",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/calcite-avatica",
+          "description": "Apache Calcite Avatica"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "bouncycastle",
+        "ecosystem": "maven",
+        "package": "org.bouncycastle:bcprov-jdk18on",
+        "repository": "https://github.com/bcgit/bc-java",
+        "homepage": "https://github.com/bcgit/bc-java"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-bouncycastle",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-bouncycastle",
+          "backpatch_name": "backpatch-bouncycastle",
+          "library_name": "bouncycastle",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/bcgit/bc-java",
+          "description": "git-cvsimport of the bouncycastle java repository"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "camel",
+        "ecosystem": "maven",
+        "package": "org.apache.camel:camel-core",
+        "repository": "https://github.com/apache/camel",
+        "homepage": "https://github.com/apache/camel"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-camel",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-camel",
+          "backpatch_name": "backpatch-camel",
+          "library_name": "camel",
+          "primary_language": "Java",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/camel",
+          "description": "FINOS OSERA fork of Apache Camel \u2014 see https://github.com/finos-osera"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "commons-beanutils",
+        "ecosystem": "maven",
+        "package": "commons-beanutils:commons-beanutils",
+        "repository": "https://github.com/apache/commons-beanutils",
+        "homepage": "https://github.com/apache/commons-beanutils"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-commons-beanutils",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-commons-beanutils",
+          "backpatch_name": "backpatch-commons-beanutils",
+          "library_name": "commons-beanutils",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/commons-beanutils",
+          "description": "Apache Commons Beanutils"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "commons-collections",
+        "ecosystem": "maven",
+        "package": "commons-collections:commons-collections",
+        "repository": "https://github.com/apache/commons-collections",
+        "homepage": "https://github.com/apache/commons-collections"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-commons-collections",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-commons-collections",
+          "backpatch_name": "backpatch-commons-collections",
+          "library_name": "commons-collections",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/commons-collections",
+          "description": "Apache Commons Collections"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "commons-compress",
+        "ecosystem": "maven",
+        "package": "org.apache.commons:commons-compress",
+        "repository": "https://github.com/apache/commons-compress",
+        "homepage": "https://github.com/apache/commons-compress"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-commons-compress",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-commons-compress",
+          "backpatch_name": "backpatch-commons-compress",
+          "library_name": "commons-compress",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/commons-compress",
+          "description": "Apache Commons Compress"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "commons-configuration2",
+        "ecosystem": "maven",
+        "package": "org.apache.commons:commons-configuration2",
+        "repository": "https://github.com/apache/commons-configuration",
+        "homepage": "https://github.com/apache/commons-configuration"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-commons-configuration2",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-commons-configuration2",
+          "backpatch_name": "backpatch-commons-configuration2",
+          "library_name": "commons-configuration2",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/commons-configuration",
+          "description": "Apache Commons Configuration"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "commons-fileupload",
+        "ecosystem": "maven",
+        "package": "commons-fileupload:commons-fileupload",
+        "repository": "https://github.com/apache/commons-fileupload",
+        "homepage": "https://github.com/apache/commons-fileupload"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-commons-fileupload",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-commons-fileupload",
+          "backpatch_name": "backpatch-commons-fileupload",
+          "library_name": "commons-fileupload",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/commons-fileupload",
+          "description": "Apache Commons FileUpload is a robust, high-performance, file upload capability to your servlets and web applications"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "commons-io",
+        "ecosystem": "maven",
+        "package": "commons-io:commons-io",
+        "repository": "https://github.com/apache/commons-io",
+        "homepage": "https://github.com/apache/commons-io"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-commons-io",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-commons-io",
+          "backpatch_name": "backpatch-commons-io",
+          "library_name": "commons-io",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/commons-io",
+          "description": "Apache Commons IO"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "commons-lang",
+        "ecosystem": "maven",
+        "package": "commons-lang:commons-lang",
+        "repository": "https://github.com/apache/commons-lang",
+        "homepage": "https://github.com/apache/commons-lang"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-commons-lang",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-commons-lang",
+          "backpatch_name": "backpatch-commons-lang",
+          "library_name": "commons-lang",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/commons-lang",
+          "description": "Apache Commons Lang"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "commons-text",
+        "ecosystem": "maven",
+        "package": "org.apache.commons:commons-text",
+        "repository": "https://github.com/apache/commons-text",
+        "homepage": "https://github.com/apache/commons-text"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-commons-text",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-commons-text",
+          "backpatch_name": "backpatch-commons-text",
+          "library_name": "commons-text",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/commons-text",
+          "description": "Apache Commons Text"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "commons-vfs2",
+        "ecosystem": "maven",
+        "package": "org.apache.commons:commons-vfs2",
+        "repository": "https://github.com/apache/commons-vfs",
+        "homepage": "https://github.com/apache/commons-vfs"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-commons-vfs2",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-commons-vfs2",
+          "backpatch_name": "backpatch-commons-vfs2",
+          "library_name": "commons-vfs2",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/commons-vfs",
+          "description": "Apache Commons VFS"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "cxf",
+        "ecosystem": "maven",
+        "package": "org.apache.cxf:cxf-core",
+        "repository": "https://github.com/apache/cxf",
+        "homepage": "https://github.com/apache/cxf"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-cxf",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-cxf",
+          "backpatch_name": "backpatch-cxf",
+          "library_name": "cxf",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/cxf",
+          "description": "Apache CXF"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "dom4j",
+        "ecosystem": "maven",
+        "package": "org.dom4j:dom4j",
+        "repository": "https://github.com/dom4j/dom4j",
+        "homepage": "https://github.com/dom4j/dom4j"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-dom4j",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-dom4j",
+          "backpatch_name": "backpatch-dom4j",
+          "library_name": "dom4j",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/dom4j/dom4j",
+          "description": "flexible XML framework for Java"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "fastjson",
+        "ecosystem": "maven",
+        "package": "com.alibaba:fastjson",
+        "repository": "https://github.com/alibaba/fastjson",
+        "homepage": "https://github.com/alibaba/fastjson"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-fastjson",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-fastjson",
+          "backpatch_name": "backpatch-fastjson",
+          "library_name": "fastjson",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/alibaba/fastjson",
+          "description": "FASTJSON 2.0.x has been released, faster and more secure, recommend you upgrade."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "graphql-java",
+        "ecosystem": "maven",
+        "package": "com.graphql-java:graphql-java",
+        "repository": "https://github.com/graphql-java/graphql-java",
+        "homepage": "https://github.com/graphql-java/graphql-java"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-graphql-java",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-graphql-java",
+          "backpatch_name": "backpatch-graphql-java",
+          "library_name": "graphql-java",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/graphql-java/graphql-java",
+          "description": "GraphQL Java implementation"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "gson",
+        "ecosystem": "maven",
+        "package": "com.google.code.gson:gson",
+        "repository": "https://github.com/google/gson",
+        "homepage": "https://github.com/google/gson"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-gson",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-gson",
+          "backpatch_name": "backpatch-gson",
+          "library_name": "gson",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/google/gson",
+          "description": "A Java serialization/deserialization library to convert Java Objects into JSON and back"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "guava",
+        "ecosystem": "maven",
+        "package": "com.google.guava:guava",
+        "repository": "https://github.com/google/guava",
+        "homepage": "https://github.com/google/guava"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-guava",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-guava",
+          "backpatch_name": "backpatch-guava",
+          "library_name": "guava",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/google/guava",
+          "description": "Google core libraries for Java"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "h2",
+        "ecosystem": "maven",
+        "package": "com.h2database:h2",
+        "repository": "https://github.com/h2database/h2database",
+        "homepage": "https://github.com/h2database/h2database"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-h2",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-h2",
+          "backpatch_name": "backpatch-h2",
+          "library_name": "h2",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/h2database/h2database",
+          "description": "H2 is an embeddable RDBMS written in Java."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "hazelcast",
+        "ecosystem": "maven",
+        "package": "com.hazelcast:hazelcast",
+        "repository": "https://github.com/hazelcast/hazelcast",
+        "homepage": "https://github.com/hazelcast/hazelcast"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-hazelcast",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-hazelcast",
+          "backpatch_name": "backpatch-hazelcast",
+          "library_name": "hazelcast",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/hazelcast/hazelcast",
+          "description": "Hazelcast is a unified real-time data platform combining stream processing with a fast data store, allowing customers to act instantly on data-in-motion for real-time insights."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "hibernate-core",
+        "ecosystem": "maven",
+        "package": "org.hibernate:hibernate-core",
+        "repository": "https://github.com/hibernate/hibernate-orm",
+        "homepage": "https://github.com/hibernate/hibernate-orm"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-hibernate-core",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-hibernate-core",
+          "backpatch_name": "backpatch-hibernate-core",
+          "library_name": "hibernate-core",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/hibernate/hibernate-orm",
+          "description": "Idiomatic persistence for Java and relational databases"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "httpclient5",
+        "ecosystem": "maven",
+        "package": "org.apache.httpcomponents.client5:httpclient5",
+        "repository": "https://github.com/apache/httpcomponents-client",
+        "homepage": "https://github.com/apache/httpcomponents-client"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-httpclient5",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-httpclient5",
+          "backpatch_name": "backpatch-httpclient5",
+          "library_name": "httpclient5",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/httpcomponents-client",
+          "description": "Mirror of Apache HttpClient"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "jackson-databind",
+        "ecosystem": "maven",
+        "package": "com.fasterxml.jackson.core:jackson-databind",
+        "repository": "https://github.com/FasterXML/jackson-databind",
+        "homepage": "https://github.com/FasterXML/jackson-databind"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-jackson-databind",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-jackson-databind",
+          "backpatch_name": "backpatch-jackson-databind",
+          "library_name": "jackson-databind",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/FasterXML/jackson-databind",
+          "description": "General data-binding package for Jackson: works on streaming API (core) implementation(s)"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "jetty",
+        "ecosystem": "maven",
+        "package": "org.eclipse.jetty:jetty-server",
+        "repository": "https://github.com/jetty/jetty.project",
+        "homepage": "https://github.com/jetty/jetty.project"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-jetty",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-jetty",
+          "backpatch_name": "backpatch-jetty",
+          "library_name": "jetty",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/jetty/jetty.project",
+          "description": "Eclipse Jetty\u00ae - Web Container & Clients - supports HTTP/3, HTTP/2, HTTP/1, websocket, servlets, and more"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "jodd-json",
+        "ecosystem": "maven",
+        "package": "org.jodd:jodd-json",
+        "repository": "https://github.com/oblac/jodd",
+        "homepage": "https://github.com/oblac/jodd"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-jodd-json",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-jodd-json",
+          "backpatch_name": "backpatch-jodd-json",
+          "library_name": "jodd-json",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/oblac/jodd",
+          "description": "Jodd! Lightweight. Java. Zero dependencies. Use what you like."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "kafka-clients",
+        "ecosystem": "maven",
+        "package": "org.apache.kafka:kafka-clients",
+        "repository": "https://github.com/apache/kafka",
+        "homepage": "https://github.com/apache/kafka"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-kafka-clients",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-kafka-clients",
+          "backpatch_name": "backpatch-kafka-clients",
+          "library_name": "kafka-clients",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/kafka",
+          "description": "Apache Kafka - A distributed event streaming platform"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "log4j",
+        "ecosystem": "maven",
+        "package": "log4j:log4j",
+        "repository": "https://github.com/apache/logging-log4j1",
+        "homepage": "https://github.com/apache/logging-log4j1"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-log4j",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-log4j",
+          "backpatch_name": "backpatch-log4j",
+          "library_name": "log4j",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/logging-log4j1",
+          "description": "Apache log4j1"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "log4j-core",
+        "ecosystem": "maven",
+        "package": "org.apache.logging.log4j:log4j-core",
+        "repository": "https://github.com/apache/logging-log4j2",
+        "homepage": "https://github.com/apache/logging-log4j2"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-log4j-core",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-log4j-core",
+          "backpatch_name": "backpatch-log4j-core",
+          "library_name": "log4j-core",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/logging-log4j2",
+          "description": "Apache Log4j is a versatile, feature-rich, efficient logging API and backend for Java."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "logback",
+        "ecosystem": "maven",
+        "package": "ch.qos.logback:logback-core",
+        "repository": "https://github.com/qos-ch/logback",
+        "homepage": "https://github.com/qos-ch/logback"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-logback",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-logback",
+          "backpatch_name": "backpatch-logback",
+          "library_name": "logback",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/qos-ch/logback",
+          "description": "The reliable, generic, fast and flexible logging framework for Java."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "mina-core",
+        "ecosystem": "maven",
+        "package": "org.apache.mina:mina-core",
+        "repository": "https://github.com/apache/mina",
+        "homepage": "https://github.com/apache/mina"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-mina-core",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-mina-core",
+          "backpatch_name": "backpatch-mina-core",
+          "library_name": "mina-core",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/mina",
+          "description": "Mirror of Apache MINA"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "netty",
+        "ecosystem": "maven",
+        "package": "io.netty:netty-codec-http",
+        "repository": "https://github.com/netty/netty",
+        "homepage": "https://github.com/netty/netty"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-netty",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-netty",
+          "backpatch_name": "backpatch-netty",
+          "library_name": "netty",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/netty/netty",
+          "description": "Netty project - an event-driven asynchronous network application framework"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "okhttp",
+        "ecosystem": "maven",
+        "package": "com.squareup.okhttp3:okhttp",
+        "repository": "https://github.com/square/okhttp",
+        "homepage": "https://github.com/square/okhttp"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-okhttp",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-okhttp",
+          "backpatch_name": "backpatch-okhttp",
+          "library_name": "okhttp",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/square/okhttp",
+          "description": "Square\u2019s meticulous HTTP client for the JVM, Android, and GraalVM."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "pac4j",
+        "ecosystem": "maven",
+        "package": "org.pac4j:pac4j-core",
+        "repository": "https://github.com/pac4j/pac4j",
+        "homepage": "https://github.com/pac4j/pac4j"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-pac4j",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-pac4j",
+          "backpatch_name": "backpatch-pac4j",
+          "library_name": "pac4j",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/pac4j/pac4j",
+          "description": "Security engine for Java (authentication, authorization, multi frameworks): OpenID Connect, SAML2, CAS, OAuth, LDAP, JWT..."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "protobuf-java",
+        "ecosystem": "maven",
+        "package": "com.google.protobuf:protobuf-java",
+        "repository": "https://github.com/protocolbuffers/protobuf",
+        "homepage": "https://github.com/protocolbuffers/protobuf"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-protobuf-java",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-protobuf-java",
+          "backpatch_name": "backpatch-protobuf-java",
+          "library_name": "protobuf-java",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/protocolbuffers/protobuf",
+          "description": "Protocol Buffers - Google's data interchange format"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "reactor-netty-http",
+        "ecosystem": "maven",
+        "package": "io.projectreactor.netty:reactor-netty-http",
+        "repository": "https://github.com/reactor/reactor-netty",
+        "homepage": "https://github.com/reactor/reactor-netty"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-reactor-netty-http",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-reactor-netty-http",
+          "backpatch_name": "backpatch-reactor-netty-http",
+          "library_name": "reactor-netty-http",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/reactor/reactor-netty",
+          "description": "TCP/HTTP/UDP/QUIC client/server with Reactor over Netty"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "snakeyaml",
+        "ecosystem": "maven",
+        "package": "org.yaml:snakeyaml",
+        "repository": "https://github.com/snakeyaml/snakeyaml",
+        "homepage": "https://github.com/snakeyaml/snakeyaml"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-snakeyaml",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-snakeyaml",
+          "backpatch_name": "backpatch-snakeyaml",
+          "library_name": "snakeyaml",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/snakeyaml/snakeyaml",
+          "description": "Mirror of https://codeberg.org/snakeyaml/snakeyaml"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "spring-boot",
+        "ecosystem": "maven",
+        "package": "org.springframework.boot:spring-boot",
+        "repository": "https://github.com/spring-projects/spring-boot",
+        "homepage": "https://github.com/spring-projects/spring-boot"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-spring-boot",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-spring-boot",
+          "backpatch_name": "backpatch-spring-boot",
+          "library_name": "spring-boot",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/spring-projects/spring-boot",
+          "description": "Spring Boot helps you to create Spring-powered, production-grade applications and services with absolute minimum fuss."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "spring-cloud-config",
+        "ecosystem": "maven",
+        "package": "org.springframework.cloud:spring-cloud-config-server",
+        "repository": "https://github.com/spring-cloud/spring-cloud-config",
+        "homepage": "https://github.com/spring-cloud/spring-cloud-config"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-spring-cloud-config",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-spring-cloud-config",
+          "backpatch_name": "backpatch-spring-cloud-config",
+          "library_name": "spring-cloud-config",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/spring-cloud/spring-cloud-config",
+          "description": "External configuration (server and client) for Spring Cloud"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "spring-cloud-function",
+        "ecosystem": "maven",
+        "package": "org.springframework.cloud:spring-cloud-function-core",
+        "repository": "https://github.com/spring-cloud/spring-cloud-function",
+        "homepage": "https://github.com/spring-cloud/spring-cloud-function"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-spring-cloud-function",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-spring-cloud-function",
+          "backpatch_name": "backpatch-spring-cloud-function",
+          "library_name": "spring-cloud-function",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/spring-cloud/spring-cloud-function",
+          "description": ""
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "spring-cloud-gateway",
+        "ecosystem": "maven",
+        "package": "org.springframework.cloud:spring-cloud-gateway-server",
+        "repository": "https://github.com/spring-cloud/spring-cloud-gateway",
+        "homepage": "https://github.com/spring-cloud/spring-cloud-gateway"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-spring-cloud-gateway",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-spring-cloud-gateway",
+          "backpatch_name": "backpatch-spring-cloud-gateway",
+          "library_name": "spring-cloud-gateway",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/spring-cloud/spring-cloud-gateway",
+          "description": "An API Gateway built on Spring Framework and Spring Boot providing routing and more."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "spring-data-commons",
+        "ecosystem": "maven",
+        "package": "org.springframework.data:spring-data-commons",
+        "repository": "https://github.com/spring-projects/spring-data-commons",
+        "homepage": "https://github.com/spring-projects/spring-data-commons"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-spring-data-commons",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-spring-data-commons",
+          "backpatch_name": "backpatch-spring-data-commons",
+          "library_name": "spring-data-commons",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/spring-projects/spring-data-commons",
+          "description": "Spring Data Commons. Interfaces and code shared between the various datastore specific implementations."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "spring-framework",
+        "ecosystem": "maven",
+        "package": "org.springframework:spring-core",
+        "repository": "https://github.com/spring-projects/spring-framework",
+        "homepage": "https://github.com/spring-projects/spring-framework"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-spring-framework",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-spring-framework",
+          "backpatch_name": "backpatch-spring-framework",
+          "library_name": "spring-framework",
+          "primary_language": "Java",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/spring-projects/spring-framework",
+          "description": "Backpatch of spring-projects/spring-framework with post-EOL CVE fixes"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "spring-hateoas",
+        "ecosystem": "maven",
+        "package": "org.springframework.hateoas:spring-hateoas",
+        "repository": "https://github.com/spring-projects/spring-hateoas",
+        "homepage": "https://github.com/spring-projects/spring-hateoas"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-spring-hateoas",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-spring-hateoas",
+          "backpatch_name": "backpatch-spring-hateoas",
+          "library_name": "spring-hateoas",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/spring-projects/spring-hateoas",
+          "description": "Spring HATEOAS - Library to support implementing representations for hyper-text driven REST web services."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "spring-integration-zip",
+        "ecosystem": "maven",
+        "package": "org.springframework.integration:spring-integration-zip",
+        "repository": "https://github.com/spring-attic/spring-integration-extensions",
+        "homepage": "https://github.com/spring-attic/spring-integration-extensions"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-spring-integration-zip",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-spring-integration-zip",
+          "backpatch_name": "backpatch-spring-integration-zip",
+          "library_name": "spring-integration-zip",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/spring-attic/spring-integration-extensions",
+          "description": "The Spring Integration Extensions project provides extension components for Spring Integration"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "spring-kafka",
+        "ecosystem": "maven",
+        "package": "org.springframework.kafka:spring-kafka",
+        "repository": "https://github.com/spring-projects/spring-kafka",
+        "homepage": "https://github.com/spring-projects/spring-kafka"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-spring-kafka",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-spring-kafka",
+          "backpatch_name": "backpatch-spring-kafka",
+          "library_name": "spring-kafka",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/spring-projects/spring-kafka",
+          "description": "Provides Familiar Spring Abstractions for Apache Kafka"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "spring-ldap",
+        "ecosystem": "maven",
+        "package": "org.springframework.ldap:spring-ldap-core",
+        "repository": "https://github.com/spring-projects/spring-ldap",
+        "homepage": "https://github.com/spring-projects/spring-ldap"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-spring-ldap",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-spring-ldap",
+          "backpatch_name": "backpatch-spring-ldap",
+          "library_name": "spring-ldap",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/spring-projects/spring-ldap",
+          "description": "Spring LDAP"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "spring-security",
+        "ecosystem": "maven",
+        "package": "org.springframework.security:spring-security-core",
+        "repository": "https://github.com/spring-projects/spring-security",
+        "homepage": "https://github.com/spring-projects/spring-security"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-spring-security",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-spring-security",
+          "backpatch_name": "backpatch-spring-security",
+          "library_name": "spring-security",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/spring-projects/spring-security",
+          "description": "Spring Security"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "spring-security-oauth2",
+        "ecosystem": "maven",
+        "package": "org.springframework.security.oauth:spring-security-oauth2",
+        "repository": "https://github.com/spring-attic/spring-security-oauth",
+        "homepage": "https://github.com/spring-attic/spring-security-oauth"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-spring-security-oauth2",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-spring-security-oauth2",
+          "backpatch_name": "backpatch-spring-security-oauth2",
+          "library_name": "spring-security-oauth2",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/spring-attic/spring-security-oauth",
+          "description": "Support for adding OAuth1(a) and OAuth2 features (consumer and provider) for Spring web applications."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "spring-ws",
+        "ecosystem": "maven",
+        "package": "org.springframework.ws:spring-ws-core",
+        "repository": "https://github.com/spring-projects/spring-ws",
+        "homepage": "https://github.com/spring-projects/spring-ws"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-spring-ws",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-spring-ws",
+          "backpatch_name": "backpatch-spring-ws",
+          "library_name": "spring-ws",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/spring-projects/spring-ws",
+          "description": "Spring Web Services"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "sshd-core",
+        "ecosystem": "maven",
+        "package": "org.apache.sshd:sshd-core",
+        "repository": "https://github.com/apache/mina-sshd",
+        "homepage": "https://github.com/apache/mina-sshd"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-sshd-core",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-sshd-core",
+          "backpatch_name": "backpatch-sshd-core",
+          "library_name": "sshd-core",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/mina-sshd",
+          "description": "Apache MINA sshd is a comprehensive Java library for client- and server-side SSH."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "struts2-core",
+        "ecosystem": "maven",
+        "package": "org.apache.struts:struts2-core",
+        "repository": "https://github.com/apache/struts",
+        "homepage": "https://github.com/apache/struts"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-struts2-core",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-struts2-core",
+          "backpatch_name": "backpatch-struts2-core",
+          "library_name": "struts2-core",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/struts",
+          "description": "Apache Struts is a free, open-source, MVC framework for creating elegant, modern Java web applications"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "tapestry",
+        "ecosystem": "maven",
+        "package": "tapestry:tapestry",
+        "repository": "https://github.com/apache/tapestry-4",
+        "homepage": "https://github.com/apache/tapestry-4"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-tapestry",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-tapestry",
+          "backpatch_name": "backpatch-tapestry",
+          "library_name": "tapestry",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/tapestry-4",
+          "description": "Mirror of Apache Tapestry 4"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "thymeleaf",
+        "ecosystem": "maven",
+        "package": "org.thymeleaf:thymeleaf",
+        "repository": "https://github.com/thymeleaf/thymeleaf",
+        "homepage": "https://github.com/thymeleaf/thymeleaf"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-thymeleaf",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-thymeleaf",
+          "backpatch_name": "backpatch-thymeleaf",
+          "library_name": "thymeleaf",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/thymeleaf/thymeleaf",
+          "description": "Thymeleaf is a modern server-side Java template engine for both web and standalone environments."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "tika-core",
+        "ecosystem": "maven",
+        "package": "org.apache.tika:tika-core",
+        "repository": "https://github.com/apache/tika",
+        "homepage": "https://github.com/apache/tika"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-tika-core",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-tika-core",
+          "backpatch_name": "backpatch-tika-core",
+          "library_name": "tika-core",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/tika",
+          "description": "The Apache Tika toolkit detects and extracts metadata and text from over a thousand different file types (such as PPT, XLS, and PDF)."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "tomcat-embed-core",
+        "ecosystem": "maven",
+        "package": "org.apache.tomcat.embed:tomcat-embed-core",
+        "repository": "https://github.com/apache/tomcat",
+        "homepage": "https://github.com/apache/tomcat"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-tomcat-embed-core",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-tomcat-embed-core",
+          "backpatch_name": "backpatch-tomcat-embed-core",
+          "library_name": "tomcat-embed-core",
+          "primary_language": "",
+          "is_fork": false,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/tomcat",
+          "description": "Apache Tomcat"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "undertow-core",
+        "ecosystem": "maven",
+        "package": "io.undertow:undertow-core",
+        "repository": "https://github.com/undertow-io/undertow",
+        "homepage": "https://github.com/undertow-io/undertow"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-undertow-core",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-undertow-core",
+          "backpatch_name": "backpatch-undertow-core",
+          "library_name": "undertow-core",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/undertow-io/undertow",
+          "description": "High performance non-blocking webserver"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "velocity-engine-core",
+        "ecosystem": "maven",
+        "package": "org.apache.velocity:velocity-engine-core",
+        "repository": "https://github.com/apache/velocity-engine",
+        "homepage": "https://github.com/apache/velocity-engine"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-velocity-engine-core",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-velocity-engine-core",
+          "backpatch_name": "backpatch-velocity-engine-core",
+          "library_name": "velocity-engine-core",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/velocity-engine",
+          "description": "Mirror of Apache Velocity Engine"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "xmlsec",
+        "ecosystem": "maven",
+        "package": "org.apache.santuario:xmlsec",
+        "repository": "https://github.com/apache/santuario-xml-security-java",
+        "homepage": "https://github.com/apache/santuario-xml-security-java"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-xmlsec",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-xmlsec",
+          "backpatch_name": "backpatch-xmlsec",
+          "library_name": "xmlsec",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/apache/santuario-xml-security-java",
+          "description": "Apache Santuario - XML Security for Java"
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "xstream",
+        "ecosystem": "maven",
+        "package": "com.thoughtworks.xstream:xstream",
+        "repository": "https://github.com/x-stream/xstream",
+        "homepage": "https://github.com/x-stream/xstream"
+      },
+      "scores": {
+        "project_vitality": 0,
+        "security_health": 0,
+        "sustainability_governance": 0,
+        "dependency_hygiene": 0,
+        "ecosystem_resilience": 0,
+        "ecosystem_criticality": 0,
+        "confidence": 0.3
+      },
+      "evidence": {
+        "finos_osera_backpatch": {
+          "source": "github-org-discovery",
+          "url": "https://github.com/finos-osera/backpatch-xstream",
+          "observed_at": "2026-08-11T17:29:00Z",
+          "confidence": 0.9,
+          "backpatch_repository": "finos-osera/backpatch-xstream",
+          "backpatch_name": "backpatch-xstream",
+          "library_name": "xstream",
+          "primary_language": "",
+          "is_fork": true,
+          "is_archived": false,
+          "coordinate_source": "override",
+          "upstream_repository": "https://github.com/x-stream/xstream",
+          "description": "Serialize Java objects to XML and back again."
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [],
+        "application_count": 0,
+        "direct_dependency_count": 0,
+        "transitive_dependency_count": 0,
+        "tier1_application_count": 0,
+        "internet_facing_application_count": 0,
+        "regulated_application_count": 0,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Discovered from the current FINOS OSERA backpatch repository list.",
+        "Enterprise exposure is unset until connected to SBOM or dependency inventory data."
+      ]
+    }
+  ],
+  "skipped": []
+}
