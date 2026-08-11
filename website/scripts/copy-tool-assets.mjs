@@ -15,6 +15,10 @@ const copies = [
   ["tool/manifest.json", "tools/manifest.json"],
   ["tool/assets/osera-horizontal-color.svg", "tools/assets/osera-horizontal-color.svg"],
   ["tool/assets/osera-horizontal-white.svg", "tools/assets/osera-horizontal-white.svg"],
+  ["oss-risk/browser.html", "oss-risk/browser.html"],
+  ["oss-risk/data/collected-library-scorecards.json", "oss-risk/data/collected-library-scorecards.json"],
+  ["oss-risk/data/finos-osera-backpatch-libraries.json", "oss-risk/data/finos-osera-backpatch-libraries.json"],
+  ["oss-risk/data/finos-osera-backpatch-scorecards.json", "oss-risk/data/finos-osera-backpatch-scorecards.json"],
   ["data/finos-sample-platform.json", "data/finos-sample-platform.json"],
   ["data/finos-sbom-demo.json", "data/finos-sbom-demo.json"],
   ["data/finos-deep-sbom-demo.json", "data/finos-deep-sbom-demo.json"],
@@ -23,6 +27,7 @@ const copies = [
 
 await rm(resolve(staticDir, "tool"), { recursive: true, force: true });
 await rm(resolve(staticDir, "tools"), { recursive: true, force: true });
+await rm(resolve(staticDir, "oss-risk"), { recursive: true, force: true });
 await rm(resolve(staticDir, "data"), { recursive: true, force: true });
 
 for (const [source, target] of copies) {

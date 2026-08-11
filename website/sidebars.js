@@ -2,6 +2,7 @@
 module.exports = {
   tutorialSidebar: [
     "home",
+    "oss-risk",
     "data-pipeline",
     "runbook",
     "spec",

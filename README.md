@@ -31,6 +31,7 @@ This folder now includes a working implementation:
 - Validation/tests: `scripts/validate_dataset.py`, `tests/`
 - Architecture and data-pipeline decisions: `IMPLEMENTATION.md`
 - Company customization guide: `docs/CUSTOMIZATION_GUIDE.md`
+- OSS library vitality and enterprise-risk scorecard prototype: `oss-risk/`
 - Efficient local rebuild path:
   - derive package allowlist from scope deps (`scripts/build_package_allowlist.py`)
   - ingest only matching OSV package records (`scripts/ingest_vulns.py --package-allowlist-file ...`)

@@ -1,0 +1,3489 @@
+{
+  "schema_version": "0.1",
+  "generated_at": "2026-08-11T17:52:27Z",
+  "methodology": "Live public API evidence collection plus v0 deterministic scoring heuristics.",
+  "records": [
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "Apache Log4j 2",
+        "ecosystem": "maven",
+        "package": "org.apache.logging.log4j:log4j-core",
+        "repository": "https://github.com/apache/logging-log4j2",
+        "homepage": "https://logging.apache.org/log4j/2.x/"
+      },
+      "scores": {
+        "project_vitality": 95.8,
+        "security_health": 50.6,
+        "sustainability_governance": 72.0,
+        "dependency_hygiene": 76.0,
+        "ecosystem_resilience": 75.9,
+        "ecosystem_criticality": 64.0,
+        "confidence": 0.91,
+        "oss_vitality": 73.8,
+        "enterprise_priority_risk": 21.3,
+        "undermaintenance_pressure": 1.91
+      },
+      "evidence": {
+        "openssf_scorecard": {
+          "source": "openssf-scorecard-api",
+          "url": "https://api.scorecard.dev/projects/github.com/apache/logging-log4j2",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.95,
+          "score": 8.3,
+          "scorecard_version": "v4.13.1",
+          "scorecard_date": "2024-04-22T18:51:19Z",
+          "checks": [
+            {
+              "name": "Binary-Artifacts",
+              "score": 10,
+              "reason": "no binaries found in the repo",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#binary-artifacts"
+            },
+            {
+              "name": "Branch-Protection",
+              "score": -1,
+              "reason": "internal error: error during branchesHandler.setup: internal error: githubv4.Query: Resource not accessible by integration",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#branch-protection"
+            },
+            {
+              "name": "CI-Tests",
+              "score": 4,
+              "reason": "4 out of 9 merged PRs checked by a CI test -- score normalized to 4",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#ci-tests"
+            },
+            {
+              "name": "CII-Best-Practices",
+              "score": 2,
+              "reason": "badge detected: in_progress",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#cii-best-practices"
+            },
+            {
+              "name": "Code-Review",
+              "score": 1,
+              "reason": "found 20 unreviewed changesets out of 23 -- score normalized to 1",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#code-review"
+            },
+            {
+              "name": "Contributors",
+              "score": 10,
+              "reason": "46 different organizations found -- score normalized to 10",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#contributors"
+            },
+            {
+              "name": "Dangerous-Workflow",
+              "score": 10,
+              "reason": "no dangerous workflow patterns detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#dangerous-workflow"
+            },
+            {
+              "name": "Dependency-Update-Tool",
+              "score": 10,
+              "reason": "update tool detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#dependency-update-tool"
+            },
+            {
+              "name": "Fuzzing",
+              "score": 10,
+              "reason": "project is fuzzed",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#fuzzing"
+            },
+            {
+              "name": "License",
+              "score": 10,
+              "reason": "license file detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#license"
+            },
+            {
+              "name": "Maintained",
+              "score": 10,
+              "reason": "30 commit(s) out of 30 and 17 issue activity out of 30 found in the last 90 days -- score normalized to 10",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#maintained"
+            },
+            {
+              "name": "Packaging",
+              "score": -1,
+              "reason": "no published package detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#packaging"
+            },
+            {
+              "name": "Pinned-Dependencies",
+              "score": 10,
+              "reason": "all dependencies are pinned",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#pinned-dependencies"
+            },
+            {
+              "name": "SAST",
+              "score": 2,
+              "reason": "SAST tool is not run on all commits -- score normalized to 2",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#sast"
+            },
+            {
+              "name": "Security-Policy",
+              "score": 10,
+              "reason": "security policy file detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#security-policy"
+            },
+            {
+              "name": "Signed-Releases",
+              "score": -1,
+              "reason": "no releases found",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#signed-releases"
+            },
+            {
+              "name": "Token-Permissions",
+              "score": 10,
+              "reason": "GitHub workflow tokens follow principle of least privilege",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#token-permissions"
+            },
+            {
+              "name": "Vulnerabilities",
+              "score": 10,
+              "reason": "no vulnerabilities detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/49c0eed3a423f00c872b5c3c9f1bbca9e8aae799/docs/checks.md#vulnerabilities"
+            }
+          ],
+          "api": {
+            "cache": "hit",
+            "url": "https://api.scorecard.dev/projects/github.com/apache/logging-log4j2"
+          }
+        },
+        "openssf_criticality": {
+          "source": "not-collected",
+          "confidence": 0.0,
+          "note": "No stable per-project Criticality Score endpoint is used by this v0 collector. ecosystem_criticality is a local proxy from repository, registry, and enterprise exposure."
+        },
+        "chaoss_derived": {
+          "source": "github-api-derived",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.765,
+          "active_contributors_365d": 30,
+          "active_contributors_180d": 17,
+          "active_contributors_90d": 7,
+          "active_contributors_30d": 5,
+          "commits_365d": 108,
+          "commits_180d": 60,
+          "commits_90d": 41,
+          "commits_30d": 17,
+          "issues_opened_365d": 69,
+          "issues_closed_365d": 46,
+          "issue_closure_ratio_365d": 0.667,
+          "closed_pr_sample": 300,
+          "merged_pr_sample": 195,
+          "pr_merge_ratio": 0.65,
+          "median_pr_merge_days": 3.68,
+          "commit_sample_truncated": false
+        },
+        "osv": {
+          "source": "osv-query-api",
+          "url": "https://api.osv.dev/v1/query",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "query": {
+            "package": {
+              "ecosystem": "Maven",
+              "name": "org.apache.logging.log4j:log4j-core"
+            }
+          },
+          "vulnerability_count": 11,
+          "cve_count": 11,
+          "cves": [
+            "CVE-2017-5645",
+            "CVE-2020-9488",
+            "CVE-2021-44228",
+            "CVE-2021-44832",
+            "CVE-2021-45046",
+            "CVE-2021-45105",
+            "CVE-2023-26464",
+            "CVE-2025-68161",
+            "CVE-2026-34477",
+            "CVE-2026-34478",
+            "CVE-2026-34480"
+          ],
+          "vulnerabilities": [
+            {
+              "id": "GHSA-3pxv-7cmr-fjr4",
+              "summary": "Apache Log4j Core: Silent log event loss in XmlLayout due to unescaped XML 1.0 forbidden characters",
+              "aliases": [
+                "CVE-2026-34480"
+              ],
+              "published": "2026-04-10T18:31:17Z",
+              "modified": "2026-04-16T11:29:10.536806482Z"
+            },
+            {
+              "id": "GHSA-445c-vh5m-36rj",
+              "summary": "Apache Log4j Core: log injection in `Rfc5424Layout` due to silent configuration incompatibility",
+              "aliases": [
+                "CVE-2026-34478"
+              ],
+              "published": "2026-04-10T18:31:17Z",
+              "modified": "2026-04-17T15:29:09.962494399Z"
+            },
+            {
+              "id": "GHSA-6hg6-v5c8-fphq",
+              "summary": "Apache Log4j Core: `verifyHostName` attribute silently ignored in TLS configuration",
+              "aliases": [
+                "CVE-2026-34477"
+              ],
+              "published": "2026-04-10T18:31:17Z",
+              "modified": "2026-04-17T12:29:10.521430176Z"
+            },
+            {
+              "id": "GHSA-7rjr-3q55-vv33",
+              "summary": "Incomplete fix for Apache Log4j vulnerability",
+              "aliases": [
+                "CVE-2021-45046"
+              ],
+              "published": "2021-12-14T18:01:28Z",
+              "modified": "2025-10-22T19:37:53.742023Z"
+            },
+            {
+              "id": "GHSA-8489-44mv-ggj8",
+              "summary": "Improper Input Validation and Injection in Apache Log4j2",
+              "aliases": [
+                "CVE-2021-44832"
+              ],
+              "published": "2022-01-04T16:14:20Z",
+              "modified": "2026-06-09T10:45:14.253296471Z"
+            },
+            {
+              "id": "GHSA-fxph-q3j8-mv87",
+              "summary": "Deserialization of Untrusted Data in Log4j",
+              "aliases": [
+                "CVE-2017-5645"
+              ],
+              "published": "2020-01-06T18:43:38Z",
+              "modified": "2024-03-14T05:19:26.806656Z"
+            },
+            {
+              "id": "GHSA-jfh8-c2jp-5v3q",
+              "summary": "Remote code injection in Log4j",
+              "aliases": [
+                "CVE-2021-44228"
+              ],
+              "published": "2021-12-10T00:40:56Z",
+              "modified": "2025-10-22T19:37:02.616807Z"
+            },
+            {
+              "id": "GHSA-p6xc-xr62-6r2g",
+              "summary": "Apache Log4j2 vulnerable to Improper Input Validation and Uncontrolled Recursion",
+              "aliases": [
+                "CVE-2021-45105"
+              ],
+              "published": "2021-12-18T18:00:07Z",
+              "modified": "2026-06-09T10:30:14.432177927Z"
+            },
+            {
+              "id": "GHSA-vc5p-v9hr-52mj",
+              "summary": "Apache Log4j does not verify the TLS hostname in its Socket Appender",
+              "aliases": [
+                "CVE-2025-68161"
+              ],
+              "published": "2025-12-18T21:31:44Z",
+              "modified": "2026-02-04T03:10:00.616806Z"
+            },
+            {
+              "id": "GHSA-vp98-w2p3-mv35",
+              "summary": "Apache Log4j 1.x (EOL) allows Denial of Service (DoS)",
+              "aliases": [
+                "CVE-2023-26464"
+              ],
+              "published": "2023-03-10T15:30:43Z",
+              "modified": "2025-09-02T22:25:25Z"
+            },
+            {
+              "id": "GHSA-vwqq-5vrc-xw9h",
+              "summary": "Improper validation of certificate with host mismatch in Apache Log4j SMTP appender",
+              "aliases": [
+                "CVE-2020-9488"
+              ],
+              "published": "2020-06-05T14:15:51Z",
+              "modified": "2026-06-09T10:45:14.190237393Z"
+            }
+          ],
+          "api": {
+            "cache": "hit",
+            "url": "https://api.osv.dev/v1/query"
+          }
+        },
+        "cisa_kev": {
+          "source": "cisa-kev-json",
+          "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.95,
+          "catalog_count": 1662,
+          "matched_count": 2,
+          "matched_cves": [
+            "CVE-2021-45046",
+            "CVE-2021-44228"
+          ],
+          "matches": [
+            {
+              "cveID": "CVE-2021-45046",
+              "vendorProject": "Apache",
+              "product": "Log4j2",
+              "dateAdded": "2023-05-01",
+              "knownRansomwareCampaignUse": "Known",
+              "shortDescription": "Apache Log4j2 contains a deserialization of untrusted data vulnerability due to the incomplete fix of CVE-2021-44228, where the Thread Context Lookup Pattern is vulnerable to remote code execution in certain non-default configurations."
+            },
+            {
+              "cveID": "CVE-2021-44228",
+              "vendorProject": "Apache",
+              "product": "Log4j2",
+              "dateAdded": "2021-12-10",
+              "knownRansomwareCampaignUse": "Known",
+              "shortDescription": "Apache Log4j2 contains a vulnerability where JNDI features do not protect against attacker-controlled JNDI-related endpoints, allowing for remote code execution."
+            }
+          ],
+          "api": {
+            "cache": "hit",
+            "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+          }
+        },
+        "github": {
+          "source": "github-api",
+          "url": "https://api.github.com/repos/apache/logging-log4j2",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "stars": 3613,
+          "forks": 1730,
+          "open_issues": 242,
+          "created_at": "2013-06-12T07:00:19Z",
+          "pushed_at": "2026-08-03T10:29:32Z",
+          "default_branch": "2.x",
+          "latest_release": "rel/2.25.5",
+          "latest_release_at": "2026-07-06T08:29:03Z",
+          "commits_365d": 108,
+          "commits_180d": 60,
+          "commits_90d": 41,
+          "commits_30d": 17,
+          "active_contributors_365d": 30,
+          "active_contributors_180d": 17,
+          "active_contributors_90d": 7,
+          "active_contributors_30d": 5,
+          "issues_opened_365d": 69,
+          "issues_closed_365d": 46,
+          "issue_closure_ratio_365d": 0.667,
+          "closed_pr_sample": 300,
+          "merged_pr_sample": 195,
+          "pr_merge_ratio": 0.65,
+          "median_pr_merge_days": 3.68,
+          "commit_sample_truncated": false,
+          "repo_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/apache/logging-log4j2"
+          },
+          "release_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/apache/logging-log4j2/releases?per_page=100&page=1"
+          },
+          "commit_api": {
+            "cache": "miss",
+            "url": "https://api.github.com/repos/apache/logging-log4j2/commits?since=2025-08-11T17:52:27Z&per_page=100&page=1",
+            "status": 200
+          },
+          "issue_api": {
+            "cache": "miss",
+            "url": "https://api.github.com/repos/apache/logging-log4j2/issues?state=all&since=2025-08-11T17:52:27Z&per_page=100&page=1",
+            "status": 200
+          },
+          "pull_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/apache/logging-log4j2/pulls?state=closed&per_page=100&page=1"
+          }
+        },
+        "package_registry": {
+          "source": "combined-registry-evidence",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "url": "https://api.deps.dev/v3/systems/MAVEN/packages/org.apache.logging.log4j%3Alog4j-core",
+          "system": "MAVEN",
+          "version_count": 78,
+          "latest_version": "3.0.0-beta3",
+          "latest_published_at": "2024-11-09T05:54:31Z",
+          "latest_is_default": true,
+          "deprecated_version_count": 0,
+          "dependent_count": 239,
+          "direct_dependent_count": 99,
+          "indirect_dependent_count": 144,
+          "package_api": {
+            "cache": "hit",
+            "url": "https://api.deps.dev/v3/systems/MAVEN/packages/org.apache.logging.log4j%3Alog4j-core"
+          },
+          "dependents_api": {
+            "cache": "hit",
+            "url": "https://api.deps.dev/v3alpha/systems/MAVEN/packages/org.apache.logging.log4j%3Alog4j-core/versions/3.0.0-beta3:dependents"
+          }
+        },
+        "governance_docs": {
+          "source": "seed",
+          "url": "https://www.apache.org/foundation/governance/",
+          "confidence": 0.5
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [
+          {
+            "version": "2.x",
+            "application_count": 84,
+            "direct_dependency_count": 18,
+            "transitive_dependency_count": 66,
+            "known_cves": [],
+            "unsupported": false
+          }
+        ],
+        "application_count": 84,
+        "direct_dependency_count": 18,
+        "transitive_dependency_count": 66,
+        "tier1_application_count": 8,
+        "internet_facing_application_count": 11,
+        "regulated_application_count": 14,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Collected from live public APIs. Dimension scores are v0 heuristics; inspect evidence and confidence before using for decisions.",
+        "Package-level OSV queries report known vulnerabilities for any affected version, not proof that every deployed version is currently vulnerable."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "Jackson",
+        "ecosystem": "maven",
+        "package": "com.fasterxml.jackson.core:jackson-databind",
+        "repository": "https://github.com/FasterXML/jackson-databind",
+        "homepage": "https://github.com/FasterXML/jackson"
+      },
+      "scores": {
+        "project_vitality": 93.1,
+        "security_health": 64.2,
+        "sustainability_governance": 60.5,
+        "dependency_hygiene": 98.7,
+        "ecosystem_resilience": 85.9,
+        "ecosystem_criticality": 78.6,
+        "confidence": 0.91,
+        "oss_vitality": 79.1,
+        "enterprise_priority_risk": 18.6,
+        "undermaintenance_pressure": 2.45
+      },
+      "evidence": {
+        "openssf_scorecard": {
+          "source": "openssf-scorecard-api",
+          "url": "https://api.scorecard.dev/projects/github.com/FasterXML/jackson-databind",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.95,
+          "score": 7.8,
+          "scorecard_version": "v5.5.1-0.20260807204611-40c1e3599673",
+          "scorecard_date": "2026-08-10",
+          "checks": [
+            {
+              "name": "Code-Review",
+              "score": 0,
+              "reason": "Found 1/30 approved changesets -- score normalized to 0",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/40c1e35996730d4fdcbdb2e6a23917a2467e29b7/docs/checks.md#code-review"
+            },
+            {
+              "name": "Dangerous-Workflow",
+              "score": 10,
+              "reason": "no dangerous workflow patterns detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/40c1e35996730d4fdcbdb2e6a23917a2467e29b7/docs/checks.md#dangerous-workflow"
+            },
+            {
+              "name": "Maintained",
+              "score": 10,
+              "reason": "30 commit(s) and 20 issue activity found in the last 90 days -- score normalized to 10",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/40c1e35996730d4fdcbdb2e6a23917a2467e29b7/docs/checks.md#maintained"
+            },
+            {
+              "name": "Security-Policy",
+              "score": 10,
+              "reason": "security policy file detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/40c1e35996730d4fdcbdb2e6a23917a2467e29b7/docs/checks.md#security-policy"
+            },
+            {
+              "name": "CII-Best-Practices",
+              "score": 0,
+              "reason": "no effort to earn an OpenSSF best practices badge detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/40c1e35996730d4fdcbdb2e6a23917a2467e29b7/docs/checks.md#cii-best-practices"
+            },
+            {
+              "name": "Token-Permissions",
+              "score": 10,
+              "reason": "GitHub workflow tokens follow principle of least privilege",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/40c1e35996730d4fdcbdb2e6a23917a2467e29b7/docs/checks.md#token-permissions"
+            },
+            {
+              "name": "Binary-Artifacts",
+              "score": 10,
+              "reason": "no binaries found in the repo",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/40c1e35996730d4fdcbdb2e6a23917a2467e29b7/docs/checks.md#binary-artifacts"
+            },
+            {
+              "name": "Pinned-Dependencies",
+              "score": 10,
+              "reason": "all dependencies are pinned",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/40c1e35996730d4fdcbdb2e6a23917a2467e29b7/docs/checks.md#pinned-dependencies"
+            },
+            {
+              "name": "License",
+              "score": 10,
+              "reason": "license file detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/40c1e35996730d4fdcbdb2e6a23917a2467e29b7/docs/checks.md#license"
+            },
+            {
+              "name": "Fuzzing",
+              "score": 10,
+              "reason": "project is fuzzed",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/40c1e35996730d4fdcbdb2e6a23917a2467e29b7/docs/checks.md#fuzzing"
+            },
+            {
+              "name": "Signed-Releases",
+              "score": -1,
+              "reason": "no releases found",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/40c1e35996730d4fdcbdb2e6a23917a2467e29b7/docs/checks.md#signed-releases"
+            },
+            {
+              "name": "Branch-Protection",
+              "score": 3,
+              "reason": "branch protection is not maximal on development and all release branches",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/40c1e35996730d4fdcbdb2e6a23917a2467e29b7/docs/checks.md#branch-protection"
+            },
+            {
+              "name": "SAST",
+              "score": 7,
+              "reason": "SAST tool detected but not run on all commits",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/40c1e35996730d4fdcbdb2e6a23917a2467e29b7/docs/checks.md#sast"
+            },
+            {
+              "name": "Packaging",
+              "score": 10,
+              "reason": "packaging workflow detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/40c1e35996730d4fdcbdb2e6a23917a2467e29b7/docs/checks.md#packaging"
+            }
+          ],
+          "api": {
+            "cache": "hit",
+            "url": "https://api.scorecard.dev/projects/github.com/FasterXML/jackson-databind"
+          }
+        },
+        "openssf_criticality": {
+          "source": "not-collected",
+          "confidence": 0.0,
+          "note": "No stable per-project Criticality Score endpoint is used by this v0 collector. ecosystem_criticality is a local proxy from repository, registry, and enterprise exposure."
+        },
+        "chaoss_derived": {
+          "source": "github-api-derived",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.765,
+          "active_contributors_365d": 26,
+          "active_contributors_180d": 26,
+          "active_contributors_90d": 12,
+          "active_contributors_30d": 9,
+          "commits_365d": 1000,
+          "commits_180d": 1000,
+          "commits_90d": 496,
+          "commits_30d": 204,
+          "issues_opened_365d": 97,
+          "issues_closed_365d": 77,
+          "issue_closure_ratio_365d": 0.794,
+          "closed_pr_sample": 300,
+          "merged_pr_sample": 267,
+          "pr_merge_ratio": 0.89,
+          "median_pr_merge_days": 0.03,
+          "commit_sample_truncated": true
+        },
+        "osv": {
+          "source": "osv-query-api",
+          "url": "https://api.osv.dev/v1/query",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "query": {
+            "package": {
+              "ecosystem": "Maven",
+              "name": "com.fasterxml.jackson.core:jackson-databind"
+            }
+          },
+          "vulnerability_count": 80,
+          "cve_count": 79,
+          "cves": [
+            "CVE-2017-15095",
+            "CVE-2017-17485",
+            "CVE-2017-7525",
+            "CVE-2018-11307",
+            "CVE-2018-12022",
+            "CVE-2018-12023",
+            "CVE-2018-14718",
+            "CVE-2018-14719",
+            "CVE-2018-14720",
+            "CVE-2018-14721",
+            "CVE-2018-19360",
+            "CVE-2018-19361",
+            "CVE-2018-19362",
+            "CVE-2018-5968",
+            "CVE-2018-7489",
+            "CVE-2019-12086",
+            "CVE-2019-12384",
+            "CVE-2019-12814",
+            "CVE-2019-14379",
+            "CVE-2019-14439",
+            "CVE-2019-14540",
+            "CVE-2019-14892",
+            "CVE-2019-14893",
+            "CVE-2019-16335",
+            "CVE-2019-16942",
+            "CVE-2019-16943",
+            "CVE-2019-17267",
+            "CVE-2019-17531",
+            "CVE-2019-20330",
+            "CVE-2020-10650",
+            "CVE-2020-10672",
+            "CVE-2020-10673",
+            "CVE-2020-10968",
+            "CVE-2020-10969",
+            "CVE-2020-11111",
+            "CVE-2020-11112",
+            "CVE-2020-11113",
+            "CVE-2020-11619",
+            "CVE-2020-11620",
+            "CVE-2020-14060",
+            "CVE-2020-14061",
+            "CVE-2020-14062",
+            "CVE-2020-14195",
+            "CVE-2020-24616",
+            "CVE-2020-24750",
+            "CVE-2020-25649",
+            "CVE-2020-35490",
+            "CVE-2020-35491",
+            "CVE-2020-35728",
+            "CVE-2020-36179",
+            "CVE-2020-36180",
+            "CVE-2020-36181",
+            "CVE-2020-36182",
+            "CVE-2020-36183",
+            "CVE-2020-36184",
+            "CVE-2020-36185",
+            "CVE-2020-36186",
+            "CVE-2020-36187",
+            "CVE-2020-36188",
+            "CVE-2020-36189",
+            "CVE-2020-36518",
+            "CVE-2020-8840",
+            "CVE-2020-9546",
+            "CVE-2020-9547",
+            "CVE-2020-9548",
+            "CVE-2021-20190",
+            "CVE-2021-46877",
+            "CVE-2022-42003",
+            "CVE-2022-42004",
+            "CVE-2026-50193",
+            "CVE-2026-54512",
+            "CVE-2026-54513",
+            "CVE-2026-54514",
+            "CVE-2026-54515",
+            "CVE-2026-54516",
+            "CVE-2026-54517",
+            "CVE-2026-54518",
+            "CVE-2026-59888",
+            "CVE-2026-59889"
+          ],
+          "vulnerabilities": [
+            {
+              "id": "GHSA-27xj-rqx5-2255",
+              "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing",
+              "aliases": [
+                "CVE-2020-11619"
+              ],
+              "published": "2020-05-15T18:58:44Z",
+              "modified": "2026-08-07T08:12:03.357989311Z"
+            },
+            {
+              "id": "GHSA-288c-cq4h-88gq",
+              "summary": "XML External Entity (XXE) Injection in Jackson Databind",
+              "aliases": [
+                "CVE-2020-25649"
+              ],
+              "published": "2021-02-18T20:51:54Z",
+              "modified": "2026-08-07T08:12:29.488548796Z"
+            },
+            {
+              "id": "GHSA-3pjw-73gf-8qr5",
+              "summary": "jackson-databind: @JsonIgnore on a Record property is bypassed with a PropertyNamingStrategy",
+              "aliases": [
+                "CVE-2026-59888"
+              ],
+              "published": "2026-07-21T19:33:06Z",
+              "modified": "2026-07-25T03:29:37.657238077Z"
+            },
+            {
+              "id": "GHSA-3wrr-7qpf-2prh",
+              "summary": "jackson-databind: Deeply nested JsonNode throws StackOverflowError for toString()",
+              "aliases": [
+                "CVE-2026-50193"
+              ],
+              "published": "2026-06-23T21:21:12Z",
+              "modified": "2026-07-20T21:30:38.768123701Z"
+            },
+            {
+              "id": "GHSA-3x8x-79m2-3w2w",
+              "summary": "jackson-databind possible Denial of Service if using JDK serialization to serialize JsonNode",
+              "aliases": [
+                "CVE-2021-46877"
+              ],
+              "published": "2023-03-19T00:30:25Z",
+              "modified": "2026-02-04T04:32:38.069708Z"
+            },
+            {
+              "id": "GHSA-4gq5-ch57-c2mg",
+              "summary": "Arbitrary Code Execution in jackson-databind",
+              "aliases": [
+                "CVE-2018-14719"
+              ],
+              "published": "2019-01-04T19:09:49Z",
+              "modified": "2024-03-15T05:20:21.411726Z"
+            },
+            {
+              "id": "GHSA-4w82-r329-3q67",
+              "summary": "Deserialization of Untrusted Data in jackson-databind",
+              "aliases": [
+                "CVE-2020-8840"
+              ],
+              "published": "2020-03-04T20:52:14Z",
+              "modified": "2024-03-16T05:18:54.922179Z"
+            },
+            {
+              "id": "GHSA-57j2-w4cx-62h2",
+              "summary": "Deeply nested json in jackson-databind",
+              "aliases": [
+                "CVE-2020-36518"
+              ],
+              "published": "2022-03-12T00:00:36Z",
+              "modified": "2026-02-04T04:26:14.546092Z"
+            },
+            {
+              "id": "GHSA-58pp-9c76-5625",
+              "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing",
+              "aliases": [
+                "CVE-2020-11112"
+              ],
+              "published": "2020-06-10T21:12:41Z",
+              "modified": "2026-08-07T08:12:20.145975046Z"
+            },
+            {
+              "id": "GHSA-5949-rw7g-wx7w",
+              "summary": "Deserialization of untrusted data in jackson-databind",
+              "aliases": [
+                "BIT-nifi-2021-20190",
+                "CVE-2021-20190"
+              ],
+              "published": "2021-01-20T21:20:15Z",
+              "modified": "2025-09-15T07:42:14.888352Z"
+            },
+            {
+              "id": "GHSA-5gvw-p9qm-jgwh",
+              "summary": "jackson-databind: @JsonView bypassed for @JsonUnwrapped container properties on deserialization",
+              "aliases": [
+                "CVE-2026-59889"
+              ],
+              "published": "2026-07-21T22:00:43Z",
+              "modified": "2026-08-03T21:00:23.035506112Z"
+            },
+            {
+              "id": "GHSA-5hh8-q8hv-fr38",
+              "summary": "jackson-databind has @JsonView bypass for setterless creator properties",
+              "aliases": [
+                "CVE-2026-54517"
+              ],
+              "published": "2026-06-23T21:24:50Z",
+              "modified": "2026-07-20T21:30:31.775056815Z"
+            },
+            {
+              "id": "GHSA-5jmj-h7xm-6q6v",
+              "summary": "jackson-databind has case-insensitive deserialization bypasses per-property @JsonIgnoreProperties",
+              "aliases": [
+                "CVE-2026-54515"
+              ],
+              "published": "2026-06-23T21:23:58Z",
+              "modified": "2026-07-16T21:30:21.943601698Z"
+            },
+            {
+              "id": "GHSA-5p34-5m6p-p58g",
+              "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing",
+              "aliases": [
+                "CVE-2020-9546"
+              ],
+              "published": "2020-04-23T21:08:40Z",
+              "modified": "2026-08-07T08:12:08.613510126Z"
+            },
+            {
+              "id": "GHSA-5r5r-6hpj-8gg9",
+              "summary": "Serialization gadget exploit in jackson-databind",
+              "aliases": [
+                "CVE-2020-35728"
+              ],
+              "published": "2021-12-09T19:15:24Z",
+              "modified": "2024-02-18T05:42:28.539166Z"
+            },
+            {
+              "id": "GHSA-5ww9-j83m-q7qx",
+              "summary": "Information exposure in FasterXML jackson-databind",
+              "aliases": [
+                "CVE-2019-12086"
+              ],
+              "published": "2019-05-23T09:32:24Z",
+              "modified": "2024-03-15T01:17:50.016820Z"
+            },
+            {
+              "id": "GHSA-645p-88qh-w398",
+              "summary": "Arbitrary Code Execution in jackson-databind",
+              "aliases": [
+                "CVE-2018-14718"
+              ],
+              "published": "2019-01-04T19:06:55Z",
+              "modified": "2024-03-16T05:19:17.936174Z"
+            },
+            {
+              "id": "GHSA-6fpp-rgj9-8rwc",
+              "summary": "Deserialization of untrusted data in FasterXML jackson-databind",
+              "aliases": [
+                "CVE-2019-14379"
+              ],
+              "published": "2019-08-01T19:18:00Z",
+              "modified": "2024-03-15T05:18:54.134884Z"
+            },
+            {
+              "id": "GHSA-6wqp-v4v6-c87c",
+              "summary": "Deserialization of Untrusted Data",
+              "aliases": [
+                "CVE-2018-12023"
+              ],
+              "published": "2020-06-15T18:44:51Z",
+              "modified": "2026-08-07T08:12:17.690351370Z"
+            },
+            {
+              "id": "GHSA-758m-v56v-grj4",
+              "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing",
+              "aliases": [
+                "CVE-2020-10969"
+              ],
+              "published": "2020-04-23T21:36:03Z",
+              "modified": "2026-08-07T08:12:02.806570427Z"
+            },
+            {
+              "id": "GHSA-85cw-hj65-qqv9",
+              "summary": "Polymorphic Typing issue in FasterXML jackson-databind",
+              "aliases": [
+                "CVE-2019-16335"
+              ],
+              "published": "2019-09-23T18:33:45Z",
+              "modified": "2024-03-15T05:20:15.574552Z"
+            },
+            {
+              "id": "GHSA-89qr-369f-5m5x",
+              "summary": "Unsafe Deserialization in jackson-databind",
+              "aliases": [
+                "CVE-2020-36182"
+              ],
+              "published": "2021-12-09T19:15:46Z",
+              "modified": "2024-02-18T05:37:27.581808Z"
+            },
+            {
+              "id": "GHSA-8c4j-34r4-xr8g",
+              "summary": "Unsafe Deserialization in jackson-databind",
+              "aliases": [
+                "CVE-2020-36180"
+              ],
+              "published": "2021-12-09T19:16:18Z",
+              "modified": "2024-02-18T05:31:52.762759Z"
+            },
+            {
+              "id": "GHSA-8w26-6f25-cm9x",
+              "summary": "Unsafe Deserialization in jackson-databind",
+              "aliases": [
+                "CVE-2020-36185"
+              ],
+              "published": "2021-12-09T19:16:02Z",
+              "modified": "2024-02-18T05:30:48.085017Z"
+            },
+            {
+              "id": "GHSA-95cm-88f5-f2c7",
+              "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing",
+              "aliases": [
+                "CVE-2020-10672"
+              ],
+              "published": "2020-04-23T16:32:59Z",
+              "modified": "2026-08-07T08:12:26.040246952Z"
+            },
+            {
+              "id": "GHSA-9fxm-vc8v-hj55",
+              "summary": "jackson-databind's renamed @JsonIgnore'd setters can deserialize via private fields",
+              "aliases": [
+                "CVE-2026-54516"
+              ],
+              "published": "2026-06-23T21:24:26Z",
+              "modified": "2026-07-20T21:30:34.130614300Z"
+            },
+            {
+              "id": "GHSA-9gph-22xh-8x98",
+              "summary": "Unsafe Deserialization in jackson-databind",
+              "aliases": [
+                "CVE-2020-36179"
+              ],
+              "published": "2021-12-09T19:15:54Z",
+              "modified": "2024-02-18T05:33:27.617261Z"
+            },
+            {
+              "id": "GHSA-9m6f-7xcq-8vf8",
+              "summary": "Unsafe Deserialization in jackson-databind",
+              "aliases": [
+                "CVE-2020-36183"
+              ],
+              "published": "2021-12-09T19:16:34Z",
+              "modified": "2026-05-06T18:48:47.299219Z"
+            },
+            {
+              "id": "GHSA-9mxf-g3x6-wv74",
+              "summary": "Server-Side Request Forgery (SSRF) in jackson-databind",
+              "aliases": [
+                "CVE-2018-14721"
+              ],
+              "published": "2019-01-04T19:07:06Z",
+              "modified": "2026-08-07T08:12:24.128318809Z"
+            },
+            {
+              "id": "GHSA-9vvp-fxw6-jcxr",
+              "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing",
+              "aliases": [
+                "CVE-2020-11113"
+              ],
+              "published": "2020-05-15T18:58:47Z",
+              "modified": "2026-08-07T08:12:13.716510152Z"
+            },
+            {
+              "id": "GHSA-c265-37vj-cwcc",
+              "summary": "Deserialization of untrusted data in Jackson Databind",
+              "aliases": [
+                "CVE-2020-14062"
+              ],
+              "published": "2020-06-18T14:44:48Z",
+              "modified": "2026-08-07T08:12:24.680510172Z"
+            },
+            {
+              "id": "GHSA-c2q3-4qrh-fm48",
+              "summary": "Deserialization of untrusted data in Jackson Databind",
+              "aliases": [
+                "CVE-2020-14061"
+              ],
+              "published": "2020-06-18T14:44:50Z",
+              "modified": "2026-08-07T08:12:10.157882651Z"
+            },
+            {
+              "id": "GHSA-c8hm-7hpq-7jhg",
+              "summary": "com.fasterxml.jackson.core:jackson-databind vulnerable to Deserialization of Untrusted Data",
+              "aliases": [
+                "CVE-2018-19362"
+              ],
+              "published": "2019-01-04T19:07:03Z",
+              "modified": "2024-03-15T01:17:19.251183Z"
+            },
+            {
+              "id": "GHSA-cf6r-3wgc-h863",
+              "summary": "Polymorphic deserialization of malicious object in jackson-databind",
+              "aliases": [
+                "CVE-2019-14892"
+              ],
+              "published": "2020-05-15T18:58:58Z",
+              "modified": "2024-02-18T05:32:56.325249Z"
+            },
+            {
+              "id": "GHSA-cggj-fvv3-cqwv",
+              "summary": "FasterXML jackson-databind allows unauthenticated remote code execution ",
+              "aliases": [
+                "CVE-2018-7489"
+              ],
+              "published": "2018-10-16T17:45:18Z",
+              "modified": "2024-03-15T01:18:46.938616Z"
+            },
+            {
+              "id": "GHSA-cjjf-94ff-43w7",
+              "summary": "jackson-databind Deserialization of Untrusted Data vulnerability",
+              "aliases": [
+                "CVE-2018-12022"
+              ],
+              "published": "2019-03-25T18:03:09Z",
+              "modified": "2024-03-11T05:19:23.395848Z"
+            },
+            {
+              "id": "GHSA-cmfg-87vq-g5g4",
+              "summary": "Deserialization of untrusted data in FasterXML jackson-databind",
+              "aliases": [
+                "CVE-2019-12814"
+              ],
+              "published": "2019-07-17T15:26:12Z",
+              "modified": "2024-03-15T01:18:17.903231Z"
+            },
+            {
+              "id": "GHSA-cvm9-fjm9-3572",
+              "summary": "Unsafe Deserialization in jackson-databind",
+              "aliases": [
+                "CVE-2020-36181"
+              ],
+              "published": "2021-12-09T19:16:10Z",
+              "modified": "2024-02-18T05:25:36.165759Z"
+            },
+            {
+              "id": "GHSA-f3j5-rmmp-3fc5",
+              "summary": "Improper Input Validation in jackson-databind",
+              "aliases": [
+                "CVE-2019-17267"
+              ],
+              "published": "2020-06-15T18:44:48Z",
+              "modified": "2024-03-15T05:20:35.120151Z"
+            },
+            {
+              "id": "GHSA-f9hv-mg5h-xcw9",
+              "summary": "Deserialization of Untrusted Data in jackson-databind due to polymorphic deserialization",
+              "aliases": [
+                "CVE-2018-19360"
+              ],
+              "published": "2019-01-04T19:06:57Z",
+              "modified": "2026-08-07T08:12:09.905440486Z"
+            },
+            {
+              "id": "GHSA-f9xh-2qgp-cq57",
+              "summary": "Unsafe Deserialization in jackson-databind",
+              "aliases": [
+                "CVE-2020-36188"
+              ],
+              "published": "2021-12-09T19:16:42Z",
+              "modified": "2024-02-18T05:32:05.421673Z"
+            },
+            {
+              "id": "GHSA-fmmc-742q-jg75",
+              "summary": "jackson-databind polymorphic typing issue",
+              "aliases": [
+                "CVE-2019-16943"
+              ],
+              "published": "2019-11-13T00:32:27Z",
+              "modified": "2024-03-16T05:19:55.172981Z"
+            },
+            {
+              "id": "GHSA-fqwf-pjwf-7vqv",
+              "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing",
+              "aliases": [
+                "CVE-2020-10673"
+              ],
+              "published": "2020-05-15T18:59:04Z",
+              "modified": "2024-07-03T21:22:37.578162Z"
+            },
+            {
+              "id": "GHSA-gjmw-vf9h-g25v",
+              "summary": "jackson-databind polymorphic typing issue",
+              "aliases": [
+                "CVE-2019-17531"
+              ],
+              "published": "2019-11-13T00:32:38Z",
+              "modified": "2024-03-16T05:19:37.211801Z"
+            },
+            {
+              "id": "GHSA-gwp4-hfv6-p7hw",
+              "summary": "Deserialization of untrusted data in FasterXML jackson-databind",
+              "aliases": [
+                "CVE-2019-14439"
+              ],
+              "published": "2019-08-01T19:18:06Z",
+              "modified": "2024-03-13T05:27:58.436849Z"
+            },
+            {
+              "id": "GHSA-gww7-p5w4-wrfv",
+              "summary": "Deserialization of Untrusted Data in jackson-databind",
+              "aliases": [
+                "CVE-2019-20330"
+              ],
+              "published": "2020-03-04T20:52:11Z",
+              "modified": "2024-03-15T01:05:18.790961Z"
+            },
+            {
+              "id": "GHSA-h3cw-g4mq-c5x2",
+              "summary": "Code Injection in jackson-databind",
+              "aliases": [
+                "CVE-2020-24616"
+              ],
+              "published": "2021-12-09T19:14:51Z",
+              "modified": "2024-02-18T05:30:45.329621Z"
+            },
+            {
+              "id": "GHSA-h4rc-386g-6m85",
+              "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing",
+              "aliases": [
+                "CVE-2020-11620"
+              ],
+              "published": "2020-04-23T20:19:02Z",
+              "modified": "2026-08-07T08:12:20.696129162Z"
+            },
+            {
+              "id": "GHSA-h592-38cm-4ggp",
+              "summary": "jackson-databind vulnerable to deserialization flaw leading to unauthenticated remote code execution",
+              "aliases": [
+                "CVE-2017-15095"
+              ],
+              "published": "2018-10-18T17:42:34Z",
+              "modified": "2024-03-15T01:16:50.905794Z"
+            },
+            {
+              "id": "GHSA-h822-r4r5-v8jg",
+              "summary": "Polymorphic Typing issue in FasterXML jackson-databind",
+              "aliases": [
+                "CVE-2019-14540"
+              ],
+              "published": "2019-09-23T18:33:25Z",
+              "modified": "2026-02-04T02:19:17.186100Z"
+            },
+            {
+              "id": "GHSA-hgj6-7826-r7m5",
+              "summary": "jackson-databind: InetSocketAddress deserialization triggers eager DNS resolution (SSRF)",
+              "aliases": [
+                "CVE-2026-54514"
+              ],
+              "published": "2026-06-23T21:22:54Z",
+              "modified": "2026-07-20T21:30:31.809711002Z"
+            },
+            {
+              "id": "GHSA-j3rv-43j4-c7qm",
+              "summary": "jackson-databind has a PolymorphicTypeValidator bypass via generic type parameters that allows arbitrary class instantiation",
+              "aliases": [
+                "CVE-2026-54512"
+              ],
+              "published": "2026-06-23T21:21:38Z",
+              "modified": "2026-07-20T21:30:40.174709386Z"
+            },
+            {
+              "id": "GHSA-j823-4qch-3rgm",
+              "summary": "Deserialization of untrusted data in Jackson Databind",
+              "aliases": [
+                "CVE-2020-14060"
+              ],
+              "published": "2020-06-18T14:44:46Z",
+              "modified": "2026-08-07T08:12:19.124196052Z"
+            },
+            {
+              "id": "GHSA-jjjh-jjxp-wpff",
+              "summary": "Uncontrolled Resource Consumption in Jackson-databind",
+              "aliases": [
+                "CVE-2022-42003"
+              ],
+              "published": "2022-10-03T00:00:31Z",
+              "modified": "2026-02-04T02:23:59.070528Z"
+            },
+            {
+              "id": "GHSA-m6x4-97wx-4q27",
+              "summary": "Unsafe Deserialization in jackson-databind",
+              "aliases": [
+                "CVE-2020-36184"
+              ],
+              "published": "2021-12-09T19:16:26Z",
+              "modified": "2024-02-18T05:21:54.725837Z"
+            },
+            {
+              "id": "GHSA-mc6h-4qgp-37qh",
+              "summary": "Deserialization of untrusted data in Jackson Databind",
+              "aliases": [
+                "CVE-2020-14195"
+              ],
+              "published": "2020-06-18T14:44:43Z",
+              "modified": "2026-08-07T08:12:25.680646289Z"
+            },
+            {
+              "id": "GHSA-mhm7-754m-9p8w",
+              "summary": "jackson-databind: `@JsonView` bypass for creator properties with `@JsonTypeInfo(include=As.EXTERNAL_PROPERTY)`",
+              "aliases": [],
+              "published": "2026-07-21T19:40:12Z",
+              "modified": "2026-07-22T20:59:38.271594763Z"
+            },
+            {
+              "id": "GHSA-mph4-vhrx-mv67",
+              "summary": "Deserialization of Untrusted Data in FasterXML jackson-databind",
+              "aliases": [
+                "CVE-2019-12384"
+              ],
+              "published": "2019-07-05T21:07:27Z",
+              "modified": "2024-03-15T01:16:21.467932Z"
+            },
+            {
+              "id": "GHSA-mx7p-6679-8g3q",
+              "summary": "Polymorphic Typing in FasterXML jackson-databind",
+              "aliases": [
+                "CVE-2019-16942"
+              ],
+              "published": "2019-10-28T20:51:15Z",
+              "modified": "2024-03-15T01:01:46.432481Z"
+            },
+            {
+              "id": "GHSA-mx9v-gmh4-mgqw",
+              "summary": "Deserialization of Untrusted Data in jackson-databind",
+              "aliases": [
+                "CVE-2018-19361"
+              ],
+              "published": "2019-01-04T19:07:01Z",
+              "modified": "2026-08-07T08:12:12.314237297Z"
+            },
+            {
+              "id": "GHSA-p43x-xfjf-5jhr",
+              "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing",
+              "aliases": [
+                "CVE-2020-9548"
+              ],
+              "published": "2020-05-15T18:59:01Z",
+              "modified": "2024-03-15T00:33:14.700288Z"
+            },
+            {
+              "id": "GHSA-q93h-jc49-78gg",
+              "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing",
+              "aliases": [
+                "CVE-2020-9547"
+              ],
+              "published": "2020-05-15T18:59:10Z",
+              "modified": "2024-03-16T05:19:47.711015Z"
+            },
+            {
+              "id": "GHSA-qjw2-hr98-qgfh",
+              "summary": "Unsafe Deserialization in jackson-databind",
+              "aliases": [
+                "CVE-2020-24750"
+              ],
+              "published": "2021-12-09T19:15:36Z",
+              "modified": "2024-02-18T05:20:56.894470Z"
+            },
+            {
+              "id": "GHSA-qmqc-x3r4-6v39",
+              "summary": "Polymorphic deserialization of malicious object in jackson-databind",
+              "aliases": [
+                "CVE-2019-14893"
+              ],
+              "published": "2020-05-15T18:59:07Z",
+              "modified": "2026-08-07T08:12:32.244710454Z"
+            },
+            {
+              "id": "GHSA-qr7j-h6gg-jmgc",
+              "summary": "Deserialization of Untrusted Data in jackson-databind",
+              "aliases": [
+                "CVE-2018-11307"
+              ],
+              "published": "2019-07-16T17:42:21Z",
+              "modified": "2024-03-11T05:21:14.313980Z"
+            },
+            {
+              "id": "GHSA-qxxx-2pp7-5hmx",
+              "summary": "jackson-databind is vulnerable to a deserialization flaw",
+              "aliases": [
+                "CVE-2017-7525"
+              ],
+              "published": "2018-10-16T17:21:35Z",
+              "modified": "2024-03-11T05:19:49.080060Z"
+            },
+            {
+              "id": "GHSA-r3gr-cxrf-hg25",
+              "summary": "Serialization gadgets exploit in jackson-databind",
+              "aliases": [
+                "CVE-2020-35491"
+              ],
+              "published": "2021-12-09T19:15:11Z",
+              "modified": "2024-06-25T14:20:21.323050Z"
+            },
+            {
+              "id": "GHSA-r695-7vr9-jgc2",
+              "summary": "Unsafe Deserialization in jackson-databind",
+              "aliases": [
+                "CVE-2020-36187"
+              ],
+              "published": "2021-12-09T19:16:51Z",
+              "modified": "2024-02-18T05:30:45.856594Z"
+            },
+            {
+              "id": "GHSA-rcqc-6cw3-h962",
+              "summary": "jackson-databind has a @JsonView bypass for unwrapped creator parameters",
+              "aliases": [
+                "CVE-2026-54518"
+              ],
+              "published": "2026-06-23T21:17:02Z",
+              "modified": "2026-07-20T21:30:42.517351683Z"
+            },
+            {
+              "id": "GHSA-rf6r-2c4q-2vwg",
+              "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing",
+              "aliases": [
+                "CVE-2020-10968"
+              ],
+              "published": "2020-05-15T18:58:54Z",
+              "modified": "2026-08-07T08:12:05.828795573Z"
+            },
+            {
+              "id": "GHSA-rfx6-vp9g-rh7v",
+              "summary": "jackson-databind vulnerable to remote code execution due to incorrect deserialization and blocklist bypass",
+              "aliases": [
+                "CVE-2017-17485"
+              ],
+              "published": "2018-10-18T17:42:48Z",
+              "modified": "2024-03-11T05:17:47.425595Z"
+            },
+            {
+              "id": "GHSA-rgv9-q543-rqg4",
+              "summary": "Uncontrolled Resource Consumption in FasterXML jackson-databind",
+              "aliases": [
+                "CVE-2022-42004"
+              ],
+              "published": "2022-10-03T00:00:31Z",
+              "modified": "2026-05-21T00:30:10.193331395Z"
+            },
+            {
+              "id": "GHSA-rmj7-2vxq-3g9f",
+              "summary": "jackson-databind has an array subtype allowlist bypass in BasicPolymorphicTypeValidator (allowIfSubTypeIsArray)",
+              "aliases": [
+                "CVE-2026-54513"
+              ],
+              "published": "2026-06-23T21:22:15Z",
+              "modified": "2026-08-06T15:46:06.187337424Z"
+            },
+            {
+              "id": "GHSA-rpr3-cw39-3pxh",
+              "summary": "jackson-databind vulnerable to unsafe deserialization",
+              "aliases": [
+                "CVE-2020-10650"
+              ],
+              "published": "2022-07-15T19:41:47Z",
+              "modified": "2026-07-08T06:00:01.572650992Z"
+            },
+            {
+              "id": "GHSA-v3xw-c963-f5hc",
+              "summary": "jackson-databind mishandles the interaction between serialization gadgets and typing",
+              "aliases": [
+                "CVE-2020-11111"
+              ],
+              "published": "2020-05-15T18:58:50Z",
+              "modified": "2026-08-07T08:12:21.424086947Z"
+            },
+            {
+              "id": "GHSA-v585-23hc-c647",
+              "summary": "Unsafe Deserialization in jackson-databind",
+              "aliases": [
+                "CVE-2020-36186"
+              ],
+              "published": "2021-11-19T20:13:06Z",
+              "modified": "2024-02-18T05:22:38.024460Z"
+            },
+            {
+              "id": "GHSA-vfqx-33qm-g869",
+              "summary": "Unsafe Deserialization in jackson-databind",
+              "aliases": [
+                "CVE-2020-36189"
+              ],
+              "published": "2021-12-09T19:16:59Z",
+              "modified": "2024-02-18T05:24:26.785781Z"
+            },
+            {
+              "id": "GHSA-w3f4-3q6j-rh82",
+              "summary": "Deserialization of Untrusted Data in jackson-databind",
+              "aliases": [
+                "CVE-2018-5968"
+              ],
+              "published": "2020-06-30T20:40:50Z",
+              "modified": "2024-03-11T05:18:22.727055Z"
+            },
+            {
+              "id": "GHSA-wh8g-3j2c-rqj5",
+              "summary": "Serialization gadgets exploit in jackson-databind",
+              "aliases": [
+                "CVE-2020-35490"
+              ],
+              "published": "2021-12-09T19:15:00Z",
+              "modified": "2024-03-15T00:31:15.123603Z"
+            },
+            {
+              "id": "GHSA-x2w5-5m2g-7h5m",
+              "summary": "XML External Entity Reference (XXE) in jackson-databind",
+              "aliases": [
+                "CVE-2018-14720"
+              ],
+              "published": "2019-01-04T19:09:46Z",
+              "modified": "2026-08-07T08:12:08.238219080Z"
+            }
+          ],
+          "api": {
+            "cache": "hit",
+            "url": "https://api.osv.dev/v1/query"
+          }
+        },
+        "github": {
+          "source": "github-api",
+          "url": "https://api.github.com/repos/FasterXML/jackson-databind",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "stars": 3746,
+          "forks": 1502,
+          "open_issues": 129,
+          "created_at": "2011-12-23T07:17:41Z",
+          "pushed_at": "2026-08-11T03:35:29Z",
+          "default_branch": "3.x",
+          "latest_release": "jackson-databind-3.2.1",
+          "latest_release_at": "",
+          "commits_365d": 1000,
+          "commits_180d": 1000,
+          "commits_90d": 496,
+          "commits_30d": 204,
+          "active_contributors_365d": 26,
+          "active_contributors_180d": 26,
+          "active_contributors_90d": 12,
+          "active_contributors_30d": 9,
+          "issues_opened_365d": 97,
+          "issues_closed_365d": 77,
+          "issue_closure_ratio_365d": 0.794,
+          "closed_pr_sample": 300,
+          "merged_pr_sample": 267,
+          "pr_merge_ratio": 0.89,
+          "median_pr_merge_days": 0.03,
+          "commit_sample_truncated": true,
+          "repo_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/FasterXML/jackson-databind"
+          },
+          "release_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/FasterXML/jackson-databind/releases?per_page=100&page=1"
+          },
+          "commit_api": {
+            "cache": "miss",
+            "url": "https://api.github.com/repos/FasterXML/jackson-databind/commits?since=2025-08-11T17:52:27Z&per_page=100&page=1",
+            "status": 200
+          },
+          "issue_api": {
+            "cache": "miss",
+            "url": "https://api.github.com/repos/FasterXML/jackson-databind/issues?state=all&since=2025-08-11T17:52:27Z&per_page=100&page=1",
+            "status": 200
+          },
+          "pull_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/FasterXML/jackson-databind/pulls?state=closed&per_page=100&page=1"
+          }
+        },
+        "package_registry": {
+          "source": "combined-registry-evidence",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "url": "https://api.deps.dev/v3/systems/MAVEN/packages/com.fasterxml.jackson.core%3Ajackson-databind",
+          "system": "MAVEN",
+          "version_count": 229,
+          "latest_version": "2.22.1",
+          "latest_published_at": "2026-07-07T21:46:19Z",
+          "latest_is_default": true,
+          "deprecated_version_count": 0,
+          "dependent_count": 7038,
+          "direct_dependent_count": 2190,
+          "indirect_dependent_count": 4879,
+          "package_api": {
+            "cache": "hit",
+            "url": "https://api.deps.dev/v3/systems/MAVEN/packages/com.fasterxml.jackson.core%3Ajackson-databind"
+          },
+          "dependents_api": {
+            "cache": "hit",
+            "url": "https://api.deps.dev/v3alpha/systems/MAVEN/packages/com.fasterxml.jackson.core%3Ajackson-databind/versions/2.22.1:dependents"
+          }
+        },
+        "cisa_kev": {
+          "source": "cisa-kev-json",
+          "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.95,
+          "catalog_count": 1662,
+          "matched_count": 0,
+          "matched_cves": [],
+          "matches": [],
+          "api": {
+            "cache": "hit",
+            "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+          }
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [
+          {
+            "version": "2.x",
+            "application_count": 131,
+            "direct_dependency_count": 24,
+            "transitive_dependency_count": 107,
+            "known_cves": [],
+            "unsupported": false
+          }
+        ],
+        "application_count": 131,
+        "direct_dependency_count": 24,
+        "transitive_dependency_count": 107,
+        "tier1_application_count": 12,
+        "internet_facing_application_count": 16,
+        "regulated_application_count": 21,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Collected from live public APIs. Dimension scores are v0 heuristics; inspect evidence and confidence before using for decisions.",
+        "Package-level OSV queries report known vulnerabilities for any affected version, not proof that every deployed version is currently vulnerable."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "Spring Framework",
+        "ecosystem": "maven",
+        "package": "org.springframework:spring-core",
+        "repository": "https://github.com/spring-projects/spring-framework",
+        "homepage": "https://spring.io/projects/spring-framework"
+      },
+      "scores": {
+        "project_vitality": 99.9,
+        "security_health": 48.0,
+        "sustainability_governance": 65.8,
+        "dependency_hygiene": 81.1,
+        "ecosystem_resilience": 97.1,
+        "ecosystem_criticality": 84.1,
+        "confidence": 0.91,
+        "oss_vitality": 76.9,
+        "enterprise_priority_risk": 24.0,
+        "undermaintenance_pressure": 1.91
+      },
+      "evidence": {
+        "github": {
+          "source": "github-api",
+          "url": "https://api.github.com/repos/spring-projects/spring-framework",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "stars": 60197,
+          "forks": 38803,
+          "open_issues": 522,
+          "created_at": "2010-12-08T04:04:45Z",
+          "pushed_at": "2026-08-09T14:48:54Z",
+          "default_branch": "main",
+          "latest_release": "v7.0.8",
+          "latest_release_at": "2026-06-08T17:49:43Z",
+          "commits_365d": 999,
+          "commits_180d": 789,
+          "commits_90d": 286,
+          "commits_30d": 87,
+          "active_contributors_365d": 85,
+          "active_contributors_180d": 63,
+          "active_contributors_90d": 30,
+          "active_contributors_30d": 12,
+          "issues_opened_365d": 168,
+          "issues_closed_365d": 107,
+          "issue_closure_ratio_365d": 0.637,
+          "closed_pr_sample": 300,
+          "merged_pr_sample": 60,
+          "pr_merge_ratio": 0.2,
+          "median_pr_merge_days": 0.36,
+          "commit_sample_truncated": true,
+          "repo_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/spring-projects/spring-framework"
+          },
+          "release_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/spring-projects/spring-framework/releases?per_page=100&page=1"
+          },
+          "commit_api": {
+            "cache": "miss",
+            "url": "https://api.github.com/repos/spring-projects/spring-framework/commits?since=2025-08-11T17:52:27Z&per_page=100&page=1",
+            "status": 200
+          },
+          "issue_api": {
+            "cache": "miss",
+            "url": "https://api.github.com/repos/spring-projects/spring-framework/issues?state=all&since=2025-08-11T17:52:27Z&per_page=100&page=1",
+            "status": 200
+          },
+          "pull_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/spring-projects/spring-framework/pulls?state=closed&per_page=100&page=1"
+          }
+        },
+        "package_registry": {
+          "source": "combined-registry-evidence",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "url": "https://api.deps.dev/v3/systems/MAVEN/packages/org.springframework%3Aspring-core",
+          "system": "MAVEN",
+          "version_count": 337,
+          "latest_version": "7.0.8",
+          "latest_published_at": "2026-06-08T17:42:31Z",
+          "latest_is_default": true,
+          "deprecated_version_count": 0,
+          "dependent_count": 7700,
+          "direct_dependent_count": 855,
+          "indirect_dependent_count": 6862,
+          "package_api": {
+            "cache": "hit",
+            "url": "https://api.deps.dev/v3/systems/MAVEN/packages/org.springframework%3Aspring-core"
+          },
+          "dependents_api": {
+            "cache": "hit",
+            "url": "https://api.deps.dev/v3alpha/systems/MAVEN/packages/org.springframework%3Aspring-core/versions/7.0.8:dependents"
+          }
+        },
+        "openssf_scorecard": {
+          "source": "openssf-scorecard-api",
+          "url": "https://api.scorecard.dev/projects/github.com/spring-projects/spring-framework",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.95,
+          "score": 6,
+          "scorecard_version": "v5.5.1-0.20260805012949-2418d6d95e92",
+          "scorecard_date": "2026-08-03",
+          "checks": [
+            {
+              "name": "Code-Review",
+              "score": 1,
+              "reason": "Found 4/28 approved changesets -- score normalized to 1",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#code-review"
+            },
+            {
+              "name": "Maintained",
+              "score": 10,
+              "reason": "30 commit(s) and 17 issue activity found in the last 90 days -- score normalized to 10",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#maintained"
+            },
+            {
+              "name": "Packaging",
+              "score": -1,
+              "reason": "packaging workflow not detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#packaging"
+            },
+            {
+              "name": "CII-Best-Practices",
+              "score": 0,
+              "reason": "no effort to earn an OpenSSF best practices badge detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#cii-best-practices"
+            },
+            {
+              "name": "Security-Policy",
+              "score": 10,
+              "reason": "security policy file detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#security-policy"
+            },
+            {
+              "name": "Dangerous-Workflow",
+              "score": 10,
+              "reason": "no dangerous workflow patterns detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#dangerous-workflow"
+            },
+            {
+              "name": "Token-Permissions",
+              "score": 0,
+              "reason": "detected GitHub workflow tokens with excessive permissions",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#token-permissions"
+            },
+            {
+              "name": "License",
+              "score": 10,
+              "reason": "license file detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#license"
+            },
+            {
+              "name": "Signed-Releases",
+              "score": -1,
+              "reason": "no releases found",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#signed-releases"
+            },
+            {
+              "name": "Branch-Protection",
+              "score": 3,
+              "reason": "branch protection is not maximal on development and all release branches",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#branch-protection"
+            },
+            {
+              "name": "Binary-Artifacts",
+              "score": 9,
+              "reason": "binaries present in source code",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#binary-artifacts"
+            },
+            {
+              "name": "SAST",
+              "score": 0,
+              "reason": "SAST tool is not run on all commits -- score normalized to 0",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#sast"
+            },
+            {
+              "name": "Pinned-Dependencies",
+              "score": 7,
+              "reason": "dependency not pinned by hash detected -- score normalized to 7",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#pinned-dependencies"
+            },
+            {
+              "name": "Fuzzing",
+              "score": 10,
+              "reason": "project is fuzzed",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#fuzzing"
+            }
+          ],
+          "api": {
+            "cache": "hit",
+            "url": "https://api.scorecard.dev/projects/github.com/spring-projects/spring-framework"
+          }
+        },
+        "osv": {
+          "source": "osv-query-api",
+          "url": "https://api.osv.dev/v1/query",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "query": {
+            "package": {
+              "ecosystem": "Maven",
+              "name": "org.springframework:spring-core"
+            }
+          },
+          "vulnerability_count": 19,
+          "cve_count": 19,
+          "cves": [
+            "CVE-2009-1190",
+            "CVE-2011-2730",
+            "CVE-2011-2894",
+            "CVE-2014-3578",
+            "CVE-2015-0201",
+            "CVE-2015-5211",
+            "CVE-2016-5007",
+            "CVE-2018-11040",
+            "CVE-2018-1199",
+            "CVE-2018-1257",
+            "CVE-2018-1258",
+            "CVE-2018-1271",
+            "CVE-2018-1272",
+            "CVE-2018-15756",
+            "CVE-2021-22060",
+            "CVE-2021-22096",
+            "CVE-2024-22233",
+            "CVE-2025-41249",
+            "CVE-2026-41848"
+          ],
+          "vulnerabilities": [
+            {
+              "id": "GHSA-4487-x383-qpph",
+              "summary": "Possible privilege escalation in org.springframework:spring-core",
+              "aliases": [
+                "CVE-2018-1272"
+              ],
+              "published": "2018-10-17T20:27:47Z",
+              "modified": "2024-12-05T05:30:27.932883Z"
+            },
+            {
+              "id": "GHSA-45vg-2v73-vm62",
+              "summary": "Moderate severity vulnerability that affects org.springframework:spring-core",
+              "aliases": [
+                "CVE-2015-0201"
+              ],
+              "published": "2018-10-17T20:28:20Z",
+              "modified": "2024-12-02T05:51:24.734486Z"
+            },
+            {
+              "id": "GHSA-659m-px2c-25wj",
+              "summary": "Spring Framework Denial of Service via AntPathMatcher",
+              "aliases": [
+                "CVE-2026-41848"
+              ],
+              "published": "2026-06-09T06:31:58Z",
+              "modified": "2026-07-31T21:29:55.714931039Z"
+            },
+            {
+              "id": "GHSA-6gf2-pvqw-37ph",
+              "summary": "Log entry injection in Spring Framework",
+              "aliases": [
+                "CVE-2021-22060"
+              ],
+              "published": "2022-01-12T23:04:06Z",
+              "modified": "2024-12-04T05:23:15.708427Z"
+            },
+            {
+              "id": "GHSA-8crv-49fr-2h6j",
+              "summary": "Spring Security and Spring Framework may not recognize certain paths that should be protected",
+              "aliases": [
+                "CVE-2016-5007"
+              ],
+              "published": "2018-10-17T20:30:12Z",
+              "modified": "2024-12-02T05:54:00.856162Z"
+            },
+            {
+              "id": "GHSA-cxrj-66c5-9fmh",
+              "summary": "Spring Framework when used in combination with any versions of Spring Security contains an authorization bypass",
+              "aliases": [
+                "CVE-2018-1258"
+              ],
+              "published": "2018-10-17T20:05:49Z",
+              "modified": "2024-03-14T21:08:21Z"
+            },
+            {
+              "id": "GHSA-f26x-pr96-vw86",
+              "summary": "Moderate severity vulnerability that affects org.springframework:spring-core",
+              "aliases": [
+                "CVE-2018-11040"
+              ],
+              "published": "2018-10-16T17:43:45Z",
+              "modified": "2024-05-15T06:31:22.122564Z"
+            },
+            {
+              "id": "GHSA-f866-m9mv-2xr3",
+              "summary": "Spring Framework and Spring Security vulnerable to Deserialization of Untrusted Data",
+              "aliases": [
+                "CVE-2011-2894"
+              ],
+              "published": "2022-05-14T02:54:56Z",
+              "modified": "2024-12-03T06:08:45.298122Z"
+            },
+            {
+              "id": "GHSA-ffvq-7w96-97p7",
+              "summary": "Denial of Service in Spring Framework",
+              "aliases": [
+                "CVE-2018-15756"
+              ],
+              "published": "2020-06-15T19:34:50Z",
+              "modified": "2024-12-01T05:32:48.897892Z"
+            },
+            {
+              "id": "GHSA-g8hw-794c-4j9g",
+              "summary": "Path Traversal in org.springframework:spring-core",
+              "aliases": [
+                "CVE-2018-1271"
+              ],
+              "published": "2018-10-17T20:07:03Z",
+              "modified": "2024-03-17T05:16:56.536994Z"
+            },
+            {
+              "id": "GHSA-jmp9-x22r-554x",
+              "summary": "Spring Framework annotation detection mechanism may result in improper authorization",
+              "aliases": [
+                "CVE-2025-41249"
+              ],
+              "published": "2025-09-16T15:32:34Z",
+              "modified": "2026-02-04T02:59:53.509459Z"
+            },
+            {
+              "id": "GHSA-pgf9-h69p-pcgf",
+              "summary": "Files or Directories Accessible to External Parties in org.springframework:spring-core",
+              "aliases": [
+                "CVE-2015-5211"
+              ],
+              "published": "2018-10-17T20:29:33Z",
+              "modified": "2024-03-05T18:16:14.318775Z"
+            },
+            {
+              "id": "GHSA-r4q3-7g4q-x89m",
+              "summary": "Spring Framework server Web DoS Vulnerability",
+              "aliases": [
+                "CVE-2024-22233"
+              ],
+              "published": "2024-01-22T15:30:23Z",
+              "modified": "2026-08-07T08:12:32.517201796Z"
+            },
+            {
+              "id": "GHSA-rcpf-vj53-7h2m",
+              "summary": "Denial of Service in org.springframework:spring-core",
+              "aliases": [
+                "CVE-2018-1257"
+              ],
+              "published": "2018-10-17T20:02:20Z",
+              "modified": "2024-12-03T06:11:33.435507Z"
+            },
+            {
+              "id": "GHSA-rfmp-97jj-h8m6",
+              "summary": "Improper Output Neutralization for Logs in Spring Framework",
+              "aliases": [
+                "CVE-2021-22096"
+              ],
+              "published": "2022-05-24T19:19:04Z",
+              "modified": "2024-07-19T20:22:49.022769Z"
+            },
+            {
+              "id": "GHSA-rhcg-rwhx-qj3j",
+              "summary": "Improper Limitation of a Pathname to a Restricted Directory in Spring Framework",
+              "aliases": [
+                "CVE-2014-3578"
+              ],
+              "published": "2022-05-14T00:56:29Z",
+              "modified": "2024-12-06T05:39:46.036030Z"
+            },
+            {
+              "id": "GHSA-v596-fwhq-8x48",
+              "summary": "Improper Input Validation in org.springframework.security:spring-security-core, org.springframework.security:spring-security-core , and org.springframework:spring-core",
+              "aliases": [
+                "CVE-2018-1199"
+              ],
+              "published": "2018-10-17T20:01:54Z",
+              "modified": "2024-03-15T16:11:19.988461Z"
+            },
+            {
+              "id": "GHSA-wjjr-h4wh-w6vv",
+              "summary": "Spring Framework Inefficient Regular Expression Complexity",
+              "aliases": [
+                "CVE-2009-1190"
+              ],
+              "published": "2022-05-02T03:22:35Z",
+              "modified": "2024-12-07T05:40:55.645419Z"
+            },
+            {
+              "id": "GHSA-wv88-pf73-x22p",
+              "summary": "Improper Neutralization of Directives in Dynamically Evaluated Code in Spring Framework",
+              "aliases": [
+                "CVE-2011-2730"
+              ],
+              "published": "2022-05-17T02:16:01Z",
+              "modified": "2024-12-05T05:34:13.113550Z"
+            }
+          ],
+          "api": {
+            "cache": "hit",
+            "url": "https://api.osv.dev/v1/query"
+          }
+        },
+        "openssf_criticality": {
+          "source": "not-collected",
+          "confidence": 0.0,
+          "note": "No stable per-project Criticality Score endpoint is used by this v0 collector. ecosystem_criticality is a local proxy from repository, registry, and enterprise exposure."
+        },
+        "chaoss_derived": {
+          "source": "github-api-derived",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.765,
+          "active_contributors_365d": 85,
+          "active_contributors_180d": 63,
+          "active_contributors_90d": 30,
+          "active_contributors_30d": 12,
+          "commits_365d": 999,
+          "commits_180d": 789,
+          "commits_90d": 286,
+          "commits_30d": 87,
+          "issues_opened_365d": 168,
+          "issues_closed_365d": 107,
+          "issue_closure_ratio_365d": 0.637,
+          "closed_pr_sample": 300,
+          "merged_pr_sample": 60,
+          "pr_merge_ratio": 0.2,
+          "median_pr_merge_days": 0.36,
+          "commit_sample_truncated": true
+        },
+        "cisa_kev": {
+          "source": "cisa-kev-json",
+          "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.95,
+          "catalog_count": 1662,
+          "matched_count": 0,
+          "matched_cves": [],
+          "matches": [],
+          "api": {
+            "cache": "hit",
+            "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+          }
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [
+          {
+            "version": "6.x",
+            "application_count": 97,
+            "direct_dependency_count": 21,
+            "transitive_dependency_count": 76,
+            "known_cves": [],
+            "unsupported": false
+          },
+          {
+            "version": "5.x",
+            "application_count": 18,
+            "direct_dependency_count": 4,
+            "transitive_dependency_count": 14,
+            "known_cves": [],
+            "unsupported": true
+          }
+        ],
+        "application_count": 115,
+        "direct_dependency_count": 25,
+        "transitive_dependency_count": 90,
+        "tier1_application_count": 18,
+        "internet_facing_application_count": 24,
+        "regulated_application_count": 26,
+        "unsupported_version_count": 1,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Collected from live public APIs. Dimension scores are v0 heuristics; inspect evidence and confidence before using for decisions.",
+        "Package-level OSV queries report known vulnerabilities for any affected version, not proof that every deployed version is currently vulnerable."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "Spring Boot",
+        "ecosystem": "maven",
+        "package": "org.springframework.boot:spring-boot",
+        "repository": "https://github.com/spring-projects/spring-boot",
+        "homepage": "https://spring.io/projects/spring-boot"
+      },
+      "scores": {
+        "project_vitality": 100.0,
+        "security_health": 66.8,
+        "sustainability_governance": 64.0,
+        "dependency_hygiene": 75.7,
+        "ecosystem_resilience": 95.8,
+        "ecosystem_criticality": 82.4,
+        "confidence": 0.91,
+        "oss_vitality": 80.2,
+        "enterprise_priority_risk": 20.4,
+        "undermaintenance_pressure": 1.93
+      },
+      "evidence": {
+        "github": {
+          "source": "github-api",
+          "url": "https://api.github.com/repos/spring-projects/spring-boot",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "stars": 81329,
+          "forks": 42113,
+          "open_issues": 548,
+          "created_at": "2012-10-19T15:02:57Z",
+          "pushed_at": "2026-08-11T16:00:47Z",
+          "default_branch": "main",
+          "latest_release": "v3.5.16",
+          "latest_release_at": "2026-06-25T11:00:26Z",
+          "commits_365d": 1000,
+          "commits_180d": 1000,
+          "commits_90d": 988,
+          "commits_30d": 506,
+          "active_contributors_365d": 47,
+          "active_contributors_180d": 47,
+          "active_contributors_90d": 42,
+          "active_contributors_30d": 19,
+          "issues_opened_365d": 249,
+          "issues_closed_365d": 194,
+          "issue_closure_ratio_365d": 0.779,
+          "closed_pr_sample": 300,
+          "merged_pr_sample": 149,
+          "pr_merge_ratio": 0.497,
+          "median_pr_merge_days": 1.45,
+          "commit_sample_truncated": true,
+          "repo_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/spring-projects/spring-boot"
+          },
+          "release_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/spring-projects/spring-boot/releases?per_page=100&page=1"
+          },
+          "commit_api": {
+            "cache": "miss",
+            "url": "https://api.github.com/repos/spring-projects/spring-boot/commits?since=2025-08-11T17:52:27Z&per_page=100&page=1",
+            "status": 200
+          },
+          "issue_api": {
+            "cache": "miss",
+            "url": "https://api.github.com/repos/spring-projects/spring-boot/issues?state=all&since=2025-08-11T17:52:27Z&per_page=100&page=1",
+            "status": 200
+          },
+          "pull_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/spring-projects/spring-boot/pulls?state=closed&per_page=100&page=1"
+          }
+        },
+        "package_registry": {
+          "source": "combined-registry-evidence",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "url": "https://api.deps.dev/v3/systems/MAVEN/packages/org.springframework.boot%3Aspring-boot",
+          "system": "MAVEN",
+          "version_count": 290,
+          "latest_version": "4.1.0",
+          "latest_published_at": "2026-06-10T17:58:54Z",
+          "latest_is_default": true,
+          "deprecated_version_count": 0,
+          "dependent_count": 5056,
+          "direct_dependent_count": 1157,
+          "indirect_dependent_count": 3994,
+          "package_api": {
+            "cache": "hit",
+            "url": "https://api.deps.dev/v3/systems/MAVEN/packages/org.springframework.boot%3Aspring-boot"
+          },
+          "dependents_api": {
+            "cache": "hit",
+            "url": "https://api.deps.dev/v3alpha/systems/MAVEN/packages/org.springframework.boot%3Aspring-boot/versions/4.1.0:dependents"
+          }
+        },
+        "openssf_scorecard": {
+          "source": "openssf-scorecard-api",
+          "url": "https://api.scorecard.dev/projects/github.com/spring-projects/spring-boot",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.95,
+          "score": 7.1,
+          "scorecard_version": "v5.5.1-0.20260805012949-2418d6d95e92",
+          "scorecard_date": "2026-08-03",
+          "checks": [
+            {
+              "name": "Code-Review",
+              "score": 0,
+              "reason": "Found 1/24 approved changesets -- score normalized to 0",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#code-review"
+            },
+            {
+              "name": "Maintained",
+              "score": 10,
+              "reason": "30 commit(s) and 28 issue activity found in the last 90 days -- score normalized to 10",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#maintained"
+            },
+            {
+              "name": "Packaging",
+              "score": -1,
+              "reason": "packaging workflow not detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#packaging"
+            },
+            {
+              "name": "CII-Best-Practices",
+              "score": 0,
+              "reason": "no effort to earn an OpenSSF best practices badge detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#cii-best-practices"
+            },
+            {
+              "name": "Dangerous-Workflow",
+              "score": 10,
+              "reason": "no dangerous workflow patterns detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#dangerous-workflow"
+            },
+            {
+              "name": "Token-Permissions",
+              "score": 10,
+              "reason": "GitHub workflow tokens follow principle of least privilege",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#token-permissions"
+            },
+            {
+              "name": "License",
+              "score": 10,
+              "reason": "license file detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#license"
+            },
+            {
+              "name": "Branch-Protection",
+              "score": 3,
+              "reason": "branch protection is not maximal on development and all release branches",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#branch-protection"
+            },
+            {
+              "name": "Signed-Releases",
+              "score": -1,
+              "reason": "no releases found",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#signed-releases"
+            },
+            {
+              "name": "SAST",
+              "score": 10,
+              "reason": "SAST tool is run on all commits",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#sast"
+            },
+            {
+              "name": "Security-Policy",
+              "score": 10,
+              "reason": "security policy file detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#security-policy"
+            },
+            {
+              "name": "Binary-Artifacts",
+              "score": 5,
+              "reason": "binaries present in source code",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#binary-artifacts"
+            },
+            {
+              "name": "Fuzzing",
+              "score": 10,
+              "reason": "project is fuzzed",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#fuzzing"
+            },
+            {
+              "name": "Pinned-Dependencies",
+              "score": 6,
+              "reason": "dependency not pinned by hash detected -- score normalized to 6",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/2418d6d95e928102e1f3f8d6e7b92f4f3c78631f/docs/checks.md#pinned-dependencies"
+            }
+          ],
+          "api": {
+            "cache": "hit",
+            "url": "https://api.scorecard.dev/projects/github.com/spring-projects/spring-boot"
+          }
+        },
+        "osv": {
+          "source": "osv-query-api",
+          "url": "https://api.osv.dev/v1/query",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "query": {
+            "package": {
+              "ecosystem": "Maven",
+              "name": "org.springframework.boot:spring-boot"
+            }
+          },
+          "vulnerability_count": 5,
+          "cve_count": 5,
+          "cves": [
+            "CVE-2018-1196",
+            "CVE-2022-27772",
+            "CVE-2025-22235",
+            "CVE-2026-40973",
+            "CVE-2026-40976"
+          ],
+          "vulnerabilities": [
+            {
+              "id": "GHSA-8v8j-3hxp-93wr",
+              "summary": "Spring Boot's default security filter chain has no authorization rule with Actuator but without Health",
+              "aliases": [
+                "CVE-2026-40976"
+              ],
+              "published": "2026-04-28T00:31:41Z",
+              "modified": "2026-05-13T23:44:30.269054640Z"
+            },
+            {
+              "id": "GHSA-cm59-pr5q-cw85",
+              "summary": "Temporary Directory Hijacking to Local Privilege Escalation Vulnerability in org.springframework.boot:spring-boot",
+              "aliases": [
+                "CVE-2022-27772"
+              ],
+              "published": "2022-07-11T20:59:02Z",
+              "modified": "2026-07-08T06:29:40.989423683Z"
+            },
+            {
+              "id": "GHSA-rc42-6c7j-7h5r",
+              "summary": "Spring Boot EndpointRequest.to() creates wrong matcher if actuator endpoint is not exposed",
+              "aliases": [
+                "CVE-2025-22235"
+              ],
+              "published": "2025-04-28T09:31:53Z",
+              "modified": "2026-02-04T02:35:01.941827Z"
+            },
+            {
+              "id": "GHSA-wwpq-f5c3-7hvx",
+              "summary": "Spring Boot accepts predictable temp directory without ownership verification",
+              "aliases": [
+                "CVE-2026-40973"
+              ],
+              "published": "2026-04-28T00:31:41Z",
+              "modified": "2026-05-08T12:14:21.677811607Z"
+            },
+            {
+              "id": "GHSA-xx65-cc7g-9pfp",
+              "summary": "Moderate severity vulnerability that affects org.springframework.boot:spring-boot",
+              "aliases": [
+                "CVE-2018-1196"
+              ],
+              "published": "2018-10-18T18:05:57Z",
+              "modified": "2023-11-08T03:59:48.367735Z"
+            }
+          ],
+          "api": {
+            "cache": "hit",
+            "url": "https://api.osv.dev/v1/query"
+          }
+        },
+        "openssf_criticality": {
+          "source": "not-collected",
+          "confidence": 0.0,
+          "note": "No stable per-project Criticality Score endpoint is used by this v0 collector. ecosystem_criticality is a local proxy from repository, registry, and enterprise exposure."
+        },
+        "chaoss_derived": {
+          "source": "github-api-derived",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.765,
+          "active_contributors_365d": 47,
+          "active_contributors_180d": 47,
+          "active_contributors_90d": 42,
+          "active_contributors_30d": 19,
+          "commits_365d": 1000,
+          "commits_180d": 1000,
+          "commits_90d": 988,
+          "commits_30d": 506,
+          "issues_opened_365d": 249,
+          "issues_closed_365d": 194,
+          "issue_closure_ratio_365d": 0.779,
+          "closed_pr_sample": 300,
+          "merged_pr_sample": 149,
+          "pr_merge_ratio": 0.497,
+          "median_pr_merge_days": 1.45,
+          "commit_sample_truncated": true
+        },
+        "cisa_kev": {
+          "source": "cisa-kev-json",
+          "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.95,
+          "catalog_count": 1662,
+          "matched_count": 0,
+          "matched_cves": [],
+          "matches": [],
+          "api": {
+            "cache": "hit",
+            "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+          }
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [
+          {
+            "version": "3.x",
+            "application_count": 88,
+            "direct_dependency_count": 48,
+            "transitive_dependency_count": 40,
+            "known_cves": [],
+            "unsupported": false
+          },
+          {
+            "version": "2.x",
+            "application_count": 22,
+            "direct_dependency_count": 13,
+            "transitive_dependency_count": 9,
+            "known_cves": [],
+            "unsupported": true
+          }
+        ],
+        "application_count": 110,
+        "direct_dependency_count": 61,
+        "transitive_dependency_count": 49,
+        "tier1_application_count": 15,
+        "internet_facing_application_count": 25,
+        "regulated_application_count": 19,
+        "unsupported_version_count": 1,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Collected from live public APIs. Dimension scores are v0 heuristics; inspect evidence and confidence before using for decisions.",
+        "Package-level OSV queries report known vulnerabilities for any affected version, not proof that every deployed version is currently vulnerable."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "Requests",
+        "ecosystem": "pypi",
+        "package": "requests",
+        "repository": "https://github.com/psf/requests",
+        "homepage": "https://requests.readthedocs.io/"
+      },
+      "scores": {
+        "project_vitality": 96.0,
+        "security_health": 73.2,
+        "sustainability_governance": 74.2,
+        "dependency_hygiene": 64.8,
+        "ecosystem_resilience": 100.0,
+        "ecosystem_criticality": 85.1,
+        "confidence": 0.91,
+        "oss_vitality": 81.9,
+        "enterprise_priority_risk": 16.7,
+        "undermaintenance_pressure": 3.49
+      },
+      "evidence": {
+        "github": {
+          "source": "github-api",
+          "url": "https://api.github.com/repos/psf/requests",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "stars": 54245,
+          "forks": 10088,
+          "open_issues": 233,
+          "created_at": "2011-02-13T18:38:17Z",
+          "pushed_at": "2026-08-11T16:14:28Z",
+          "default_branch": "main",
+          "latest_release": "v2.34.2",
+          "latest_release_at": "2026-05-14T19:27:15Z",
+          "commits_365d": 120,
+          "commits_180d": 90,
+          "commits_90d": 30,
+          "commits_30d": 6,
+          "active_contributors_365d": 23,
+          "active_contributors_180d": 23,
+          "active_contributors_90d": 7,
+          "active_contributors_30d": 1,
+          "issues_opened_365d": 39,
+          "issues_closed_365d": 30,
+          "issue_closure_ratio_365d": 0.769,
+          "closed_pr_sample": 300,
+          "merged_pr_sample": 82,
+          "pr_merge_ratio": 0.273,
+          "median_pr_merge_days": 0.11,
+          "commit_sample_truncated": false,
+          "repo_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/psf/requests"
+          },
+          "release_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/psf/requests/releases?per_page=100&page=1"
+          },
+          "commit_api": {
+            "cache": "miss",
+            "url": "https://api.github.com/repos/psf/requests/commits?since=2025-08-11T17:52:27Z&per_page=100&page=1",
+            "status": 200
+          },
+          "issue_api": {
+            "cache": "miss",
+            "url": "https://api.github.com/repos/psf/requests/issues?state=all&since=2025-08-11T17:52:27Z&per_page=100&page=1",
+            "status": 200
+          },
+          "pull_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/psf/requests/pulls?state=closed&per_page=100&page=1"
+          }
+        },
+        "package_registry": {
+          "source": "combined-registry-evidence",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "url": "https://api.deps.dev/v3/systems/PYPI/packages/requests",
+          "system": "PYPI",
+          "version_count": 161,
+          "latest_version": "2.34.2",
+          "latest_published_at": "2026-05-14T19:25:26Z",
+          "latest_is_default": true,
+          "deprecated_version_count": 2,
+          "dependent_count": 177733,
+          "direct_dependent_count": 88074,
+          "indirect_dependent_count": 94115,
+          "package_api": {
+            "cache": "hit",
+            "url": "https://api.deps.dev/v3/systems/PYPI/packages/requests"
+          },
+          "dependents_api": {
+            "cache": "hit",
+            "url": "https://api.deps.dev/v3alpha/systems/PYPI/packages/requests/versions/2.34.2:dependents"
+          }
+        },
+        "openssf_scorecard": {
+          "source": "openssf-scorecard-api",
+          "url": "https://api.scorecard.dev/projects/github.com/psf/requests",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.95,
+          "score": 8.2,
+          "scorecard_version": "v5.5.1-0.20260715062425-64febf8c5229",
+          "scorecard_date": "2026-08-03",
+          "checks": [
+            {
+              "name": "Maintained",
+              "score": 10,
+              "reason": "30 commit(s) and 5 issue activity found in the last 90 days -- score normalized to 10",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#maintained"
+            },
+            {
+              "name": "Code-Review",
+              "score": 8,
+              "reason": "Found 13/16 approved changesets -- score normalized to 8",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#code-review"
+            },
+            {
+              "name": "Dangerous-Workflow",
+              "score": 10,
+              "reason": "no dangerous workflow patterns detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#dangerous-workflow"
+            },
+            {
+              "name": "Security-Policy",
+              "score": 10,
+              "reason": "security policy file detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#security-policy"
+            },
+            {
+              "name": "Binary-Artifacts",
+              "score": 10,
+              "reason": "no binaries found in the repo",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#binary-artifacts"
+            },
+            {
+              "name": "CII-Best-Practices",
+              "score": 0,
+              "reason": "no effort to earn an OpenSSF best practices badge detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#cii-best-practices"
+            },
+            {
+              "name": "Pinned-Dependencies",
+              "score": 5,
+              "reason": "dependency not pinned by hash detected -- score normalized to 5",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#pinned-dependencies"
+            },
+            {
+              "name": "Token-Permissions",
+              "score": 10,
+              "reason": "GitHub workflow tokens follow principle of least privilege",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#token-permissions"
+            },
+            {
+              "name": "License",
+              "score": 10,
+              "reason": "license file detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#license"
+            },
+            {
+              "name": "Fuzzing",
+              "score": 10,
+              "reason": "project is fuzzed",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#fuzzing"
+            },
+            {
+              "name": "Branch-Protection",
+              "score": -1,
+              "reason": "internal error: error during branchesHandler.setup: internal error: some github tokens can't read classic branch protection rules: https://github.com/ossf/scorecard-action/blob/main/docs/authentication/fine-grained-auth-token.md",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#branch-protection"
+            },
+            {
+              "name": "Signed-Releases",
+              "score": 0,
+              "reason": "Project has not signed or included provenance with any releases.",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#signed-releases"
+            },
+            {
+              "name": "Packaging",
+              "score": 10,
+              "reason": "packaging workflow detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#packaging"
+            },
+            {
+              "name": "SAST",
+              "score": 10,
+              "reason": "SAST tool is run on all commits",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#sast"
+            }
+          ],
+          "api": {
+            "cache": "hit",
+            "url": "https://api.scorecard.dev/projects/github.com/psf/requests"
+          }
+        },
+        "osv": {
+          "source": "osv-query-api",
+          "url": "https://api.osv.dev/v1/query",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "query": {
+            "package": {
+              "ecosystem": "PyPI",
+              "name": "requests"
+            }
+          },
+          "vulnerability_count": 16,
+          "cve_count": 8,
+          "cves": [
+            "CVE-2014-1829",
+            "CVE-2014-1830",
+            "CVE-2015-2296",
+            "CVE-2018-18074",
+            "CVE-2023-32681",
+            "CVE-2024-35195",
+            "CVE-2024-47081",
+            "CVE-2026-25645"
+          ],
+          "vulnerabilities": [
+            {
+              "id": "GHSA-652x-xj99-gmcc",
+              "summary": "Exposure of Sensitive Information to an Unauthorized Actor in Requests",
+              "aliases": [
+                "CVE-2014-1830",
+                "PYSEC-2014-14"
+              ],
+              "published": "2022-05-14T02:09:22Z",
+              "modified": "2024-10-21T22:22:54.104555Z"
+            },
+            {
+              "id": "GHSA-9hjg-9r4m-mvj7",
+              "summary": "Requests vulnerable to .netrc credentials leak via malicious URLs",
+              "aliases": [
+                "CVE-2024-47081",
+                "PYSEC-2026-1872"
+              ],
+              "published": "2025-06-09T19:06:08Z",
+              "modified": "2026-07-07T17:56:56.234172558Z"
+            },
+            {
+              "id": "GHSA-9wx4-h78v-vm56",
+              "summary": "Requests `Session` object does not verify requests after making first request with verify=False",
+              "aliases": [
+                "CVE-2024-35195",
+                "PYSEC-2026-1873"
+              ],
+              "published": "2024-05-20T20:15:00Z",
+              "modified": "2026-07-07T17:57:17.012984050Z"
+            },
+            {
+              "id": "GHSA-cfj3-7x9c-4p3h",
+              "summary": "Exposure of Sensitive Information to an Unauthorized Actor in Requests",
+              "aliases": [
+                "CVE-2014-1829",
+                "PYSEC-2014-13"
+              ],
+              "published": "2022-05-17T03:49:35Z",
+              "modified": "2024-10-26T22:51:23.384075Z"
+            },
+            {
+              "id": "GHSA-gc5v-m9x4-r6x2",
+              "summary": "Requests has Insecure Temp File Reuse in its extract_zipped_paths() utility function",
+              "aliases": [
+                "CVE-2026-25645",
+                "PYSEC-2026-2275"
+              ],
+              "published": "2026-03-25T16:56:28Z",
+              "modified": "2026-07-13T07:26:34.091663004Z"
+            },
+            {
+              "id": "GHSA-j8r2-6x86-q33q",
+              "summary": "Unintended leak of Proxy-Authorization header in requests",
+              "aliases": [
+                "CVE-2023-32681",
+                "PYSEC-2023-74"
+              ],
+              "published": "2023-05-22T20:36:32Z",
+              "modified": "2026-02-04T03:34:13.807518Z"
+            },
+            {
+              "id": "GHSA-pg2w-x9wp-vw92",
+              "summary": "Python Requests Session Fixation",
+              "aliases": [
+                "CVE-2015-2296",
+                "PYSEC-2015-17"
+              ],
+              "published": "2022-05-13T01:11:23Z",
+              "modified": "2024-12-01T05:57:02.796059Z"
+            },
+            {
+              "id": "GHSA-x84v-xcm2-53pg",
+              "summary": "Insufficiently Protected Credentials in Requests",
+              "aliases": [
+                "CVE-2018-18074",
+                "PYSEC-2018-28"
+              ],
+              "published": "2018-10-29T19:06:46Z",
+              "modified": "2024-10-21T21:42:55.896669Z"
+            },
+            {
+              "id": "PYSEC-2014-13",
+              "summary": null,
+              "aliases": [
+                "CVE-2014-1829",
+                "GHSA-cfj3-7x9c-4p3h"
+              ],
+              "published": "2014-10-15T14:55:00Z",
+              "modified": "2023-11-08T03:57:34.760439Z"
+            },
+            {
+              "id": "PYSEC-2014-14",
+              "summary": null,
+              "aliases": [
+                "CVE-2014-1830",
+                "GHSA-652x-xj99-gmcc"
+              ],
+              "published": "2014-10-15T14:55:00Z",
+              "modified": "2023-11-08T03:57:34.820933Z"
+            },
+            {
+              "id": "PYSEC-2015-17",
+              "summary": null,
+              "aliases": [
+                "CVE-2015-2296",
+                "GHSA-pg2w-x9wp-vw92"
+              ],
+              "published": "2015-03-18T16:59:00Z",
+              "modified": "2026-06-10T17:02:37.461577652Z"
+            },
+            {
+              "id": "PYSEC-2018-28",
+              "summary": null,
+              "aliases": [
+                "CVE-2018-18074",
+                "GHSA-x84v-xcm2-53pg"
+              ],
+              "published": "2018-10-09T17:29:00Z",
+              "modified": "2023-11-08T04:00:04.815794Z"
+            },
+            {
+              "id": "PYSEC-2023-74",
+              "summary": null,
+              "aliases": [
+                "CVE-2023-32681",
+                "GHSA-j8r2-6x86-q33q"
+              ],
+              "published": "2023-05-26T18:15:00Z",
+              "modified": "2023-11-08T04:12:35.436175Z"
+            },
+            {
+              "id": "PYSEC-2026-1872",
+              "summary": "Requests vulnerable to .netrc credentials leak via malicious URLs",
+              "aliases": [
+                "CVE-2024-47081",
+                "GHSA-9hjg-9r4m-mvj7"
+              ],
+              "published": "2026-07-07T16:02:54.151964Z",
+              "modified": "2026-07-07T17:47:00.332079836Z"
+            },
+            {
+              "id": "PYSEC-2026-1873",
+              "summary": "Requests `Session` object does not verify requests after making first request with verify=False",
+              "aliases": [
+                "CVE-2024-35195",
+                "GHSA-9wx4-h78v-vm56"
+              ],
+              "published": "2026-07-07T11:45:42.890131Z",
+              "modified": "2026-07-07T17:46:36.762141019Z"
+            },
+            {
+              "id": "PYSEC-2026-2275",
+              "summary": null,
+              "aliases": [
+                "CVE-2026-25645",
+                "GHSA-gc5v-m9x4-r6x2"
+              ],
+              "published": "2026-03-25T17:16:52.970Z",
+              "modified": "2026-07-13T07:15:43.964902190Z"
+            }
+          ],
+          "api": {
+            "cache": "hit",
+            "url": "https://api.osv.dev/v1/query"
+          }
+        },
+        "openssf_criticality": {
+          "source": "not-collected",
+          "confidence": 0.0,
+          "note": "No stable per-project Criticality Score endpoint is used by this v0 collector. ecosystem_criticality is a local proxy from repository, registry, and enterprise exposure."
+        },
+        "chaoss_derived": {
+          "source": "github-api-derived",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.765,
+          "active_contributors_365d": 23,
+          "active_contributors_180d": 23,
+          "active_contributors_90d": 7,
+          "active_contributors_30d": 1,
+          "commits_365d": 120,
+          "commits_180d": 90,
+          "commits_90d": 30,
+          "commits_30d": 6,
+          "issues_opened_365d": 39,
+          "issues_closed_365d": 30,
+          "issue_closure_ratio_365d": 0.769,
+          "closed_pr_sample": 300,
+          "merged_pr_sample": 82,
+          "pr_merge_ratio": 0.273,
+          "median_pr_merge_days": 0.11,
+          "commit_sample_truncated": false
+        },
+        "cisa_kev": {
+          "source": "cisa-kev-json",
+          "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.95,
+          "catalog_count": 1662,
+          "matched_count": 0,
+          "matched_cves": [],
+          "matches": [],
+          "api": {
+            "cache": "hit",
+            "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+          }
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [
+          {
+            "version": "2.x",
+            "application_count": 76,
+            "direct_dependency_count": 34,
+            "transitive_dependency_count": 42,
+            "known_cves": [],
+            "unsupported": false
+          }
+        ],
+        "application_count": 76,
+        "direct_dependency_count": 34,
+        "transitive_dependency_count": 42,
+        "tier1_application_count": 6,
+        "internet_facing_application_count": 17,
+        "regulated_application_count": 11,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Collected from live public APIs. Dimension scores are v0 heuristics; inspect evidence and confidence before using for decisions.",
+        "Package-level OSV queries report known vulnerabilities for any affected version, not proof that every deployed version is currently vulnerable."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "Lodash",
+        "ecosystem": "npm",
+        "package": "lodash",
+        "repository": "https://github.com/lodash/lodash",
+        "homepage": "https://lodash.com/"
+      },
+      "scores": {
+        "project_vitality": 85.5,
+        "security_health": 63.1,
+        "sustainability_governance": 71.8,
+        "dependency_hygiene": 63.0,
+        "ecosystem_resilience": 99.8,
+        "ecosystem_criticality": 100.0,
+        "confidence": 0.91,
+        "oss_vitality": 75.9,
+        "enterprise_priority_risk": 24.1,
+        "undermaintenance_pressure": 4.59
+      },
+      "evidence": {
+        "github": {
+          "source": "github-api",
+          "url": "https://api.github.com/repos/lodash/lodash",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "stars": 61308,
+          "forks": 7206,
+          "open_issues": 104,
+          "created_at": "2012-04-07T04:11:46Z",
+          "pushed_at": "2026-07-03T19:48:01Z",
+          "default_branch": "main",
+          "latest_release": "4.18.1",
+          "latest_release_at": "2026-04-01T21:01:28Z",
+          "commits_365d": 42,
+          "commits_180d": 20,
+          "commits_90d": 7,
+          "commits_30d": 0,
+          "active_contributors_365d": 11,
+          "active_contributors_180d": 8,
+          "active_contributors_90d": 6,
+          "active_contributors_30d": 0,
+          "issues_opened_365d": 87,
+          "issues_closed_365d": 58,
+          "issue_closure_ratio_365d": 0.667,
+          "closed_pr_sample": 300,
+          "merged_pr_sample": 72,
+          "pr_merge_ratio": 0.24,
+          "median_pr_merge_days": 0.82,
+          "commit_sample_truncated": false,
+          "repo_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/lodash/lodash"
+          },
+          "release_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/lodash/lodash/releases?per_page=100&page=1"
+          },
+          "commit_api": {
+            "cache": "miss",
+            "url": "https://api.github.com/repos/lodash/lodash/commits?since=2025-08-11T17:52:27Z&per_page=100&page=1",
+            "status": 200
+          },
+          "issue_api": {
+            "cache": "miss",
+            "url": "https://api.github.com/repos/lodash/lodash/issues?state=all&since=2025-08-11T17:52:27Z&per_page=100&page=1",
+            "status": 200
+          },
+          "pull_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/lodash/lodash/pulls?state=closed&per_page=100&page=1"
+          }
+        },
+        "package_registry": {
+          "source": "combined-registry-evidence",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "url": "https://api.deps.dev/v3/systems/NPM/packages/lodash",
+          "system": "NPM",
+          "version_count": 117,
+          "latest_version": "4.18.1",
+          "latest_published_at": "2026-04-01T21:01:20Z",
+          "latest_is_default": true,
+          "deprecated_version_count": 1,
+          "dependent_count": 694067,
+          "direct_dependent_count": 175651,
+          "indirect_dependent_count": 534134,
+          "package_api": {
+            "cache": "hit",
+            "url": "https://api.deps.dev/v3/systems/NPM/packages/lodash"
+          },
+          "dependents_api": {
+            "cache": "hit",
+            "url": "https://api.deps.dev/v3alpha/systems/NPM/packages/lodash/versions/4.18.1:dependents"
+          },
+          "npm_monthly_downloads": 672688542,
+          "npm_download_window": "2026-07-11..2026-08-09"
+        },
+        "openssf_scorecard": {
+          "source": "openssf-scorecard-api",
+          "url": "https://api.scorecard.dev/projects/github.com/lodash/lodash",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.95,
+          "score": 7.2,
+          "scorecard_version": "v5.0.0",
+          "scorecard_date": "2026-08-11T07:44:45Z",
+          "checks": [
+            {
+              "name": "Binary-Artifacts",
+              "score": 10,
+              "reason": "no binaries found in the repo",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#binary-artifacts"
+            },
+            {
+              "name": "Branch-Protection",
+              "score": -1,
+              "reason": "internal error: error during branchesHandler.setup: internal error: githubv4.Query: Resource not accessible by integration",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#branch-protection"
+            },
+            {
+              "name": "CI-Tests",
+              "score": 8,
+              "reason": "22 out of 25 merged PRs checked by a CI test -- score normalized to 8",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#ci-tests"
+            },
+            {
+              "name": "CII-Best-Practices",
+              "score": 0,
+              "reason": "no effort to earn an OpenSSF best practices badge detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#cii-best-practices"
+            },
+            {
+              "name": "Code-Review",
+              "score": 7,
+              "reason": "Found 22/30 approved changesets -- score normalized to 7",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#code-review"
+            },
+            {
+              "name": "Contributors",
+              "score": 10,
+              "reason": "project has 90 contributing companies or organizations",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#contributors"
+            },
+            {
+              "name": "Dangerous-Workflow",
+              "score": 10,
+              "reason": "no dangerous workflow patterns detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#dangerous-workflow"
+            },
+            {
+              "name": "Dependency-Update-Tool",
+              "score": 10,
+              "reason": "update tool detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#dependency-update-tool"
+            },
+            {
+              "name": "Fuzzing",
+              "score": 10,
+              "reason": "project is fuzzed",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#fuzzing"
+            },
+            {
+              "name": "License",
+              "score": 9,
+              "reason": "license file detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#license"
+            },
+            {
+              "name": "Maintained",
+              "score": 10,
+              "reason": "7 commit(s) and 7 issue activity found in the last 90 days -- score normalized to 10",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#maintained"
+            },
+            {
+              "name": "Packaging",
+              "score": -1,
+              "reason": "packaging workflow not detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#packaging"
+            },
+            {
+              "name": "Pinned-Dependencies",
+              "score": 4,
+              "reason": "dependency not pinned by hash detected -- score normalized to 4",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#pinned-dependencies"
+            },
+            {
+              "name": "SAST",
+              "score": 9,
+              "reason": "SAST tool detected but not run on all commits",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#sast"
+            },
+            {
+              "name": "Security-Policy",
+              "score": 10,
+              "reason": "security policy file detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#security-policy"
+            },
+            {
+              "name": "Signed-Releases",
+              "score": -1,
+              "reason": "no releases found",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#signed-releases"
+            },
+            {
+              "name": "Token-Permissions",
+              "score": 0,
+              "reason": "detected GitHub workflow tokens with excessive permissions",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#token-permissions"
+            },
+            {
+              "name": "Vulnerabilities",
+              "score": 0,
+              "reason": "108 existing vulnerabilities detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/ea7e27ed41b76ab879c862fa0ca4cc9c61764ee4/docs/checks.md#vulnerabilities"
+            }
+          ],
+          "api": {
+            "cache": "hit",
+            "url": "https://api.scorecard.dev/projects/github.com/lodash/lodash"
+          }
+        },
+        "osv": {
+          "source": "osv-query-api",
+          "url": "https://api.osv.dev/v1/query",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "query": {
+            "package": {
+              "ecosystem": "npm",
+              "name": "lodash"
+            }
+          },
+          "vulnerability_count": 10,
+          "cve_count": 10,
+          "cves": [
+            "CVE-2018-16487",
+            "CVE-2018-3721",
+            "CVE-2019-1010266",
+            "CVE-2019-10744",
+            "CVE-2020-28500",
+            "CVE-2020-8203",
+            "CVE-2021-23337",
+            "CVE-2025-13465",
+            "CVE-2026-2950",
+            "CVE-2026-4800"
+          ],
+          "vulnerabilities": [
+            {
+              "id": "GHSA-29mw-wpgm-hmr9",
+              "summary": "Regular Expression Denial of Service (ReDoS) in lodash",
+              "aliases": [
+                "CVE-2020-28500"
+              ],
+              "published": "2022-01-06T20:30:46Z",
+              "modified": "2025-09-29T21:12:31.102523Z"
+            },
+            {
+              "id": "GHSA-35jh-r3h4-6jhm",
+              "summary": "Command Injection in lodash",
+              "aliases": [
+                "CVE-2021-23337",
+                "CVE-2026-4800",
+                "GHSA-r5fr-rjxr-66jc"
+              ],
+              "published": "2021-05-06T16:05:51Z",
+              "modified": "2026-07-08T18:29:36.682352320Z"
+            },
+            {
+              "id": "GHSA-4xc9-xhrj-v574",
+              "summary": "Prototype Pollution in lodash",
+              "aliases": [
+                "CVE-2018-16487"
+              ],
+              "published": "2019-02-07T18:16:48Z",
+              "modified": "2025-08-12T21:55:35.778975Z"
+            },
+            {
+              "id": "GHSA-f23m-r3pf-42rh",
+              "summary": "lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit`",
+              "aliases": [
+                "CVE-2025-13465",
+                "CVE-2026-2950",
+                "GHSA-xxjr-mmjv-4gpg"
+              ],
+              "published": "2026-04-01T23:50:27Z",
+              "modified": "2026-07-08T07:10:26.957853710Z"
+            },
+            {
+              "id": "GHSA-fvqr-27wr-82fm",
+              "summary": "Prototype Pollution in lodash",
+              "aliases": [
+                "CVE-2018-3721"
+              ],
+              "published": "2018-07-26T15:14:52Z",
+              "modified": "2025-08-12T21:55:16.003066Z"
+            },
+            {
+              "id": "GHSA-jf85-cpcp-j695",
+              "summary": "Prototype Pollution in lodash",
+              "aliases": [
+                "CVE-2019-10744"
+              ],
+              "published": "2019-07-10T19:45:23Z",
+              "modified": "2026-03-14T09:41:05.242311Z"
+            },
+            {
+              "id": "GHSA-p6mc-m468-83gw",
+              "summary": "Prototype Pollution in lodash",
+              "aliases": [
+                "CVE-2020-8203"
+              ],
+              "published": "2020-07-15T19:15:48Z",
+              "modified": "2025-08-12T21:56:17.174859Z"
+            },
+            {
+              "id": "GHSA-r5fr-rjxr-66jc",
+              "summary": "lodash vulnerable to Code Injection via `_.template` imports key names",
+              "aliases": [
+                "CVE-2021-23337",
+                "CVE-2026-4800",
+                "GHSA-35jh-r3h4-6jhm"
+              ],
+              "published": "2026-04-01T23:51:12Z",
+              "modified": "2026-07-08T08:11:11.759560102Z"
+            },
+            {
+              "id": "GHSA-x5rq-j2xg-h7qm",
+              "summary": "Regular Expression Denial of Service (ReDoS) in lodash",
+              "aliases": [
+                "CVE-2019-1010266"
+              ],
+              "published": "2019-07-19T16:13:07Z",
+              "modified": "2026-03-13T21:56:22.446078Z"
+            },
+            {
+              "id": "GHSA-xxjr-mmjv-4gpg",
+              "summary": "Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions",
+              "aliases": [
+                "CVE-2025-13465",
+                "CVE-2026-2950",
+                "GHSA-f23m-r3pf-42rh"
+              ],
+              "published": "2026-01-21T23:01:22Z",
+              "modified": "2026-07-08T07:10:26.957853710Z"
+            }
+          ],
+          "api": {
+            "cache": "hit",
+            "url": "https://api.osv.dev/v1/query"
+          }
+        },
+        "openssf_criticality": {
+          "source": "not-collected",
+          "confidence": 0.0,
+          "note": "No stable per-project Criticality Score endpoint is used by this v0 collector. ecosystem_criticality is a local proxy from repository, registry, and enterprise exposure."
+        },
+        "chaoss_derived": {
+          "source": "github-api-derived",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.765,
+          "active_contributors_365d": 11,
+          "active_contributors_180d": 8,
+          "active_contributors_90d": 6,
+          "active_contributors_30d": 0,
+          "commits_365d": 42,
+          "commits_180d": 20,
+          "commits_90d": 7,
+          "commits_30d": 0,
+          "issues_opened_365d": 87,
+          "issues_closed_365d": 58,
+          "issue_closure_ratio_365d": 0.667,
+          "closed_pr_sample": 300,
+          "merged_pr_sample": 72,
+          "pr_merge_ratio": 0.24,
+          "median_pr_merge_days": 0.82,
+          "commit_sample_truncated": false
+        },
+        "cisa_kev": {
+          "source": "cisa-kev-json",
+          "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.95,
+          "catalog_count": 1662,
+          "matched_count": 0,
+          "matched_cves": [],
+          "matches": [],
+          "api": {
+            "cache": "hit",
+            "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+          }
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [
+          {
+            "version": "4.x",
+            "application_count": 1427,
+            "direct_dependency_count": 163,
+            "transitive_dependency_count": 1264,
+            "known_cves": [],
+            "unsupported": false
+          }
+        ],
+        "application_count": 1427,
+        "direct_dependency_count": 163,
+        "transitive_dependency_count": 1264,
+        "tier1_application_count": 42,
+        "internet_facing_application_count": 87,
+        "regulated_application_count": 74,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Collected from live public APIs. Dimension scores are v0 heuristics; inspect evidence and confidence before using for decisions.",
+        "Package-level OSV queries report known vulnerabilities for any affected version, not proof that every deployed version is currently vulnerable."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "OpenSSL",
+        "ecosystem": "system",
+        "package": "openssl",
+        "repository": "https://github.com/openssl/openssl",
+        "homepage": "https://www.openssl-library.org/"
+      },
+      "scores": {
+        "project_vitality": 91.7,
+        "security_health": 60.0,
+        "sustainability_governance": 73.0,
+        "dependency_hygiene": 22.5,
+        "ecosystem_resilience": 68.6,
+        "ecosystem_criticality": 55.6,
+        "confidence": 0.46,
+        "oss_vitality": 66.2,
+        "enterprise_priority_risk": 27.4,
+        "undermaintenance_pressure": 1.44
+      },
+      "evidence": {
+        "github": {
+          "source": "github-api",
+          "url": "https://api.github.com/repos/openssl/openssl",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.9,
+          "stars": 30606,
+          "forks": 11394,
+          "open_issues": 1634,
+          "created_at": "2013-01-15T22:34:48Z",
+          "pushed_at": "2026-08-11T15:08:16Z",
+          "default_branch": "master",
+          "latest_release": "openssl-4.0.1",
+          "latest_release_at": "2026-06-09T11:43:18Z",
+          "commits_365d": 987,
+          "commits_180d": 955,
+          "commits_90d": 576,
+          "commits_30d": 139,
+          "active_contributors_365d": 136,
+          "active_contributors_180d": 133,
+          "active_contributors_90d": 82,
+          "active_contributors_30d": 33,
+          "issues_opened_365d": 83,
+          "issues_closed_365d": 16,
+          "issue_closure_ratio_365d": 0.193,
+          "closed_pr_sample": 300,
+          "merged_pr_sample": 0,
+          "pr_merge_ratio": 0.0,
+          "median_pr_merge_days": null,
+          "commit_sample_truncated": true,
+          "repo_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/openssl/openssl"
+          },
+          "release_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/openssl/openssl/releases?per_page=100&page=1"
+          },
+          "commit_api": {
+            "cache": "miss",
+            "url": "https://api.github.com/repos/openssl/openssl/commits?since=2025-08-11T17:52:27Z&per_page=100&page=1",
+            "status": 200
+          },
+          "issue_api": {
+            "cache": "miss",
+            "url": "https://api.github.com/repos/openssl/openssl/issues?state=all&since=2025-08-11T17:52:27Z&per_page=100&page=1",
+            "status": 200
+          },
+          "pull_api": {
+            "cache": "hit",
+            "url": "https://api.github.com/repos/openssl/openssl/pulls?state=closed&per_page=100&page=1"
+          }
+        },
+        "package_registry": {
+          "source": "not-applicable",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.0,
+          "note": "No deps.dev package query is configured for ecosystem: system"
+        },
+        "governance_docs": {
+          "source": "seed",
+          "url": "https://www.openssl-library.org/about/management/",
+          "confidence": 0.5
+        },
+        "openssf_scorecard": {
+          "source": "openssf-scorecard-api",
+          "url": "https://api.scorecard.dev/projects/github.com/openssl/openssl",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.95,
+          "score": 6.3,
+          "scorecard_version": "v5.5.1-0.20260715062425-64febf8c5229",
+          "scorecard_date": "2026-08-03",
+          "checks": [
+            {
+              "name": "Packaging",
+              "score": -1,
+              "reason": "packaging workflow not detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#packaging"
+            },
+            {
+              "name": "Maintained",
+              "score": 10,
+              "reason": "30 commit(s) and 9 issue activity found in the last 90 days -- score normalized to 10",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#maintained"
+            },
+            {
+              "name": "Code-Review",
+              "score": 0,
+              "reason": "Found 0/30 approved changesets -- score normalized to 0",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#code-review"
+            },
+            {
+              "name": "Dangerous-Workflow",
+              "score": -1,
+              "reason": "no workflows found",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#dangerous-workflow"
+            },
+            {
+              "name": "Token-Permissions",
+              "score": -1,
+              "reason": "No tokens found",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#token-permissions"
+            },
+            {
+              "name": "CII-Best-Practices",
+              "score": 5,
+              "reason": "badge detected: Passing",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#cii-best-practices"
+            },
+            {
+              "name": "License",
+              "score": 10,
+              "reason": "license file detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#license"
+            },
+            {
+              "name": "Branch-Protection",
+              "score": -1,
+              "reason": "internal error: error during branchesHandler.setup: internal error: some github tokens can't read classic branch protection rules: https://github.com/ossf/scorecard-action/blob/main/docs/authentication/fine-grained-auth-token.md",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#branch-protection"
+            },
+            {
+              "name": "SAST",
+              "score": 0,
+              "reason": "no SAST tool detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#sast"
+            },
+            {
+              "name": "Signed-Releases",
+              "score": 8,
+              "reason": "5 out of the last 5 releases have a total of 5 signed artifacts.",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#signed-releases"
+            },
+            {
+              "name": "Security-Policy",
+              "score": 10,
+              "reason": "security policy file detected",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#security-policy"
+            },
+            {
+              "name": "Binary-Artifacts",
+              "score": 10,
+              "reason": "no binaries found in the repo",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#binary-artifacts"
+            },
+            {
+              "name": "Fuzzing",
+              "score": 10,
+              "reason": "project is fuzzed",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#fuzzing"
+            },
+            {
+              "name": "Pinned-Dependencies",
+              "score": 0,
+              "reason": "dependency not pinned by hash detected -- score normalized to 0",
+              "documentation_url": "https://github.com/ossf/scorecard/blob/64febf8c5229a2a65d09c6b543677b28a51abb09/docs/checks.md#pinned-dependencies"
+            }
+          ],
+          "api": {
+            "cache": "hit",
+            "url": "https://api.scorecard.dev/projects/github.com/openssl/openssl"
+          }
+        },
+        "osv": {
+          "source": "not-applicable",
+          "confidence": 0.0,
+          "note": "No OSV package query is configured for ecosystem: system"
+        },
+        "openssf_criticality": {
+          "source": "not-collected",
+          "confidence": 0.0,
+          "note": "No stable per-project Criticality Score endpoint is used by this v0 collector. ecosystem_criticality is a local proxy from repository, registry, and enterprise exposure."
+        },
+        "chaoss_derived": {
+          "source": "github-api-derived",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.765,
+          "active_contributors_365d": 136,
+          "active_contributors_180d": 133,
+          "active_contributors_90d": 82,
+          "active_contributors_30d": 33,
+          "commits_365d": 987,
+          "commits_180d": 955,
+          "commits_90d": 576,
+          "commits_30d": 139,
+          "issues_opened_365d": 83,
+          "issues_closed_365d": 16,
+          "issue_closure_ratio_365d": 0.193,
+          "closed_pr_sample": 300,
+          "merged_pr_sample": 0,
+          "pr_merge_ratio": 0.0,
+          "median_pr_merge_days": null,
+          "commit_sample_truncated": true
+        },
+        "cisa_kev": {
+          "source": "cisa-kev-json",
+          "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+          "observed_at": "2026-08-11T17:52:27Z",
+          "confidence": 0.95,
+          "catalog_count": 1662,
+          "matched_count": 0,
+          "matched_cves": [],
+          "matches": [],
+          "api": {
+            "cache": "hit",
+            "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+          }
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [
+          {
+            "version": "3.x",
+            "application_count": 211,
+            "direct_dependency_count": 32,
+            "transitive_dependency_count": 179,
+            "known_cves": [],
+            "unsupported": false
+          },
+          {
+            "version": "1.1.1",
+            "application_count": 29,
+            "direct_dependency_count": 7,
+            "transitive_dependency_count": 22,
+            "known_cves": [],
+            "unsupported": true
+          }
+        ],
+        "application_count": 240,
+        "direct_dependency_count": 39,
+        "transitive_dependency_count": 201,
+        "tier1_application_count": 33,
+        "internet_facing_application_count": 61,
+        "regulated_application_count": 58,
+        "unsupported_version_count": 1,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Collected from live public APIs. Dimension scores are v0 heuristics; inspect evidence and confidence before using for decisions.",
+        "Package-level OSV queries report known vulnerabilities for any affected version, not proof that every deployed version is currently vulnerable."
+      ]
+    }
+  ]
+}

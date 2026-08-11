@@ -1,0 +1,458 @@
+{
+  "schema_version": "0.1",
+  "records": [
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "Apache Log4j 2",
+        "ecosystem": "maven",
+        "package": "org.apache.logging.log4j:log4j-core",
+        "repository": "https://github.com/apache/logging-log4j2",
+        "homepage": "https://logging.apache.org/log4j/2.x/"
+      },
+      "scores": {
+        "project_vitality": 86,
+        "security_health": 78,
+        "sustainability_governance": 92,
+        "dependency_hygiene": 80,
+        "ecosystem_resilience": 90,
+        "ecosystem_criticality": 96,
+        "confidence": 0.55
+      },
+      "evidence": {
+        "openssf_scorecard": { "source": "pending-collector", "confidence": 0.2 },
+        "openssf_criticality": { "source": "pending-collector", "confidence": 0.2 },
+        "chaoss_derived": { "source": "pending-collector", "confidence": 0.2 },
+        "osv": { "source": "pending-collector", "confidence": 0.2 },
+        "cisa_kev": { "source": "pending-collector", "confidence": 0.2 },
+        "github": {
+          "source": "seed",
+          "url": "https://github.com/apache/logging-log4j2",
+          "active_maintainers": 8,
+          "recent_contributors_90d": 14,
+          "confidence": 0.5
+        },
+        "package_registry": {
+          "source": "seed",
+          "dependents": 12000,
+          "monthly_downloads": 20000000,
+          "confidence": 0.4
+        },
+        "governance_docs": {
+          "source": "seed",
+          "url": "https://www.apache.org/foundation/governance/",
+          "confidence": 0.5
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [
+          {
+            "version": "2.x",
+            "application_count": 84,
+            "direct_dependency_count": 18,
+            "transitive_dependency_count": 66,
+            "known_cves": [],
+            "unsupported": false
+          }
+        ],
+        "application_count": 84,
+        "direct_dependency_count": 18,
+        "transitive_dependency_count": 66,
+        "tier1_application_count": 8,
+        "internet_facing_application_count": 11,
+        "regulated_application_count": 14,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Seed fixture. Replace scores and counts with collector output before operational use."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "Jackson",
+        "ecosystem": "maven",
+        "package": "com.fasterxml.jackson.core:jackson-databind",
+        "repository": "https://github.com/FasterXML/jackson-databind",
+        "homepage": "https://github.com/FasterXML/jackson"
+      },
+      "scores": {
+        "project_vitality": 82,
+        "security_health": 76,
+        "sustainability_governance": 70,
+        "dependency_hygiene": 78,
+        "ecosystem_resilience": 88,
+        "ecosystem_criticality": 94,
+        "confidence": 0.5
+      },
+      "evidence": {
+        "openssf_scorecard": { "source": "pending-collector", "confidence": 0.2 },
+        "openssf_criticality": { "source": "pending-collector", "confidence": 0.2 },
+        "chaoss_derived": { "source": "pending-collector", "confidence": 0.2 },
+        "osv": { "source": "pending-collector", "confidence": 0.2 },
+        "github": {
+          "source": "seed",
+          "url": "https://github.com/FasterXML/jackson",
+          "active_maintainers": 4,
+          "recent_contributors_90d": 10,
+          "confidence": 0.4
+        },
+        "package_registry": {
+          "source": "seed",
+          "dependents": 35000,
+          "monthly_downloads": 30000000,
+          "confidence": 0.4
+        }
+      },
+      "enterprise": {
+        "versions_in_use": [
+          {
+            "version": "2.x",
+            "application_count": 131,
+            "direct_dependency_count": 24,
+            "transitive_dependency_count": 107,
+            "known_cves": [],
+            "unsupported": false
+          }
+        ],
+        "application_count": 131,
+        "direct_dependency_count": 24,
+        "transitive_dependency_count": 107,
+        "tier1_application_count": 12,
+        "internet_facing_application_count": 16,
+        "regulated_application_count": 21,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Seed fixture. Use to exercise scoring mechanics, not as a live project assessment."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "Spring Framework",
+        "ecosystem": "maven",
+        "package": "org.springframework:spring-core",
+        "repository": "https://github.com/spring-projects/spring-framework",
+        "homepage": "https://spring.io/projects/spring-framework"
+      },
+      "scores": {
+        "project_vitality": 92,
+        "security_health": 84,
+        "sustainability_governance": 84,
+        "dependency_hygiene": 82,
+        "ecosystem_resilience": 92,
+        "ecosystem_criticality": 96,
+        "confidence": 0.52
+      },
+      "evidence": {
+        "github": {
+          "source": "seed",
+          "url": "https://github.com/spring-projects/spring-framework",
+          "active_maintainers": 12,
+          "recent_contributors_90d": 25,
+          "confidence": 0.5
+        },
+        "package_registry": {
+          "source": "seed",
+          "dependents": 45000,
+          "monthly_downloads": 25000000,
+          "confidence": 0.4
+        },
+        "openssf_scorecard": { "source": "pending-collector", "confidence": 0.2 },
+        "osv": { "source": "pending-collector", "confidence": 0.2 }
+      },
+      "enterprise": {
+        "versions_in_use": [
+          {
+            "version": "6.x",
+            "application_count": 97,
+            "direct_dependency_count": 21,
+            "transitive_dependency_count": 76,
+            "known_cves": [],
+            "unsupported": false
+          },
+          {
+            "version": "5.x",
+            "application_count": 18,
+            "direct_dependency_count": 4,
+            "transitive_dependency_count": 14,
+            "known_cves": [],
+            "unsupported": true
+          }
+        ],
+        "application_count": 115,
+        "direct_dependency_count": 25,
+        "transitive_dependency_count": 90,
+        "tier1_application_count": 18,
+        "internet_facing_application_count": 24,
+        "regulated_application_count": 26,
+        "unsupported_version_count": 1,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Enterprise overlay intentionally differentiates healthy upstream from old deployed versions."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "Spring Boot",
+        "ecosystem": "maven",
+        "package": "org.springframework.boot:spring-boot",
+        "repository": "https://github.com/spring-projects/spring-boot",
+        "homepage": "https://spring.io/projects/spring-boot"
+      },
+      "scores": {
+        "project_vitality": 91,
+        "security_health": 83,
+        "sustainability_governance": 84,
+        "dependency_hygiene": 81,
+        "ecosystem_resilience": 91,
+        "ecosystem_criticality": 95,
+        "confidence": 0.52
+      },
+      "evidence": {
+        "github": {
+          "source": "seed",
+          "url": "https://github.com/spring-projects/spring-boot",
+          "active_maintainers": 12,
+          "recent_contributors_90d": 24,
+          "confidence": 0.5
+        },
+        "package_registry": {
+          "source": "seed",
+          "dependents": 40000,
+          "monthly_downloads": 22000000,
+          "confidence": 0.4
+        },
+        "openssf_scorecard": { "source": "pending-collector", "confidence": 0.2 },
+        "osv": { "source": "pending-collector", "confidence": 0.2 }
+      },
+      "enterprise": {
+        "versions_in_use": [
+          {
+            "version": "3.x",
+            "application_count": 88,
+            "direct_dependency_count": 48,
+            "transitive_dependency_count": 40,
+            "known_cves": [],
+            "unsupported": false
+          },
+          {
+            "version": "2.x",
+            "application_count": 22,
+            "direct_dependency_count": 13,
+            "transitive_dependency_count": 9,
+            "known_cves": [],
+            "unsupported": true
+          }
+        ],
+        "application_count": 110,
+        "direct_dependency_count": 61,
+        "transitive_dependency_count": 49,
+        "tier1_application_count": 15,
+        "internet_facing_application_count": 25,
+        "regulated_application_count": 19,
+        "unsupported_version_count": 1,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Seed fixture. Collector should split framework and boot starter packages when real SBOM data is present."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "Requests",
+        "ecosystem": "pypi",
+        "package": "requests",
+        "repository": "https://github.com/psf/requests",
+        "homepage": "https://requests.readthedocs.io/"
+      },
+      "scores": {
+        "project_vitality": 78,
+        "security_health": 80,
+        "sustainability_governance": 78,
+        "dependency_hygiene": 82,
+        "ecosystem_resilience": 92,
+        "ecosystem_criticality": 92,
+        "confidence": 0.5
+      },
+      "evidence": {
+        "github": {
+          "source": "seed",
+          "url": "https://github.com/psf/requests",
+          "active_maintainers": 5,
+          "recent_contributors_90d": 9,
+          "confidence": 0.45
+        },
+        "package_registry": {
+          "source": "seed",
+          "dependents": 450000,
+          "monthly_downloads": 70000000,
+          "confidence": 0.4
+        },
+        "openssf_scorecard": { "source": "pending-collector", "confidence": 0.2 },
+        "osv": { "source": "pending-collector", "confidence": 0.2 }
+      },
+      "enterprise": {
+        "versions_in_use": [
+          {
+            "version": "2.x",
+            "application_count": 76,
+            "direct_dependency_count": 34,
+            "transitive_dependency_count": 42,
+            "known_cves": [],
+            "unsupported": false
+          }
+        ],
+        "application_count": 76,
+        "direct_dependency_count": 34,
+        "transitive_dependency_count": 42,
+        "tier1_application_count": 6,
+        "internet_facing_application_count": 17,
+        "regulated_application_count": 11,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Mature-project fixture: lower commit frequency should not automatically mean low vitality."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "Lodash",
+        "ecosystem": "npm",
+        "package": "lodash",
+        "repository": "https://github.com/lodash/lodash",
+        "homepage": "https://lodash.com/"
+      },
+      "scores": {
+        "project_vitality": 68,
+        "security_health": 72,
+        "sustainability_governance": 61,
+        "dependency_hygiene": 74,
+        "ecosystem_resilience": 96,
+        "ecosystem_criticality": 98,
+        "confidence": 0.48
+      },
+      "evidence": {
+        "github": {
+          "source": "seed",
+          "url": "https://github.com/lodash/lodash",
+          "active_maintainers": 2,
+          "recent_contributors_90d": 6,
+          "confidence": 0.4
+        },
+        "package_registry": {
+          "source": "seed",
+          "dependents": 200000,
+          "monthly_downloads": 80000000,
+          "confidence": 0.4
+        },
+        "openssf_scorecard": { "source": "pending-collector", "confidence": 0.2 },
+        "osv": { "source": "pending-collector", "confidence": 0.2 }
+      },
+      "enterprise": {
+        "versions_in_use": [
+          {
+            "version": "4.x",
+            "application_count": 1427,
+            "direct_dependency_count": 163,
+            "transitive_dependency_count": 1264,
+            "known_cves": [],
+            "unsupported": false
+          }
+        ],
+        "application_count": 1427,
+        "direct_dependency_count": 163,
+        "transitive_dependency_count": 1264,
+        "tier1_application_count": 42,
+        "internet_facing_application_count": 87,
+        "regulated_application_count": 74,
+        "unsupported_version_count": 0,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Useful test case for separating enormous ecosystem criticality from maintainer/governance resilience."
+      ]
+    },
+    {
+      "schema_version": "0.1",
+      "project": {
+        "name": "OpenSSL",
+        "ecosystem": "system",
+        "package": "openssl",
+        "repository": "https://github.com/openssl/openssl",
+        "homepage": "https://www.openssl-library.org/"
+      },
+      "scores": {
+        "project_vitality": 88,
+        "security_health": 86,
+        "sustainability_governance": 90,
+        "dependency_hygiene": 84,
+        "ecosystem_resilience": 94,
+        "ecosystem_criticality": 100,
+        "confidence": 0.52
+      },
+      "evidence": {
+        "github": {
+          "source": "seed",
+          "url": "https://github.com/openssl/openssl",
+          "active_maintainers": 12,
+          "recent_contributors_90d": 20,
+          "confidence": 0.45
+        },
+        "package_registry": {
+          "source": "seed",
+          "dependents": 100000,
+          "monthly_downloads": 0,
+          "confidence": 0.3
+        },
+        "governance_docs": {
+          "source": "seed",
+          "url": "https://www.openssl-library.org/about/management/",
+          "confidence": 0.5
+        },
+        "openssf_scorecard": { "source": "pending-collector", "confidence": 0.2 },
+        "osv": { "source": "pending-collector", "confidence": 0.2 }
+      },
+      "enterprise": {
+        "versions_in_use": [
+          {
+            "version": "3.x",
+            "application_count": 211,
+            "direct_dependency_count": 32,
+            "transitive_dependency_count": 179,
+            "known_cves": [],
+            "unsupported": false
+          },
+          {
+            "version": "1.1.1",
+            "application_count": 29,
+            "direct_dependency_count": 7,
+            "transitive_dependency_count": 22,
+            "known_cves": [],
+            "unsupported": true
+          }
+        ],
+        "application_count": 240,
+        "direct_dependency_count": 39,
+        "transitive_dependency_count": 201,
+        "tier1_application_count": 33,
+        "internet_facing_application_count": 61,
+        "regulated_application_count": 58,
+        "unsupported_version_count": 1,
+        "known_vulnerable_version_count": 0
+      },
+      "notes": [
+        "Archetype for high criticality with relatively strong upstream sustainability."
+      ]
+    }
+  ]
+}
+

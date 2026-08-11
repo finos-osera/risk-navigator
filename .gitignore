@@ -4,6 +4,7 @@ website/build/
 website/.docusaurus/
 website/static/tool/
 website/static/tools/
+website/static/oss-risk/
 website/static/data/
 .venv/
 .pytest_cache/
@@ -38,3 +39,6 @@ data/external/
 !data/sources/osv/sample-osv.json
 data/sources/osv/all.zip
 data/sources/osv/all.zip.meta.json
+
+# Local OSS risk collector cache
+oss-risk/data/cache/

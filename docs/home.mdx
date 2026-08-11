@@ -13,6 +13,8 @@ The prototype combines open vulnerability intelligence, dependency inventory, an
 - A reproducible sample dataset at `data/finos-sample-platform.json`.
 - A second SBOM-derived demo dataset at `data/finos-sbom-demo.json`.
 - A larger public FINOS org snapshot at `data/finos-github-org.json`.
+- An OSS library-risk browser at `oss-risk/browser.html`, seeded with FINOS
+  OSERA backpatch library scorecards.
 - Python pipeline scripts under `scripts/`.
 - Validation tests under `tests/`.
 - The authoritative build contract in `SPEC.md`.
@@ -35,6 +37,16 @@ On local and custom-domain deployments the same viewer is served from
 base path `/risk-navigator/` is part of the URL.
 
 Use the dataset selector to explore the OSERA curated sample, the FINOS SBOM scan demo, or the larger FINOS GitHub org snapshot directly in the browser.
+
+The OSS library-risk browser is hosted alongside the tool:
+
+```text
+https://finos-osera.github.io/risk-navigator/oss-risk/browser.html
+```
+
+On local and custom-domain deployments the same browser is served from
+`/oss-risk/browser.html`. See [OSS Library Risk](./oss-risk) for the source
+model, collector behavior, and provenance notes.
 
 ## Core workflows
 

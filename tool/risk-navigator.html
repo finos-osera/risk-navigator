@@ -145,6 +145,38 @@ header .meta-pill {
   border-color: rgba(255, 255, 255, .16);
   color: rgba(255, 255, 255, .88);
 }
+header a.header-link,
+header a.header-link:visited {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  background: rgba(255, 255, 255, .13);
+}
+header a.header-link:hover,
+header a.header-link:focus-visible {
+  color: #fff;
+  background: rgba(255, 255, 255, .20);
+  text-decoration: none;
+}
+.header-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .18);
+  font-size: 12px;
+  line-height: 1;
+}
 .icon-btn {
   width: 34px;
   height: 34px;
@@ -1121,6 +1153,7 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
     </div>
     <div id="scopeMeta" class="meta">No dataset loaded</div>
     <div class="spacer"></div>
+    <a class="header-link" href="../oss-risk/browser.html"><span class="header-emoji" aria-hidden="true">🛡️</span><span>OSS Project Risk</span></a>
     <select id="datasetSelect"></select>
     <button id="helpBtn" class="ghost">About</button>
     <button id="themeBtn" class="ghost icon-btn" aria-label="Switch to dark theme" title="Switch to dark theme"><span id="themeIcon" aria-hidden="true">☾</span></button>
