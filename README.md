@@ -1,3 +1,5 @@
+[![badge-labs](docs/assets/finos-labs-badge.svg)](https://community.finos.org/docs/governance/lifecycle-stages/labs)
+
 <img align="right" width="40%" src="https://www.finos.org/hubfs/FINOS/finos-logo/FINOS_Icon_Wordmark_Name_RGB_horizontal.png">
 
 # OSERA Risk Navigator
@@ -521,3 +523,15 @@ no upstream JS dependency tree to vet. CSS variables and `<datalist>` /
 - An *"all our orgs"* roll-up view for executive overviews.
 
 See `SPEC.md` § Future Requirements for the full backlog.
+
+## Contributing
+
+Please refer to the [CONTRIBUTING.md](./CONTRIBUTING.md) file.
+
+## License
+
+Copyright 2026 FINOS
+
+Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+
+SPDX-License-Identifier: [Apache-2.0](https://spdx.org/licenses/Apache-2.0)
