@@ -7,6 +7,9 @@ This file lists the maintainers of this repository.
 | GitHub Username | Name | Organization | Email (Optional) |
 |----------------|------|--------------|-------|
 | [@DovOps](https://github.com/dovops) | Dov Katz | Morgan Stanley |-------|
+| [@Jitu330](https://github.com/Jitu330) | Jatinder Malik | NatWest Group |-------|
+| [@kriswest](https://github.com/kriswest) | Kris West | NatWest Group | kristopher.west@natwest.com |
+
 
 For information about maintainer responsibilities and resources, see the [FINOS Maintainers Cheatsheet](https://community.finos.org/docs/finos-maintainers-cheatsheet).
 
