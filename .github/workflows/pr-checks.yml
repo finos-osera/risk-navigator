@@ -3,6 +3,7 @@ name: PR checks
 on:
   pull_request:
     paths:
+      - ".node-version"
       - ".github/workflows/pr-checks.yml"
       - "data/finos-sample-platform.json"
       - "docs/**"
