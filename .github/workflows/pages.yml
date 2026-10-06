@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - ".node-version"
       - ".github/workflows/pages.yml"
       - "docs/**"
       - "website/**"

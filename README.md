@@ -54,7 +54,7 @@ From the repository root:
 
 Prerequisites:
 
-- Node.js 20 or later.
+- Node.js 24 (the version used by CI, configured in `.node-version`).
 - npm 10 or later.
 - Python 3.11 or later.
 - Git for optional public repository scans.
