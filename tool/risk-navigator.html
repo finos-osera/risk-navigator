@@ -1137,6 +1137,7 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
   background: color-mix(in srgb, var(--chip) 70%, var(--panel) 30%);
 }
 </style>
+<link rel="stylesheet" href="./patches/patches.css">
 </head>
 <body>
 <header>
@@ -1265,6 +1266,8 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
   <div id="paneSplitter" class="splitter" role="separator" aria-orientation="vertical" aria-label="Resize detail pane"></div>
   <aside class="panel" id="detail"></aside>
 </main>
+<details id="patchCoverage"></details>
+<script type="module" src="./patches/panel.mjs"></script>
 
 <div id="cartPane" class="cart-pane">
   <div class="cart-head">
@@ -6626,6 +6629,8 @@ function render() {
 async function loadDatasetSelection(url) {
   state.datasetUrl = url;
   state.dataset = await fetchDataset(url);
+  window.riskPatchDataset = state.dataset;
+  window.dispatchEvent(new CustomEvent("risk-nav:dataset", { detail: state.dataset }));
   localStorage.setItem(STORAGE_KEYS.lastDataset, String(url));
 
   const m = await hydrateMetaOverlays(state.dataset.meta || {});

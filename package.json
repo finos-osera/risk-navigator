@@ -39,7 +39,8 @@
     "docs:install": "npm install --prefix website",
     "docs:start": "npm --prefix website run start --",
     "docs:build": "npm run build --prefix website",
-    "test": "python3 -m pytest -q"
+    "test": "python3 -m pytest -q",
+    "test:patches": "node --test tests/patch-*.test.mjs"
   },
   "devDependencies": {
     "vite": "^7.1.0"

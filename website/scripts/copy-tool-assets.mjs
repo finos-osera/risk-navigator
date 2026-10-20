@@ -1,4 +1,4 @@
-import { copyFile, mkdir, rm } from "node:fs/promises";
+import { copyFile, cp, mkdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -38,3 +38,7 @@ for (const [source, target] of copies) {
 }
 
 console.log("Copied Risk Navigator demo assets into website/static.");
+
+for (const target of ["tool", "tools"]) {
+  await cp(resolve(rootDir, "tool/patches"), resolve(staticDir, target, "patches"), { recursive: true });
+}
