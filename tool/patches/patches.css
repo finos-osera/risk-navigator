@@ -17,3 +17,8 @@
 #patchCoverage[open] { position: fixed; inset: 24px; z-index: 70; overflow: auto; margin: 0; box-shadow: 0 0 0 30px #001b2e88; }
 #patchCoverage[open] > summary::after { content: ' — close'; font-weight: 400; }
 @media (max-width: 700px) { #patchCoverage[open] { inset: 8px; } }
+#patchRequestMount { margin-top: 24px; border-top: 2px solid var(--line); padding-top: 18px; }
+#requestForm { border: 1px solid var(--line); padding: 16px; margin-top: 16px; border-radius: 8px; }
+#requestForm textarea { min-width: 260px; min-height: 70px; background: var(--panel); color: var(--ink); }
+.patch-warning { color: var(--warn); }
+#requestMessage { margin: 12px 0; font-weight: 600; }
