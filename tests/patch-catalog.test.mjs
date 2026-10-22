@@ -60,3 +60,11 @@ test('real OSERA-format excerpt retains supplier, aliases and release-set member
   assert.equal(feed.errors.length,0);assert.equal(feed.patches[0].supplier,'moderne');
   assert.equal(feed.patches[0].state,'released');assert.ok(feed.patches[0].companions.length>1);
 });
+test('hidden sources still count, disabled sources do not, and independent inventories retain provenance', () => {
+  const one={...normalizeFeed(catalog()),visible:false};
+  const two={...normalizeFeed({...catalog(),id:'supplemental'}),enabled:false,visible:true};
+  const result=analyze(estate,[one,two]);assert.equal(result.eligible,3);
+  assert.deepEqual(activePatches([one,two]).map(p=>p.feed_id),['test']);
+  one.enabled=false;assert.equal(analyze(estate,[one,two]).eligible,0);
+  two.enabled=true;assert.deepEqual(activePatches([one,two]).map(p=>p.feed_id),['supplemental']);
+});

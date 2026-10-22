@@ -1,19 +1,21 @@
-#patchCoverage { margin: 16px; padding: 16px; border: 1px solid var(--line, #b6c1c9); border-radius: 12px; background: var(--panel, #fff); color: var(--text, #182a35); }
-#patchCoverage summary { cursor: pointer; font-weight: 650; }
-.patch-content { padding-top: 12px; }
-.patch-actions { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 12px 0; }
-.patch-actions label { display: flex; flex-direction: column; gap: 5px; }
-.patch-actions input, .patch-actions select { max-width: 100%; min-width: 160px; }
-.patch-source { border-bottom: 1px solid #c4ccd3; padding: 10px 0; overflow-wrap: anywhere; }
-.patch-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 18px 0; }
-.patch-metrics > div { background: #edf5f8; color: #123142; padding: 16px; border-radius: 8px; }
-.patch-metrics strong { font-size: 1.3rem; }
-.patch-scroll { overflow: auto; max-height: 600px; }
-.patch-scroll td { vertical-align: top; min-width: 150px; white-space: normal; overflow-wrap: anywhere; }
-.patch-scroll code { white-space: normal; }
-#patchCoverage pre { white-space: pre-wrap; max-width: 650px; max-height: 300px; overflow: auto; }
-#patchMessage { overflow-wrap: anywhere; }
-#patchCoverage { flex-shrink: 0; color: var(--ink); margin: 8px 16px; padding: 12px 16px; }
-#patchCoverage[open] { position: fixed; inset: 24px; z-index: 70; overflow: auto; margin: 0; box-shadow: 0 0 0 30px #001b2e88; }
-#patchCoverage[open] > summary::after { content: ' — close'; font-weight: 400; }
-@media (max-width: 700px) { #patchCoverage[open] { inset: 8px; } }
+#patchCoverage { flex-shrink: 0; padding: 12px; border-top: 1px solid var(--line); background: var(--panel); color: var(--ink); max-height: 48vh; overflow: auto; }
+#patchCoverage[hidden] { display: none; }
+.patch-heading { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
+#patchFeedStatus { display:block; margin-top:4px; }
+.patch-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:10px 0; }
+.patch-actions label { display:flex; gap:5px; align-items:center; flex-wrap:wrap; }
+.patch-actions input, .patch-actions select { max-width:100%; }
+.patch-source { padding:10px 0; border-bottom:1px solid var(--line); overflow-wrap:anywhere; }
+.patch-metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin:10px 0; }
+.patch-metrics > div { background:var(--primary-soft); padding:12px; border-radius:8px; }
+.patch-metrics strong { font-size:1.4rem; }
+.patch-badge { display:inline-block; padding:3px 8px; border-radius:12px; background:var(--chip); font-size:12px; font-weight:600; }
+.patch-available,.patch-observed { color:var(--good); border:1px solid var(--good); }
+.patch-candidate { color:var(--warn); border:1px solid var(--warn); }
+.patch-unconfirmed { color:var(--risk); }
+.patch-providers { display:block; margin-top:4px; }
+.patch-target { padding:12px; border:1px solid var(--line); border-radius:8px; margin:10px 0; overflow-wrap:anywhere; }
+.patch-detail pre, #patchCoverage pre { white-space:pre-wrap; max-height:250px; overflow:auto; font-size:11px; }
+#patchMessage:empty { display:none; }
+#patchScope { margin-bottom:0; }
+#patchSourcesManager { border:1px solid var(--line); padding:12px; border-radius:8px; }
