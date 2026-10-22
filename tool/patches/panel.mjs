@@ -1,4 +1,4 @@
-import { normalizeFeed, analyze, activePatches, unique, coverage, libraryPurl } from './catalog.mjs';
+import { normalizeFeed, analyze, activePatches, unique, coverage, libraryPurl, purl } from './catalog.mjs';
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = escapeHtml;
 export const labels = { available: 'Available', observed: 'Patched artifact observed', candidate: 'Review applicability', unconfirmed: 'Evidence blocked', gap: 'No match', unknown: 'Unknown identity' };
@@ -74,7 +74,7 @@ function renderSources() {
 function resultFor(lib) {
   if(!cache.has(lib.id)) {
     const result=coverage(libraryPurl(lib),(lib.cves||[]).map(c=>c.cve_id),activePatches(patchState.feeds));
-    const status=result.adopted.length?'observed':result.available.length?'available':result.candidates.length?'candidate':result.other.length?'unconfirmed':'gap';
+    const status=!purl(libraryPurl(lib))?'unknown':result.adopted.length?'observed':result.available.length?'available':result.candidates.length?'candidate':result.other.length?'unconfirmed':'gap';
     cache.set(lib.id,{...result,status,library:lib});
   }
   return cache.get(lib.id);
@@ -85,7 +85,7 @@ function badge(lib) {
   if(!patchState.feeds.some(f=>f.enabled))return '<span class="small">Sources not enabled</span>';
   const shown = ['adopted','available','candidates','other'].find(key=>r[key].some(p=>matches.includes(p)));
   const displayStatus = {adopted:'observed',available:'available',candidates:'candidate',other:'unconfirmed'}[shown] || r.status;
-  return `<span class="patch-badge patch-${displayStatus}">${h(matches.length?labels[displayStatus]:r.status==='gap'?'No match':'Hidden source coverage')}</span>${providers.length?`<span class="small patch-providers">${h(providers.join(', '))}</span>`:''}`;
+  return `<span class="patch-badge patch-${displayStatus}">${h(matches.length?labels[displayStatus]:['gap','unknown'].includes(r.status)?labels[r.status]:'Hidden source coverage')}</span>${providers.length?`<span class="small patch-providers">${h(providers.join(', '))}</span>`:''}`;
 }
 function matchesFilter(lib) {const status=patchState.filters.status;return !status||(status==='opportunity'?['available','candidate'].includes(resultFor(lib).status):status===resultFor(lib).status);}
 function detail(lib) {
