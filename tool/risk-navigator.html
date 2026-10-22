@@ -456,6 +456,23 @@ main.dashboard-layout .table-wrap {
   max-height: none;
   height: 100%;
 }
+/* Lists share one vertical scroll surface with their controls. The table must
+   not shrink to whatever space is left beneath expanded filters. */
+@media (min-width: 769px) {
+  main:not(.dashboard-layout) > section.panel {
+    overflow: auto;
+    min-width: 0;
+    scrollbar-gutter: stable;
+  }
+  main:not(.dashboard-layout) > section.panel > * { flex-shrink: 0; }
+  main:not(.dashboard-layout) #modeBar { position: static; }
+  main:not(.dashboard-layout) > section.panel .table-wrap {
+    flex: none;
+    overflow: visible;
+    max-height: none;
+    min-height: 200px;
+  }
+}
 table { width: 100%; border-collapse: collapse; font-size: 12px; }
 th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
 th {
@@ -2603,6 +2620,10 @@ function syncUrlState() {
 function setMode(modeId, selected = null) {
   if (modeId === "patch-coverage" && state.mode !== modeId) setFilterPanelCollapsed(true);
   const next = isValidMode(modeId) ? modeId : "dashboard";
+  if (state.mode !== next) {
+    const listPane = document.querySelector("main > section.panel");
+    if (listPane) listPane.scrollTop = 0;
+  }
   state.mode = next;
   state.selected = selected;
   localStorage.setItem(STORAGE_KEYS.lastMode, next);

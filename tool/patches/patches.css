@@ -1,4 +1,4 @@
-#patchCoverage { flex-shrink: 0; padding: 12px; border-top: 1px solid var(--line); background: var(--panel); color: var(--ink); max-height: 48vh; overflow: auto; }
+#patchCoverage { flex-shrink: 0; padding: 12px; border-top: 1px solid var(--line); background: var(--panel); color: var(--ink); max-height: none; overflow: visible; }
 #patchCoverage[hidden] { display: none; }
 .patch-heading { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
 #patchFeedStatus { display:block; margin-top:4px; }
@@ -28,3 +28,11 @@
 #requestForm .patch-actions label { flex-direction:column; align-items:flex-start; }
 .patch-warning { color:var(--warn); }
 #requestMessage { margin:12px 0; font-weight:600; }
+
+/* Libraries keeps patch administration compact; all controls scroll with rows. */
+#patchMessage[data-kind="success"] { display:none; }
+#patchCoverage[data-mode="libraries"] { padding:8px 12px; }
+#patchCoverage[data-mode="libraries"] .patch-actions { margin:4px 0; }
+#patchCoverage[data-mode="libraries"] #patchFeedStatus,
+#patchCoverage[data-mode="libraries"] #patchSourcesSummary,
+#patchCoverage[data-mode="libraries"] > .patch-actions > .small { display:none; }

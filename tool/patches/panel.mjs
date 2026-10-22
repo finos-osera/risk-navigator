@@ -21,7 +21,7 @@ host.innerHTML = `<div class="patch-heading"><div><strong>Patch coverage</strong
 <div class="patch-actions"><label>Show <select id="patchStatusFilter"><option value="">All libraries</option><option value="opportunity">Has patch opportunity</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label><span class="small">Uses the main library filters and selected estate.</span></div>
 <div id="patchMetrics" hidden></div><p id="patchScope" class="small" hidden></p><div id="patchRequestMount"></div>`;
 const q = selector => host.querySelector(selector);
-function message(text) { q('#patchMessage').textContent = text; }
+function message(text) { q('#patchMessage').textContent = text; q('#patchMessage').dataset.kind = text.startsWith('Loaded ')?'success':'notice'; }
 function save() {
   try { localStorage.setItem(storageKey, JSON.stringify(patchState.feeds.map(({document,source,releaseSets,enabled,visible,name,loaded_at})=>({document,source,releaseSets,enabled,visible,name,loaded_at})))); }
   catch { message('Changes apply to this session; browser storage is unavailable or full.'); }
@@ -108,7 +108,7 @@ function renderMode(libs,scope,selected,onSelect) {
   document.getElementById('rowCount').textContent=`${rows.length} libraries`;
   return rows.find(l=>l.id===selected)||rows[0]||null;
 }
-window.riskPatches={badge,detail,matchesFilter,renderMode,resultFor,setView(mode,callback){refreshView=callback;host.hidden=!['libraries','patch-coverage'].includes(mode);q('#patchMetrics').hidden=mode!=='patch-coverage';q('#patchScope').hidden=mode!=='patch-coverage';},open(){window.dispatchEvent(new CustomEvent('risk-nav:open-patches'));}};
+window.riskPatches={badge,detail,matchesFilter,renderMode,resultFor,setView(mode,callback){refreshView=callback;host.dataset.mode=mode;q('.patch-heading strong').textContent=mode==='libraries'?'Patch sources':'Patch coverage';host.hidden=!['libraries','patch-coverage'].includes(mode);q('#patchMetrics').hidden=mode!=='patch-coverage';q('#patchScope').hidden=mode!=='patch-coverage';},open(){window.dispatchEvent(new CustomEvent('risk-nav:open-patches'));}};
 window.addEventListener('risk-nav:dataset',event=>{patchState.dataset=event.detail;cache.clear();patchState.filters={};q('#patchStatusFilter').value='';window.dispatchEvent(new CustomEvent('risk-nav:patch-coverage',{detail:patchState}));});
 if(window.riskPatchDataset)patchState.dataset=window.riskPatchDataset;
 renderSources();
