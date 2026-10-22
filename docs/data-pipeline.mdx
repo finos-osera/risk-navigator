@@ -89,7 +89,7 @@ Each dataset must be listed in `tool/manifest.json`:
       "url": "../data/finos-github-org.json",
       "description": "Broad public FINOS GitHub organization snapshot built from public repository metadata and manifest extraction.",
       "source_type": "public-github-org-manifest-snapshot",
-      "coverage": "132 active non-fork public FINOS repositories; 97 repositories with extracted dependency edges in the committed snapshot.",
+      "coverage": "Active public FINOS repositories with selected resolved npm lockfiles; current counts in data/finos-coverage.json.",
       "limitations": "Broad but often shallow: manifest extraction can be direct-only and does not fully resolve every build-system dependency graph.",
       "docs_url": "../docs/data-pipeline#finos-github-org-snapshot"
     }
@@ -455,13 +455,13 @@ data/finos-github-org.json
 Raw extract:
 
 ```text
-data/raw/finos-github-org/
+data/local/finos-refresh/raw/finos-github-org/
 ```
 
 Recommended refresh command:
 
 ```bash
-npm run build:all:finos-org:full-osv
+npm run refresh:finos
 ```
 
 This is the larger realism dataset in the dropdown. It is generated from the
@@ -469,13 +469,7 @@ public FINOS GitHub organization using the GitHub REST API, filtered to active
 non-fork repositories, and joined with full OSV records filtered by observed
 packages.
 
-The current committed snapshot includes:
-
-- 132 active non-fork public FINOS repositories.
-- 97 repositories with extracted dependency edges.
-- 4,040 dependency edges.
-- 72 distinct vulnerable libraries in the final viewer dataset.
-- 2 KEV-listed libraries.
+Current counts, repository commits and scan gaps are published in `data/finos-coverage.json`. See [FINOS refresh](./finos-refresh.md) for the bounded lockfile scan, weekly updates and distribution size limits.
 
 Use authenticated GitHub API access for refreshes to avoid public API rate
 limits. The extractor reads declared manifests and does not perform full
@@ -483,8 +477,7 @@ build-system resolution for every ecosystem, so dependency coverage depends on
 the manifests present in public repositories and the ecosystems supported by
 `scripts/extract_org.py`. This broad dataset is therefore useful for portfolio
 coverage, but it can be shallow: dependency edges extracted from manifests are
-often direct-only. Use the FINOS Deep SBOM Demo to show the richer data shape
-expected from lockfile, scanner, or build-system dependency graphs.
+often direct-only. Selected npm lockfiles now supply real transitive relationships in this snapshot. The FINOS Deep SBOM Demo remains a separate synthetic walkthrough.
 
 For a faster smoke test, this command uses the sample OSV seed and produces
 lower vulnerability coverage:

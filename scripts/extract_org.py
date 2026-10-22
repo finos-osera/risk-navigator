@@ -196,6 +196,16 @@ def github_get_repo_content(
     obj = github_get_json(url, token=token, timeout_seconds=timeout_seconds, retries=1)
     encoded = str(obj.get("content") or "")
     encoding = str(obj.get("encoding") or "")
+    if not encoded and encoding == "none":
+        # GitHub omits base64 content above 1 MB; the raw media type supports it.
+        headers = {"Accept": "application/vnd.github.raw+json", "User-Agent": "risk-navigator/0.1"}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=timeout_seconds) as response:
+            raw = response.read(10 * 1024 * 1024 + 1)
+        if len(raw) > 10 * 1024 * 1024:
+            raise ValueError("Manifest exceeds 10 MB read limit")
+        return raw.decode("utf-8")
     if not encoded:
         return ""
     if encoding == "base64":
@@ -659,7 +669,7 @@ def manifest_paths_from_tree(tree_entries: Sequence[Dict[str, object]], max_mani
             if any(seg in {".github", "docs", "examples", "demo", "samples", "test", "tests"} for seg in parts):
                 continue
             paths.append(path)
-    unique = sorted(set(paths))
+    unique = sorted(set(paths), key=lambda p: (p.count("/"), p))
     return unique[:max_manifests_per_repo]
 
 
@@ -724,47 +734,117 @@ def parse_manifest_dependencies(path: str, content: str) -> List[Tuple[str, str,
     return []
 
 
-def edges_for_repo(
-    owner: str,
-    repo_name: str,
-    default_branch: str,
-    project_id: str,
-    token: Optional[str],
-    github_api_base: str,
-    timeout_seconds: int,
-    max_manifests_per_repo: int,
-) -> List[DepEdge]:
-    tree_url = f"{github_api_base}/repos/{owner}/{repo_name}/git/trees/{urllib.parse.quote(default_branch, safe='')}?recursive=1"
-    tree_obj = github_get_json(tree_url, token=token, timeout_seconds=timeout_seconds, retries=1)
-    entries = tree_obj.get("tree", []) if isinstance(tree_obj, dict) else []
-    if not isinstance(entries, list):
-        entries = []
+# Keep deeper sampling bounded. These are real lockfiles, never generated demo graphs.
+LOCKFILE_SAMPLE_REPOS = {"traderX", "waltz", "FDC3", "legend-studio", "architecture-as-code", "open-resource-broker", "symphony-bdk-java", "perspective"}
 
-    manifest_paths = manifest_paths_from_tree(entries, max_manifests_per_repo=max_manifests_per_repo)
-    edges: List[DepEdge] = []
-    seen: set = set()
-    for path in manifest_paths:
-        content = github_get_repo_content(
-            owner,
-            repo_name,
-            path=path,
-            ref=default_branch,
-            token=token,
-            github_api_base=github_api_base,
-            timeout_seconds=timeout_seconds,
-        )
-        if not content:
+
+def npm_lock_edges(content: str, project_id: str) -> List[DepEdge]:
+    """Read npm v2/v3 installed paths and follow runtime edges (no install/scripts)."""
+    payload = json.loads(content)
+    packages = payload.get("packages")
+    if payload.get("lockfileVersion") not in (2, 3) or not isinstance(packages, dict) or not isinstance(packages.get(""), dict):
+        raise ValueError("Only npm lockfile versions 2 and 3 are supported")
+
+    def resolve(parent: str, name: str) -> str | None:
+        path = parent
+        while True:
+            candidate = f"{path}/node_modules/{name}" if path else f"node_modules/{name}"
+            if candidate in packages:
+                entry = packages[candidate]
+                return str(entry.get("resolved")) if entry.get("link") else candidate
+            if not path:
+                return None
+            path = path.rsplit("/", 1)[0] if "/" in path else ""
+
+    def identity(path: str) -> str | None:
+        row = packages.get(path, {})
+        version = str(row.get("version") or "")
+        name = str(row.get("name") or path.rsplit("node_modules/", 1)[-1])
+        if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?", version):
+            return None
+        meta, proj = name.split("/", 1) if name.startswith("@") and "/" in name else ("", name)
+        return make_library_id("npm", meta, proj, version)
+
+    # Workspace roots declare their own direct dependencies; dev dependencies are excluded.
+    roots = [path for path in packages if not path or "node_modules" not in path.split("/")]
+    pending = list(roots)
+    visited, edges = set(), {}
+    while pending:
+        parent = pending.pop()
+        if parent in visited:
             continue
-        for namespace, meta, proj, release, qualifier in parse_manifest_dependencies(path, content):
-            if not namespace or not proj:
+        visited.add(parent)
+        row = packages.get(parent, {})
+        dependencies = {**row.get("peerDependencies", {}), **row.get("dependencies", {}), **row.get("optionalDependencies", {})}
+        for name in sorted(dependencies):
+            child = resolve(parent, name)
+            if child is None:
                 continue
-            lid = make_library_id(namespace, meta, proj, normalize_version_text(release))
-            key = (project_id, lid, qualifier)
-            if key in seen:
+            pending.append(child)
+            lid = identity(child)
+            if not lid:
                 continue
-            seen.add(key)
-            edges.append(DepEdge(consumer_id=project_id, library_id=lid, direct=1, qualifier=qualifier, parent_id=""))
-    return edges
+            direct = int(parent in roots)
+            parent_id = "" if direct else (identity(parent) or "")
+            key = (lid, direct, parent_id)
+            edges[key] = DepEdge(project_id, lid, direct, "runtime", parent_id)
+    return list(edges.values())
+
+
+def scan_repo(owner, repo_name, default_branch, project_id, token, github_api_base,
+              timeout_seconds, max_manifests_per_repo):
+    base = f"{github_api_base}/repos/{owner}/{repo_name}"
+    commit = github_get_json(f"{base}/commits/{urllib.parse.quote(default_branch, safe='')}", token, timeout_seconds)
+    revision = commit["sha"]
+    tree_obj = github_get_json(f"{base}/git/trees/{revision}?recursive=1", token, timeout_seconds)
+    entries = tree_obj.get("tree", [])
+    all_paths = manifest_paths_from_tree(entries, 100000)
+    paths = all_paths[:max_manifests_per_repo]
+    report = {"repository": f"{owner}/{repo_name}", "commit": revision, "scanned_at": now_iso(),
+              "manifests_found": len(all_paths), "manifests_read": 0,
+              "manifest_limit_reached": len(all_paths) > len(paths),
+              "tree_truncated": bool(tree_obj.get("truncated")), "lockfiles": [], "errors": []}
+    lock_dirs = set()
+    edges = []
+    if repo_name in LOCKFILE_SAMPLE_REPOS:
+        locks = sorted([str(e["path"]) for e in entries if e.get("type") == "blob"
+                        and Path(str(e.get("path", ""))).name == "package-lock.json"
+                        and not any(x in Path(str(e["path"])).parts for x in ("node_modules", "test", "tests", "examples", "docs"))],
+                       key=lambda p: (p.count("/"), p))
+        report["lockfile_limit_reached"] = len(locks) > 4
+        for path in locks[:4]:
+            try:
+                content = github_get_repo_content(owner, repo_name, path, revision, token, github_api_base, timeout_seconds)
+                resolved = npm_lock_edges(content, project_id)
+                edges.extend(resolved)
+                lock_root = Path(path).parent
+                lock_dirs.update(str(lock_root / workspace) for workspace in json.loads(content)["packages"]
+                                 if not workspace or "node_modules" not in workspace.split("/"))
+                report["lockfiles"].append({"path": path, "runtime_edges": len(resolved)})
+            except Exception as exc:
+                report["errors"].append(f"{path}: {exc}")
+    for path in paths:
+        if Path(path).name == "package.json" and str(Path(path).parent) in lock_dirs:
+            continue  # Do not mix a declared range with the resolved installation.
+        try:
+            content = github_get_repo_content(owner, repo_name, path, revision, token, github_api_base, timeout_seconds)
+            if not content:
+                report["errors"].append(f"{path}: empty or unavailable content")
+                continue
+            report["manifests_read"] += 1
+            for namespace, meta, proj, release, qualifier in parse_manifest_dependencies(path, content):
+                if namespace and proj:
+                    edges.append(DepEdge(project_id, make_library_id(namespace, meta, proj, normalize_version_text(release)), 1, qualifier, ""))
+        except Exception as exc:
+            report["errors"].append(f"{path}: {exc}")
+    unique = {(e.library_id, e.direct, e.qualifier, e.parent_id): e for e in edges}
+    report["dependency_edges"] = len(unique)
+    report["status"] = "partial" if report["errors"] or report["tree_truncated"] or report["manifest_limit_reached"] or report.get("lockfile_limit_reached") else ("extracted" if unique else "no_supported_dependencies")
+    return list(unique.values()), report
+
+
+def edges_for_repo(*args, **kwargs) -> List[DepEdge]:
+    return scan_repo(*args, **kwargs)[0]
 
 
 def load_vuln_edges(db_path: Path) -> Dict[str, List[Dict[str, object]]]:
@@ -1084,6 +1164,7 @@ def extract_finos_github_org(
 
     dep_edges: List[DepEdge] = []
     failures: List[str] = []
+    reports = []
     repo_rows_by_name = {str(row.get("name") or ""): row for row in repos}
 
     with ThreadPoolExecutor(max_workers=max(1, parallelism)) as pool:
@@ -1092,7 +1173,7 @@ def extract_finos_github_org(
             repo_row = repo_rows_by_name.get(project.proj, {})
             default_branch = str(repo_row.get("default_branch") or project.release or "main")
             fut = pool.submit(
-                edges_for_repo,
+                scan_repo,
                 github_org,
                 project.proj,
                 default_branch,
@@ -1107,11 +1188,16 @@ def extract_finos_github_org(
         for fut in as_completed(futures):
             repo_name = futures[fut]
             try:
-                dep_edges.extend(fut.result())
+                repo_edges, report = fut.result()
+                dep_edges.extend(repo_edges)
+                reports.append(report)
             except Exception as exc:
                 failures.append(f"{repo_name}: {exc}")
+                reports.append({"repository": f"{github_org}/{repo_name}", "status": "failed", "errors": [str(exc)]})
 
     stats = write_scope_extract(scope=scope, projects=projects, edges=dep_edges, db_path=db_path, raw_root=raw_root)
+    report_path = raw_root / scope / "coverage.json"
+    report_path.write_text(json.dumps(sorted(reports, key=lambda r: r["repository"]), indent=2) + "\n")
     stats["github_org"] = github_org
     stats["repo_failures"] = len(failures)
     stats["repos_total"] = len(projects)

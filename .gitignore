@@ -30,8 +30,7 @@ data/external/
 !data/raw/finos-sample-platform/
 !data/raw/finos-sample-platform/*.csv
 !data/finos-github-org.json
-!data/raw/finos-github-org/
-!data/raw/finos-github-org/*.csv
+data/raw/finos-github-org/
 
 # Keep sample OSV seed only (full OSV dump is local-only)
 !data/sources/

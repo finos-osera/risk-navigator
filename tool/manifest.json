@@ -30,10 +30,10 @@
     {
       "label": "FINOS GitHub Org Snapshot",
       "url": "../data/finos-github-org.json",
-      "description": "Broad public FINOS GitHub organization snapshot built from public repository metadata and manifest extraction.",
-      "source_type": "public-github-org-manifest-snapshot",
-      "coverage": "132 active non-fork public FINOS repositories; 97 repositories with extracted dependency edges in the committed snapshot.",
-      "limitations": "Broad but often shallow: manifest extraction can be direct-only and does not fully resolve every build-system dependency graph.",
+      "description": "Current public FINOS repository declarations with selected resolved npm runtime dependency graphs.",
+      "source_type": "public-github-manifests-and-lockfiles",
+      "coverage": "134 repositories; 104 with dependencies; 8 resolved lockfiles. Scanned 2026-10-22.",
+      "limitations": "Partial repository evidence, not deployed inventory. Scan limits and unsupported formats are listed in the coverage report; curated demos remain separate.",
       "docs_url": "../docs/data-pipeline#finos-github-org-snapshot"
     }
   ]
