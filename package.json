@@ -42,6 +42,6 @@
     "test": "python3 -m pytest -q"
   },
   "devDependencies": {
-    "vite": "^7.1.0"
+    "vite": "^7.3.7"
   }
 }
