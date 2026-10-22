@@ -124,3 +124,5 @@ window.riskRequests={open:openCart,setView(mode){mount.hidden=mode!=='patch-requ
   document.getElementById('detail').innerHTML='<h3>OSERA patch requests</h3><p>Add missing coverage from Libraries or Patch coverage, or enter it manually here.</p><p>Enabled sources, including hidden ones, are checked before export. Manage sources in Patch coverage.</p><p>Review the JSON before downloading. Downloads stay local and do not submit to OSERA.</p>';
 }};
 render();
+
+window.dispatchEvent(new CustomEvent("risk-nav:patch-ready"));

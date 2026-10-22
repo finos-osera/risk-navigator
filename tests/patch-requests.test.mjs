@@ -45,3 +45,9 @@ test('refreshing inventory flags manual/stale findings and published coverage is
   assert.equal(reviewRequest(item,dataset,[feed()]).remaining.length,0);
   const request=requestFromLibrary(lib);assert.deepEqual(request.advisories,[cve,second]);
 });
+test('hidden enabled sources still prevent duplicate requests; disabling reopens demand',()=>{
+  const source={...feed(),visible:false};
+  assert.throws(()=>exportRequests([item],dataset,[source]),/already has patch coverage/);
+  source.enabled=false;
+  assert.equal(exportRequests([item],dataset,[source]).requests.length,1);
+});
