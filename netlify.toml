@@ -8,3 +8,13 @@
 
 [context.branch-deploy]
   ignore = "node -e 'process.exit(0)'"
+
+# The site also copies tool/, data/, oss-risk/ and docs/ from outside the base.
+# Always build PR previews so Netlify's base-directory check cannot skip them.
+# For Netlify ignore commands, exit 1 continues the build; exit 0 skips it.
+[context.deploy-preview]
+  ignore = "node -e 'process.exit(1)'"
+
+[context.deploy-preview.environment]
+  NODE_VERSION = "24"
+  GITHUB_PAGES = "false"
