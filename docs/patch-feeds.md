@@ -2,6 +2,8 @@
 
 Select **Patch coverage** beside Libraries. This mode uses the normal table and right-hand details pane, with one row per library/version and consumer projects in the details. Libraries also has a Patch coverage column. Clicking a row shows targets, addressed and residual findings, and source evidence. The existing risk-planning indicator is named **Patch needed** to distinguish demand from published coverage.
 
+The left pane has one scroll surface: navigation, filters, patch controls and rows scroll together, with table column headings staying visible while browsing rows. The right details pane scrolls independently. Libraries keeps patch controls compact; Manage sources exposes timestamps and source settings.
+
 The main filters apply to both views. The coverage Show selector can narrow to opportunities or a state. Coverage totals use the library filters and scoped project observations; the Show selector narrows rows without changing totals. Filters collapse on entry to Patch coverage and can be expanded again.
 
 OSERA refreshes automatically in the background at startup. Saved evidence is displayed immediately; a timeout or version mismatch keeps the last valid snapshot with an error/stale indication. No estate inventory is transmitted. Turn startup refresh off in Manage sources for offline usage.
