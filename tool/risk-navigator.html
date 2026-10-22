@@ -2884,6 +2884,14 @@ function buildDataSourcesHelpMarkdown() {
 
   if (description) lines.push(`- **Description**: ${description}`);
   if (coverage) lines.push(`- **Coverage**: ${coverage}`);
+  if (meta.inventory_scanned_at) lines.push(`- **Inventory scanned**: ${meta.inventory_scanned_at}`);
+  if (meta.vulnerabilities_queried_at || meta.vulnerabilities_fetched_at) lines.push(`- **Vulnerabilities refreshed**: ${meta.vulnerabilities_queried_at || meta.vulnerabilities_fetched_at}`);
+  if (meta.external_signals?.fetched_at) lines.push(`- **Risk signals refreshed**: ${meta.external_signals.fetched_at}`);
+  if (meta.coverage) {
+    lines.push(`- **Repositories with dependencies**: ${meta.coverage.repositories_with_dependencies} of ${meta.coverage.repositories}`);
+    lines.push(`- **Resolved lockfiles**: ${meta.coverage.resolved_lockfiles}`);
+    lines.push("- **Scan evidence**: [Repository commits, coverage and gaps](../data/finos-coverage.json)");
+  }
   if (docsUrl) lines.push(`- **Documentation**: [Data pipeline details](${docsUrl})`);
 
   lines.push(
@@ -3474,6 +3482,14 @@ async function fetchDataset(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error("dataset fetch failed");
   const data = await res.json();
+  // Compact FINOS samples store each complete package version chain once.
+  for (const lib of data.libraries || []) {
+    if (lib.version_chain_ref) {
+      const chain = data.version_chains?.[lib.version_chain_ref];
+      if (!Array.isArray(chain)) throw new Error("Missing dataset version chain");
+      lib.version_chain = chain;
+    }
+  }
   state.cache.set(url, data);
   return data;
 }
