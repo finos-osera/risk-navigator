@@ -1254,6 +1254,7 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
       <span id="rowCount" class="small">0 rows</span>
     </div>
 
+    <section id="patchCoverage" hidden></section>
     <div class="table-wrap">
       <div id="dashboardView" class="dashboard-view" hidden></div>
       <table id="mainTable">
@@ -1266,7 +1267,7 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
   <div id="paneSplitter" class="splitter" role="separator" aria-orientation="vertical" aria-label="Resize detail pane"></div>
   <aside class="panel" id="detail"></aside>
 </main>
-<details id="patchCoverage"></details>
+
 <script type="module" src="./patches/panel.mjs"></script>
 <script type="module" src="./patches/request-panel.mjs"></script>
 
@@ -1369,6 +1370,8 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
 const MODES = [
   { id: "dashboard", label: "Dashboard" },
   { id: "libraries", label: "Libraries" },
+  { id: "patch-coverage", label: "Patch coverage" },
+  { id: "patch-requests", label: "Patch requests" },
   { id: "top-fixes", label: "Top fixes" },
   { id: "backpatch-priority", label: "Backpatch Priority Calculator" },
   { id: "backpatch-landscape", label: "Backpatch landscape" },
@@ -2598,6 +2601,7 @@ function syncUrlState() {
 }
 
 function setMode(modeId, selected = null) {
+  if (modeId === "patch-coverage" && state.mode !== modeId) setFilterPanelCollapsed(true);
   const next = isValidMode(modeId) ? modeId : "dashboard";
   state.mode = next;
   state.selected = selected;
@@ -4459,7 +4463,7 @@ function renderStrategyPill(strategy) {
 function renderAlliancePatchIndicator(profile) {
   if (!profile || !profile.alliance_patch_required) return `<span class="small" title="No OSERA-created patch requirement detected for this row.">-</span>`;
   const tip = escapeHtml(profile.alliance_patch_reason || "OSERA-created/maintained patch recommended.");
-  return `<span class="badge kev" title="${tip}" aria-label="${tip}">OSERA PATCH</span>`;
+  return `<span class="badge kev" title="${tip}" aria-label="${tip}">Patch needed</span>`;
 }
 
 function isAvoidableMajorByBackpatch(lib, profile) {
@@ -5301,7 +5305,7 @@ function openProjectRemediationForProject(projectId) {
 function renderDetail(item) {
   if (!item) { els.detail.innerHTML = `<div class="small">Select a row to inspect details.</div>`; return; }
 
-  if (state.mode === "libraries") {
+  if (["libraries", "patch-coverage"].includes(state.mode)) {
     const lib = item;
     const projects = (state.dataset.consumer_projects || []).filter(p => lib.consumer_project_ids.includes(p.id));
     let visibleProjects = projects;
@@ -5321,6 +5325,8 @@ function renderDetail(item) {
     els.detail.innerHTML = `
       <h3 style="margin:0;">${lib.meta}:${lib.proj}</h3>
       <div class="rich-line"><span class="tone">${lib.namespace}</span>${renderLibraryRef(lib.meta, lib.proj, lib.release, lib.namespace)}</div>
+      <div class="h-row" style="margin:8px 0;"><button id="requestOseraPatch">Request missing coverage</button></div>
+      ${state.mode === "patch-coverage" && window.riskPatches ? window.riskPatches.detail(lib) : ""}
       ${kevSummary}
       <div class="impact">
         <button data-impact="all" class="${state.detailImpact === "all" ? "active" : ""}">All (${lib.total_consumer_count})</button>
@@ -5339,10 +5345,10 @@ function renderDetail(item) {
         <div class="k">Frameworks</div><div>${renderFrameworkJumpButtons(lib)}</div>
       </div>
       <div class="h-row" style="margin:8px 0;">
-        <button id="requestOseraPatch">Request OSERA patch</button>
         ${lib.namespace === "maven" ? `<button id="addCart" class="primary">Add Maven lib to cart</button>` : `<span class="small">Cart is available only for Maven dependencies.</span>`}
         <button id="simLib">Simulate backport patch</button>
       </div>
+      ${state.mode !== "patch-coverage" && window.riskPatches ? window.riskPatches.detail(lib) : ""}
       <div id="simOut"></div>
       ${renderInlineVersionChain(lib, "Version chain")}
       <h4>CVEs (top 50)</h4>
@@ -5783,7 +5789,7 @@ function renderDetail(item) {
         <td>${c.target_type}</td>
         <td>${c.target_type === "AMPLIFIER" ? c.amplifier_ref : c.patch_line_family || c.patch_line}</td>
         <td>${c.transitive_only ? "<span class='badge tra'>TRA</span>" : "<span class='badge dir'>DIR/MIX</span>"}</td>
-        <td>${c.alliance_patch_required ? "<span class='badge kev'>OSERA PATCH</span>" : "<span class='badge tra'>OVERRIDE PATH</span>"}</td>
+        <td>${c.alliance_patch_required ? "<span class='badge kev'>Patch needed</span>" : "<span class='badge tra'>OVERRIDE PATH</span>"}</td>
         <td>${c.rationale || "-"}</td>
         <td>${c.avoidance_story || "-"}</td>
         <td>${c.cve_count || 0} CVEs${c.kev_count ? ` · 🔥 ${c.kev_count} KEV` : ""}</td>
@@ -6251,13 +6257,21 @@ function renderMode(filteredLibraries) {
     return;
   }
 
+  if (state.mode === "patch-requests" && window.riskRequests) { window.riskRequests.renderMode(); return; }
+  if (state.mode === "patch-coverage" && window.riskPatches) {
+    const scope = patchScopeDataset(filteredLibraries);
+    const selected = window.riskPatches.renderMode(scope.libraries, scope, state.selected, lib => { state.selected = lib.id; render(); });
+    renderDetail(selected);
+    return;
+  }
   if (state.mode === "libraries") {
-    const rows = filteredLibraries;
+    const rows = filteredLibraries.filter(lib => !window.riskPatches || window.riskPatches.matchesFilter(lib));
     renderTable(
       [
         {label:"#"},
         {label:"Library", sortKey:"proj"},
         {label:"Version", sortKey:"release"},
+        {label:"Patch coverage"},
         {label:"CVSS", sortKey:"max_cvss"},
         {label:"CVEs", sortKey:"cve_count"},
         {label:"KEV", sortKey:"kev_cve_count"},
@@ -6278,6 +6292,7 @@ function renderMode(filteredLibraries) {
           idx + 1,
           renderLibraryCell(r),
           r.release,
+          window.riskPatches ? window.riskPatches.badge(r) : "Loading sources…",
           fmt(r.max_cvss,1),
           r.cve_count,
           r.kev_cve_count ? `<span class="badge kev">${r.kev_cve_count}</span>` : "0",
@@ -6618,7 +6633,25 @@ function renderMode(filteredLibraries) {
   }
 }
 
+function patchScopeDataset(libs) {
+  const f = state.filters;
+  const projects = (state.dataset.consumer_projects || []).filter(p => {
+    if (f.department && (state.projectGroups.get(p.id) || "General") !== f.department) return false;
+    if (f.projectRefChips.length && !f.projectRefChips.some(chip => projectReferenceSearchValues(p).some(name => name.toLowerCase().includes(String(chip).toLowerCase())))) return false;
+    return true;
+  });
+  const ids = new Set(projects.map(p => p.id));
+  return {...state.dataset, consumer_projects: projects, libraries: libs.map(lib => ({...lib,
+    consumer_project_ids: (lib.consumer_project_ids || []).filter(id => ids.has(id) && (!f.directOnly || (lib.direct_consumer_project_ids || []).includes(id)) && (!f.transitiveOnly || !(lib.direct_consumer_project_ids || []).includes(id))),
+    direct_consumer_project_ids: (lib.direct_consumer_project_ids || []).filter(id => ids.has(id))
+  }))};
+}
+window.addEventListener("risk-nav:patch-ready", () => { if (state.dataset) render(); });
+window.addEventListener("risk-nav:open-patches", () => { setMode("patch-coverage", null); render(); });
+window.addEventListener("risk-nav:open-requests", () => { setMode("patch-requests", null); render(); });
 function render() {
+  if (window.riskRequests) window.riskRequests.setView(state.mode);
+  if (window.riskPatches) window.riskPatches.setView(state.mode, () => { if (state.dataset) render(); });
   buildModeBar();
   buildEffortChips();
 

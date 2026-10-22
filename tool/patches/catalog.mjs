@@ -121,10 +121,13 @@ export function estateRows(dataset) {
 export function analyze(dataset, feeds, filters = {}) {
   const patches = activePatches(feeds).filter(p => !filters.feed || p.feed_id === filters.feed);
   const projects = (dataset.consumer_projects || []).filter(p => !filters.project || p.id === filters.project);
+  const matchesByIdentity = new Map();
   const rows = estateRows(dataset).filter(row => !filters.project || row.project === filters.project)
     .filter(row => !filters.search || `${row.identity} ${row.advisories.join(' ')}`.toLowerCase().includes(filters.search.toLowerCase()))
     .map(row => {
-      const result = coverage(row.identity, row.advisories, patches);
+      const matchKey = JSON.stringify([row.identity, row.advisories]);
+      if (!matchesByIdentity.has(matchKey)) matchesByIdentity.set(matchKey, coverage(row.identity, row.advisories, patches));
+      const result = matchesByIdentity.get(matchKey);
       const status = !purl(row.identity) ? 'unknown' : result.adopted.length ? 'observed' : result.available.length ? 'available' : result.candidates.length ? 'candidate' : result.other.length ? 'unconfirmed' : 'gap';
       return { ...row, ...result, status };
     });

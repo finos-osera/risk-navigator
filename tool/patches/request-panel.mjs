@@ -2,6 +2,8 @@ import { patchState, escapeHtml as h } from './panel.mjs';
 import { activePatches } from './catalog.mjs';
 import { addRequest, requestFromLibrary, requestKey, validateRequest, normalizeWork, reviewRequest, impact, exportRequests, requestSummary } from './requests.mjs';
 const mount = document.getElementById('patchRequestMount');
+document.querySelector('.table-wrap').append(mount);
+mount.hidden=true;
 let scope = '', items = [], work = [], savedSnapshot = '', exported = '', editing = null;
 function snapshot() { return JSON.stringify([patchState.dataset?.meta?.extracted_at,patchState.feeds.map(f=>[f.id,f.version,f.generated_at,f.enabled])]); }
 function storageKey() { return `risk-nav-osera-request-cart:v1:${encodeURIComponent(scope)}`; }
@@ -22,8 +24,8 @@ function loadScope() {
   } catch { items=[];work=[]; }
 }
 function openCart() {
-  document.getElementById('patchCoverage').open=true;
-  const details=mount.querySelector('details');details.open=true;details.scrollIntoView({block:'start',behavior:'smooth'});
+  window.dispatchEvent(new CustomEvent('risk-nav:open-requests'));
+  const details=mount.querySelector('details');if(details)details.open=true;
 }
 function addLibrary(lib) {
   try {
@@ -53,7 +55,7 @@ function render(preserveDraft = false) {
   const wasOpen=mount.querySelector('details')?.open||false;
   const count=impact(items,patchState.dataset,patchState.feeds);
   mount.innerHTML=`<details ${wasOpen?'open':''}><summary>OSERA patch request cart (${items.length})</summary>
-    <p>Collect missing patch coverage, check existing fixes, then review a local export. Export does not submit a request or mark a patch deployed.</p>
+    <p>Requests are scoped to this dataset and are independent of library display filters. Collect missing patch coverage, check existing fixes, then review a local export. Export does not submit a request or mark a patch deployed.</p>
     <p class="small">Scope: ${h(scope)} · ${items.length} requests · ${count.applications} unique applications · ${count.instances} observed component instances · ${count.direct} direct / ${count.transitive} transitive applications (may overlap) · ${count.advisories} observed advisories · ${count.kev} KEVs. Potential impact only; partial inventories undercount.</p>
     ${savedSnapshot && savedSnapshot!==snapshot()?'<p class="patch-warning">Feed or inventory evidence changed since the cart was saved. Coverage below has been recalculated; review before export.</p>':''}
     <p class="small">${work.length} imported work references. ${work.length?'Imported work may be stale; verify its linked status.':'No backlog snapshot loaded: existing requests are unknown.'} ${exported?'Last local export: '+h(exported)+'. No submission acknowledgment.':''}</p>
@@ -64,7 +66,7 @@ function render(preserveDraft = false) {
       return `<article class="patch-source"><strong>${h(item.package)} · ${h(item.line)} (${h(item.precision)})</strong><p>${h(r.state)} · remaining: ${h(r.remaining.join(', ')||'none of the requested advisories')}</p>
       <p class="small">Requested: ${h(item.advisories.join(', '))}. ${r.available.length} applicable records · ${r.adopted.length} exact-artifact matches · ${r.candidates.length} published candidate records. ${r.staleAdvisories.length?'Not present in current observed findings: '+h(r.staleAdvisories.join(', '))+'. Check manual/stale requests.':''}</p>
       ${r.candidates.length?'<p class="patch-warning">A published fix may already address this need. Review its applicability before requesting production.</p>':''}
-      <details><summary>Existing patch / work evidence</summary><pre>${h(JSON.stringify([...r.available,...r.adopted,...r.candidates].map(p=>({target:p.target,provider:p.provider,advisories:p.advisories,evidence:p.evidence,release_set:p.release_set})),null,2))}</pre>${r.work.map(w=>`<p><a href="${h(w.url)}" target="_blank" rel="noreferrer">${h(w.status)}: ${h(w.line)}</a> · ${h(w.advisories.join(', '))}</p>`).join('')||'<p>No matching imported work reference.</p>'}</details>
+      <details><summary>Existing patch / work evidence</summary><p class="small">Only visible source details are shown; enabled hidden sources still contribute to coverage checks.</p><pre>${h(JSON.stringify([...r.available,...r.adopted,...r.candidates].filter(p=>patchState.feeds.some(f=>f.id===p.feed_id&&f.visible)).map(p=>({target:p.target,provider:p.provider,advisories:p.advisories,evidence:p.evidence,release_set:p.release_set})),null,2))}</pre>${r.work.map(w=>`<p><a href="${h(w.url)}" target="_blank" rel="noreferrer">${h(w.status)}: ${h(w.line)}</a> · ${h(w.advisories.join(', '))}</p>`).join('')||'<p>No matching imported work reference.</p>'}</details>
       ${item.incompatibility?`<p>Existing-fix exception: ${h(item.incompatibility)}</p>`:''}
       <button data-edit="${index}">Edit</button> <button data-delete="${index}">Remove</button></article>`;
     }).join('')||'<p>No requests yet. Add one from an estate row or enter one below.</p>'}</div>
@@ -111,15 +113,14 @@ function render(preserveDraft = false) {
     mount.querySelector('#requestSave').textContent=editing?'Save changes':'Add request';
   }
 }
-function addCoverageActions() {
-  document.querySelectorAll('#patchRows tr').forEach((tr,index)=>{
-    const row=patchState.lastResult?.rows[index];if(!row||!row.advisories.length)return;
-    if(tr.querySelector('[data-request-patch]'))return;
-    const button=document.createElement('button');button.dataset.requestPatch='true';button.textContent='Request OSERA patch';button.onclick=()=>addLibrary(row.library);tr.cells[1].append(document.createElement('br'),button);
-  });
-}
 const openButton=document.createElement('button');openButton.textContent='OSERA request cart';openButton.id='openRequestCart';openButton.onclick=openCart;
 document.querySelector('#patchCoverage .patch-actions').append(openButton);
-window.addEventListener('risk-nav:patch-coverage',()=>{render(true);addCoverageActions();});
+window.addEventListener('risk-nav:patch-coverage',()=>render(true));
 window.addEventListener('risk-nav:request-patch',event=>addLibrary(event.detail));
-render();addCoverageActions();
+window.riskRequests={open:openCart,setView(mode){mount.hidden=mode!=='patch-requests';},renderMode(){
+  render(true);mount.hidden=false;const details=mount.querySelector('details');if(details)details.open=true;
+  document.getElementById('mainTable').hidden=true;document.getElementById('dashboardView').hidden=true;
+  document.getElementById('rowCount').textContent=`${items.length} requests`;
+  document.getElementById('detail').innerHTML='<h3>OSERA patch requests</h3><p>Add missing coverage from Libraries or Patch coverage, or enter it manually here.</p><p>Enabled sources, including hidden ones, are checked before export. Manage sources in Patch coverage.</p><p>Review the JSON before downloading. Downloads stay local and do not submit to OSERA.</p>';
+}};
+render();
