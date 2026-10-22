@@ -1286,6 +1286,7 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
 </main>
 
 <script type="module" src="./patches/panel.mjs"></script>
+<script type="module" src="./patches/request-panel.mjs"></script>
 
 <div id="cartPane" class="cart-pane">
   <div class="cart-head">
@@ -1387,6 +1388,7 @@ const MODES = [
   { id: "dashboard", label: "Dashboard" },
   { id: "libraries", label: "Libraries" },
   { id: "patch-coverage", label: "Patch coverage" },
+  { id: "patch-requests", label: "Patch requests" },
   { id: "top-fixes", label: "Top fixes" },
   { id: "backpatch-priority", label: "Backpatch Priority Calculator" },
   { id: "backpatch-landscape", label: "Backpatch landscape" },
@@ -5344,6 +5346,7 @@ function renderDetail(item) {
     els.detail.innerHTML = `
       <h3 style="margin:0;">${lib.meta}:${lib.proj}</h3>
       <div class="rich-line"><span class="tone">${lib.namespace}</span>${renderLibraryRef(lib.meta, lib.proj, lib.release, lib.namespace)}</div>
+      <div class="h-row" style="margin:8px 0;"><button id="requestOseraPatch">Request missing coverage</button></div>
       ${state.mode === "patch-coverage" && window.riskPatches ? window.riskPatches.detail(lib) : ""}
       ${kevSummary}
       <div class="impact">
@@ -5376,6 +5379,7 @@ function renderDetail(item) {
     `;
 
     els.detail.querySelectorAll("[data-impact]").forEach(btn => btn.onclick = () => { state.detailImpact = btn.getAttribute("data-impact"); renderDetail(lib); });
+    els.detail.querySelector("#requestOseraPatch").onclick = () => window.dispatchEvent(new CustomEvent("risk-nav:request-patch", { detail: lib }));
     const add = els.detail.querySelector("#addCart");
     if (add) add.onclick = () => addToCart(lib);
     const simBtn = els.detail.querySelector("#simLib");
@@ -6274,6 +6278,7 @@ function renderMode(filteredLibraries) {
     return;
   }
 
+  if (state.mode === "patch-requests" && window.riskRequests) { window.riskRequests.renderMode(); return; }
   if (state.mode === "patch-coverage" && window.riskPatches) {
     const scope = patchScopeDataset(filteredLibraries);
     const selected = window.riskPatches.renderMode(scope.libraries, scope, state.selected, lib => { state.selected = lib.id; render(); });
@@ -6664,7 +6669,9 @@ function patchScopeDataset(libs) {
 }
 window.addEventListener("risk-nav:patch-ready", () => { if (state.dataset) render(); });
 window.addEventListener("risk-nav:open-patches", () => { setMode("patch-coverage", null); render(); });
+window.addEventListener("risk-nav:open-requests", () => { setMode("patch-requests", null); render(); });
 function render() {
+  if (window.riskRequests) window.riskRequests.setView(state.mode);
   if (window.riskPatches) window.riskPatches.setView(state.mode, () => { if (state.dataset) render(); });
   buildModeBar();
   buildEffortChips();

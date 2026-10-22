@@ -19,6 +19,15 @@
 #patchMessage:empty { display:none; }
 #patchScope { margin-bottom:0; }
 #patchSourcesManager { border:1px solid var(--line); padding:12px; border-radius:8px; }
+#patchRequestMount { padding:20px; }
+#patchRequestMount[hidden] { display:none; }
+#patchRequestMount summary { cursor:pointer; font-weight:600; }
+#patchRequestMount pre { white-space:pre-wrap; max-height:320px; overflow:auto; }
+#requestForm { border:1px solid var(--line); padding:16px; margin-top:16px; border-radius:8px; }
+#requestForm textarea { min-width:240px; min-height:70px; background:var(--panel); color:var(--ink); }
+#requestForm .patch-actions label { flex-direction:column; align-items:flex-start; }
+.patch-warning { color:var(--warn); }
+#requestMessage { margin:12px 0; font-weight:600; }
 
 /* Libraries keeps patch administration compact; all controls scroll with rows. */
 #patchMessage[data-kind="success"] { display:none; }
