@@ -110,6 +110,9 @@ python3 scripts/build_dataset.py --scope finos-github-org \
   --depsdev-cache data/external/depsdev_versions_cache.json \
   --meta-overlay data/meta/finos-github-org-meta.json \
   --amplifiers-preaggregated
+
+# open the rebuilt report in the local viewer, then pick "FINOS GitHub Org Snapshot"
+npm run dev
 ```
 
 ## GitHub Pages
