@@ -55,5 +55,8 @@ jobs:
       - name: Build Docusaurus site
         run: npm run docs:build
 
+      - name: Test patch coverage
+        run: npm run test:patches
+
       - name: Run tests
         run: python -m pytest -q
