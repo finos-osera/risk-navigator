@@ -25,11 +25,9 @@ This folder now includes a working implementation:
 - Sample built dataset (`OSERA Demo Data (Example)`): `data/finos-sample-platform.json`
 - SBOM-derived demo dataset (`FINOS SBOM Scan Demo`): `data/finos-sbom-demo.json`
 - Curated deep graph demo dataset (`FINOS Deep SBOM Demo`): `data/finos-deep-sbom-demo.json`
-- Full public FINOS org snapshot (`FINOS GitHub Org Snapshot`): `data/finos-github-org.json`
-  - 132 active non-fork public FINOS repositories
-  - 97 repositories with extracted dependency edges
-  - 4,040 dependency edges
-  - 72 distinct vulnerable libraries in the final viewer dataset
+- Public FINOS org snapshot (`FINOS GitHub Org Snapshot`): `data/finos-github-org.json`
+  - Active non-fork public FINOS repositories (current counts in `data/finos-coverage.json`)
+  - Current inventory, vulnerability totals and scan gaps in `data/finos-coverage.json`
 - Validation/tests: `scripts/validate_dataset.py`, `tests/`
 - Architecture and data-pipeline decisions: `IMPLEMENTATION.md`
 - Company customization guide: `docs/CUSTOMIZATION_GUIDE.md`
@@ -84,7 +82,7 @@ npm run build:all:finos-org
 
 # FINOS GitHub org snapshot with full OSV allowlist ingest (recommended refresh path)
 # use authenticated GitHub API access, for example `gh auth login`, to avoid rate limits
-npm run build:all:finos-org:full-osv
+npm run refresh:finos
 
 # run tests
 npm test
@@ -527,6 +525,10 @@ See `SPEC.md` § Future Requirements for the full backlog.
 ## Contributing
 
 Please refer to the [CONTRIBUTING.md](./CONTRIBUTING.md) file.
+
+### Current FINOS sample refresh
+
+Use `npm run refresh:finos`. See [FINOS refresh](docs/finos-refresh.md) for scan coverage, weekly review PRs, and the 5 MiB dataset budget. Raw downloads and intermediate files stay local.
 
 ## License
 
