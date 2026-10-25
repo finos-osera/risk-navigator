@@ -1,0 +1,29 @@
+#patchCoverage { flex-shrink: 0; padding: 12px; border-top: 1px solid var(--line); background: var(--panel); color: var(--ink); max-height: none; overflow: visible; }
+#patchCoverage[hidden] { display: none; }
+.patch-heading { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
+#patchFeedStatus { display:block; margin-top:4px; }
+.patch-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:10px 0; }
+.patch-actions label { display:flex; gap:5px; align-items:center; flex-wrap:wrap; }
+.patch-actions input, .patch-actions select { max-width:100%; }
+.patch-source { padding:10px 0; border-bottom:1px solid var(--line); overflow-wrap:anywhere; }
+.patch-metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin:10px 0; }
+.patch-metrics > div { background:var(--primary-soft); padding:12px; border-radius:8px; }
+.patch-metrics strong { font-size:1.4rem; }
+.patch-badge { display:inline-block; padding:3px 8px; border-radius:12px; background:var(--chip); font-size:12px; font-weight:600; }
+.patch-available,.patch-observed { color:var(--good); border:1px solid var(--good); }
+.patch-candidate { color:var(--warn); border:1px solid var(--warn); }
+.patch-unconfirmed { color:var(--risk); }
+.patch-providers { display:block; margin-top:4px; }
+.patch-target { padding:12px; border:1px solid var(--line); border-radius:8px; margin:10px 0; overflow-wrap:anywhere; }
+.patch-detail pre, #patchCoverage pre { white-space:pre-wrap; max-height:250px; overflow:auto; font-size:11px; }
+#patchMessage:empty { display:none; }
+#patchScope { margin-bottom:0; }
+#patchSourcesManager { border:1px solid var(--line); padding:12px; border-radius:8px; }
+
+/* Libraries keeps patch administration compact; all controls scroll with rows. */
+#patchMessage[data-kind="success"] { display:none; }
+#patchCoverage[data-mode="libraries"] { padding:8px 12px; }
+#patchCoverage[data-mode="libraries"] .patch-actions { margin:4px 0; }
+#patchCoverage[data-mode="libraries"] #patchFeedStatus,
+#patchCoverage[data-mode="libraries"] #patchSourcesSummary,
+#patchCoverage[data-mode="libraries"] > .patch-actions > .small { display:none; }
