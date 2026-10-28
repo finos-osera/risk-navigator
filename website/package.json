@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.7.0",
-    "typescript": "^5.7.2"
+    "typescript": "^7.0.2"
   },
   "engines": {
     "node": ">=20.0"
