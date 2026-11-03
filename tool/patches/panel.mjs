@@ -1,3 +1,4 @@
+import { inventory, distance } from './inventory.mjs';
 import { normalizeFeed, analyze, activePatches, unique, coverage, libraryPurl, purl } from './catalog.mjs';
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = escapeHtml;
@@ -5,6 +6,8 @@ export const labels = { available: 'Available', observed: 'Patched artifact obse
 const storageKey = 'risk-nav-patch-feeds:v1';
 export const patchState = { dataset: null, feeds: [], filters: {}, lastResult: null, rows: [], loading: false, error: '', scope: null };
 let refreshView = () => {}, cache = new Map(), initialized = false;
+let inventoryView = 'estate';
+let inventorySearch = '';
 let autoRefresh = true;
 try { autoRefresh = localStorage.getItem('risk-nav-osera-auto-refresh') !== 'false'; } catch {}
 try {
@@ -93,22 +96,73 @@ function detail(lib) {
   return `<section class="patch-detail"><h3>Patch coverage</h3>${badge(lib)}<p>${r.covered.length} of ${(lib.cves||[]).length} listed findings have confirmed patch coverage.</p><p class="small">Published candidates require compatibility review. Observed artifacts are inventory evidence, not deployment verification.</p>${targets.map(target=>{const records=matches.filter(p=>p.target===target);return `<article class="patch-target"><strong>${h(target)}</strong><p>${h(unique(records.flatMap(p=>p.advisories)).join(', '))}</p><p class="small">${h(unique(records.map(p=>`${p.provider} · ${p.state} · ${p.status}`)).join('; '))}</p><details><summary>Source and release evidence</summary><pre>${h(JSON.stringify(records,null,2))}</pre></details></article>`;}).join('')||'<p>No visible matching evidence. Check source visibility or add an inventory.</p>'}<p><strong>Remaining findings:</strong> ${h(r.remaining.join(', ')||'None of the listed findings')}</p></section>`;
 }
 const ratio=(a,b)=>b?`${a} / ${b} (${Math.round(100*a/b)}%)`:'N/A';
-function renderMode(libs,scope,selected,onSelect) {
-  patchState.scope=scope;
-  const result=analyze({...scope,libraries:libs},patchState.feeds);patchState.lastResult=result;
-  patchState.rows=libs;
-  q('#patchMetrics').hidden=false;q('#patchScope').hidden=false;
-  q('#patchMetrics').innerHTML=`<div class="patch-metrics"><div><strong>${libs.filter(l=>resultFor(l).available.length).length}</strong><br>Libraries with applicable fixes</div><div><strong>${libs.filter(l=>resultFor(l).candidates.length).length}</strong><br>Libraries to review</div><div><strong>${ratio(result.observed,result.eligible)}</strong><br>Patched / eligible instances</div></div>`;
-  q('#patchScope').textContent=`${scope.meta?.scope_name||'Estate'} · inventory ${scope.meta?.extracted_at||'date unknown'} · ${result.totalProjects} scoped applications. ${scope.meta?.inventory_complete===true?'Source declares complete inventory.':'Partial inventory: adoption is a lower bound.'} Totals include enabled hidden sources and the current library filters. State selection narrows the rows only.`;
-  const rows=libs.filter(matchesFilter);
-  const table=document.getElementById('mainTable');table.hidden=false;document.getElementById('dashboardView').hidden=true;
-  document.getElementById('tableHead').innerHTML=['Library / version','Patch coverage','Covered findings','Scoped projects'].map(t=>`<th>${t}</th>`).join('');
-  const body=document.getElementById('tableBody');body.innerHTML=rows.map((lib,i)=>`<tr tabindex="0" aria-label="Inspect ${h(lib.proj)} ${h(lib.release)} patch coverage" data-patch-row="${i}" class="${lib.id===selected?'sel':''}"><td><strong>${h(lib.meta?lib.meta+':':'')}${h(lib.proj)}</strong><br><span class="small">${h(lib.release)}</span></td><td>${badge(lib)}</td><td>${resultFor(lib).covered.length} / ${(lib.cves||[]).length}</td><td>${unique(lib.consumer_project_ids||[]).length}</td></tr>`).join('');
-  body.querySelectorAll('[data-patch-row]').forEach(tr=>{tr.onclick=()=>onSelect(rows[Number(tr.dataset.patchRow)]);tr.onkeydown=event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();tr.click();}};});
-  document.getElementById('rowCount').textContent=`${rows.length} libraries`;
-  return rows.find(l=>l.id===selected)||rows[0]||null;
+function inventoryDetail(item) {
+  const identity = purl(item.target);
+  const projectNames = new Map((patchState.scope?.consumer_projects || []).map(p => [p.id, p.name || p.id]));
+  const observed = new Set(item.adopted.map(r => r.key));
+  const eligible = new Set(item.available.map(r => r.key));
+  const candidates = new Set(item.candidates.map(r => r.key));
+  const residual = row => {
+    // Credit only this target's assertions, not other available patches.
+    const result = coverage(row.identity, row.advisories, activePatches(patchState.feeds).filter(p=>p.target===item.target));
+    return result.remaining.join(', ') || 'None of the listed findings';
+  };
+  const visibleIds = new Set(patchState.feeds.filter(f=>f.visible!==false).map(f=>f.id));
+  const visibleRecords = item.records.filter(r=>visibleIds.has(r.feed_id));
+  const relatedAll = (patchState.inventory || []).filter(other => purl(other.target)?.key === identity?.key && other.records.some(r=>visibleIds.has(r.feed_id)));
+  const byLine = new Map();
+  for(const other of relatedAll.sort((a,b)=>purl(b.target).version.localeCompare(purl(a.target).version,undefined,{numeric:true}))) {
+    const line = purl(other.target).version.match(/^\d+\.\d+/)?.[0] || other.target;
+    if(!byLine.has(line))byLine.set(line,other);
+  }
+  const related = [...byLine.values()].sort((a,b)=>Number(b.efforts.some(e=>e.startsWith('Same-line')))-Number(a.efforts.some(e=>e.startsWith('Same-line'))));
+  return `<section class="patch-detail"><h3>${h(identity?.name || item.target)}</h3><p><strong>Target ${h(identity?.version)}</strong> · ${h(item.providers.join(', '))}</p>
+    <p>${item.adopted.length + item.available.length ? `${item.adopted.length} of ${item.adopted.length + item.available.length} confirmed eligible component instances observed; ${item.available.length} remaining.` : "Adoption: N/A until applicability is confirmed or an exact target is observed."} ${item.candidates.length} require applicability review.</p>
+    <p class="small">Adoption means an exact artifact in inventory, not verified deployment. Version distance is an effort hint, not compatibility evidence.</p>
+    <h4>Adoption effort</h4><p>${h(item.efforts.join(' · ') || 'Outside the scoped estate · needs assessment')}</p>
+    <p>${item.projects.length} affected applications · ${item.observations.filter(r=>!r.direct).length} transitive instances (assess parent or dependency-management changes).</p>
+    <details><summary>Release-set artifacts (${item.companions.length})</summary><p class="small">Review these together; the feed does not establish that every artifact must change.</p><ul>${item.companions.map(c=>`<li>${h(c)}</li>`).join('')}</ul></details>
+    <h4>Published fixes</h4><p>${h(item.advisories.join(', '))}</p>
+    <details><summary>Estate adoption and remaining findings</summary>${item.observations.length ? `<ul class="list">${item.observations.map(row=>`<li><strong>${h(projectNames.get(row.project)||row.project)}</strong> · ${h(purl(row.identity)?.version)} → ${h(identity?.version)}<br>${observed.has(row.key)?'Adopted (observed)':eligible.has(row.key)?'Ready to adopt':candidates.has(row.key)?'Needs applicability review':'Conflicting or blocked evidence'} · ${row.direct?'Direct':'Transitive'}<br><span class="small">${h(distance(row.identity,item.target))}<br>${observed.has(row.key)?'Remaining':eligible.has(row.key)?'Remaining if adopted':'Current findings'}: ${h(observed.has(row.key)||eligible.has(row.key)?residual(row):row.advisories.join(', ')||'None listed')}</span></li>`).join('')}</ul>`:'<p>No matching observations in this estate scope.</p>'}</details>
+    <h4>Latest releases · published patch targets</h4><p class="small">Highest version label per major/minor line in the feed; same-line options appear first. Same major/minor highlights a review opportunity; it does not establish applicability. Feed timestamps describe publication evidence, not version ordering.</p>
+    ${related.map(other=>`<div class="patch-target"><strong>${h(purl(other.target)?.version)}</strong> · ${h(other.providers.join(', '))}<br>${h(unique(item.observations.map(row=>distance(row.identity,other.target))).join(' · ')||'No estate version to compare')}<br><span class="small">${other.advisories.length} published advisory assertions · ${other.available.length} ready · ${other.adopted.length} observed</span></div>`).join('')}
+    <details><summary>Source evidence</summary><pre>${h(JSON.stringify(visibleRecords,null,2))}</pre></details></section>`;
 }
-window.riskPatches={badge,detail,matchesFilter,renderMode,resultFor,setView(mode,callback){refreshView=callback;host.dataset.mode=mode;q('.patch-heading strong').textContent=mode==='libraries'?'Patch sources':'Patch coverage';host.hidden=!['libraries','patch-coverage'].includes(mode);q('#patchMetrics').hidden=mode!=='patch-coverage';q('#patchScope').hidden=mode!=='patch-coverage';},open(){window.dispatchEvent(new CustomEvent('risk-nav:open-patches'));}};
+function renderMode(libs,scope,selected,onSelect) {
+  patchState.scope={...scope,libraries:libs};
+  const all = inventory(patchState.scope,patchState.feeds);
+  patchState.inventory = all;
+  const visibleIds = new Set(patchState.feeds.filter(f=>f.visible!==false).map(f=>f.id));
+  for(const row of all) {
+    const shown=row.records.filter(r=>visibleIds.has(r.feed_id));
+    row.providers=unique(shown.map(r=>r.provider));
+    row.companions=unique(shown.flatMap(r=>r.companions||[]));
+    row.advisories=unique(shown.flatMap(r=>r.advisories));
+  }
+  const estate = all.filter(row=>row.observations.length);
+  const choices = {estate:'Estate patches',available:'Ready to adopt',candidates:'Needs review',adopted:'Adopted',all:'All published patches'};
+  if(!q('#inventoryViews')) {
+    const controls=document.createElement('div');controls.id='inventoryViews';controls.innerHTML=`<div class="patch-actions" role="group" aria-label="Patch inventory views">${Object.entries(choices).map(([key,label])=>`<button data-inventory-view="${key}">${label}</button>`).join('')}</div><label>Find a patch <input id="inventorySearch" type="search" placeholder="Package, version, CVE or provider"></label>`;
+    q('#patchMetrics').before(controls);
+    controls.querySelectorAll('[data-inventory-view]').forEach(button=>button.onclick=()=>{inventoryView=button.dataset.inventoryView;refreshView();});
+    q('#inventorySearch').oninput=event=>{inventorySearch=event.target.value;refreshView();};
+  }
+  q('#inventoryViews').hidden=false;
+  for(const button of q('#inventoryViews').querySelectorAll('button'))button.setAttribute('aria-pressed',String(button.dataset.inventoryView===inventoryView));
+  q('#patchMetrics').hidden=false;q('#patchScope').hidden=false;
+  q('#patchMetrics').innerHTML=`<div class="patch-metrics"><div><strong>${estate.filter(r=>r.available.length).length}</strong><br>Targets ready to adopt</div><div><strong>${estate.filter(r=>r.candidates.length).length}</strong><br>Targets needing review</div><div><strong>${estate.filter(r=>r.adopted.length).length}</strong><br>Targets observed in estate</div></div>`;
+  q('#patchScope').textContent=`Inventory ${scope.meta?.extracted_at||'date unknown'}. ${scope.meta?.inventory_complete===true?'Source declares complete inventory.':'Partial inventory: observed adoption is a lower bound.'} Totals include enabled hidden sources; rows show targets with visible evidence. Counts are patch targets, not unique CVEs or applications. A target can be adopted and still have remaining opportunities. All published patches includes targets outside the estate; estate observations follow the main filters.`;
+  const rows=(inventoryView==='all'?all:inventoryView==='estate'?estate:estate.filter(row=>row[inventoryView].length)).filter(row=>row.records.some(r=>visibleIds.has(r.feed_id))).filter(row=>`${row.target} ${row.advisories.join(' ')} ${row.providers.join(' ')}`.toLowerCase().includes(inventorySearch.toLowerCase()));
+  patchState.rows=rows;
+  const table=document.getElementById('mainTable');table.hidden=false;document.getElementById('dashboardView').hidden=true;
+  document.getElementById('tableHead').innerHTML=['Patch target / provider','Current → target','Adoption (instances)','Adoption effort','Published fixes'].map(t=>`<th>${t}</th>`).join('');
+  const body=document.getElementById('tableBody');body.innerHTML=rows.map((row,i)=>`<tr tabindex="0" aria-label="Inspect ${h(row.target)}" data-patch-row="${i}" class="${row.id===selected?'sel':''}"><td><strong>${h(purl(row.target)?.name)}</strong><br>${h(row.providers.join(', '))}</td><td>${h(row.versions.join(', ')||'Not observed')} → <strong>${h(purl(row.target)?.version)}</strong></td><td>${row.adopted.length+row.available.length ? `${row.adopted.length} / ${row.adopted.length+row.available.length} observed` : 'N/A · applicability unconfirmed'}<br>${row.available.length} ready · ${row.candidates.length} review${row.blocked.length?` · ${row.blocked.length} blocked`:''}</td><td>${h(row.efforts.join(' · ')||'Needs assessment')}<br><span class="small">${row.projects.length} applications</span></td><td>${row.advisories.length} advisory IDs</td></tr>`).join('')||'<tr><td colspan="5">No patches in this view. Try Needs review or All published patches, or refresh the sources.</td></tr>';
+  body.querySelectorAll('[data-patch-row]').forEach(tr=>{tr.onclick=()=>onSelect(rows[Number(tr.dataset.patchRow)]);tr.onkeydown=event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();tr.click();}};});
+  document.getElementById('rowCount').textContent=`${rows.length} patch targets`;
+  return rows.find(row=>row.id===selected)||rows[0]||null;
+}
+
+window.riskPatches={inventoryDetail,badge,detail,matchesFilter,renderMode,resultFor,setView(mode,callback){refreshView=callback;if(q('#inventoryViews'))q('#inventoryViews').hidden=mode!=='patch-coverage';host.dataset.mode=mode;q('#patchStatusFilter').closest('.patch-actions').hidden=mode==='patch-coverage';q('.patch-heading strong').textContent=mode==='libraries'?'Patch sources':'Patch inventory';host.hidden=!['libraries','patch-coverage'].includes(mode);q('#patchMetrics').hidden=mode!=='patch-coverage';q('#patchScope').hidden=mode!=='patch-coverage';},open(){window.dispatchEvent(new CustomEvent('risk-nav:open-patches'));}};
 window.addEventListener('risk-nav:dataset',event=>{patchState.dataset=event.detail;cache.clear();patchState.filters={};q('#patchStatusFilter').value='';window.dispatchEvent(new CustomEvent('risk-nav:patch-coverage',{detail:patchState}));});
 if(window.riskPatchDataset)patchState.dataset=window.riskPatchDataset;
 renderSources();

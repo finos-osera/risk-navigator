@@ -1386,7 +1386,7 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
 const MODES = [
   { id: "dashboard", label: "Dashboard" },
   { id: "libraries", label: "Libraries" },
-  { id: "patch-coverage", label: "Patch coverage" },
+  { id: "patch-coverage", label: "Patch inventory" },
   { id: "top-fixes", label: "Top fixes" },
   { id: "backpatch-priority", label: "Backpatch Priority Calculator" },
   { id: "backpatch-landscape", label: "Backpatch landscape" },
@@ -5323,6 +5323,8 @@ function openProjectRemediationForProject(projectId) {
 
 function renderDetail(item) {
   if (!item) { els.detail.innerHTML = `<div class="small">Select a row to inspect details.</div>`; return; }
+
+  if (state.mode === "patch-coverage" && window.riskPatches) { els.detail.innerHTML = window.riskPatches.inventoryDetail(item); return; }
 
   if (["libraries", "patch-coverage"].includes(state.mode)) {
     const lib = item;

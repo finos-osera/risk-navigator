@@ -1,6 +1,12 @@
-# Patch feeds and observed estate coverage
+# Patch inventory and observed estate coverage
 
-Select **Patch coverage** beside Libraries. This mode uses the normal table and right-hand details pane, with one row per library/version and consumer projects in the details. Libraries also has a Patch coverage column. Clicking a row shows targets, addressed and residual findings, and source evidence. The existing risk-planning indicator is named **Patch needed** to distinguish demand from published coverage.
+Select **Patch inventory** beside Libraries. Browse Estate patches, Ready to adopt, Needs review, Adopted, or All published patches. Each row represents one exact target artifact, combining overlapping feed assertions. A target may appear in both Ready to adopt and Adopted during partial rollout. Search by package, version, advisory or provider. Libraries retains compact coverage badges.
+
+Rows show current → target versions, observed / confirmed eligible component instances, review candidates, affected applications and version-distance effort hints. Zero eligible instances displays N/A. Same-major/minor OSERA backpatches appear before more distant review candidates. Distance does not establish compatibility: OSERA records without explicit source-version evidence remain Needs review.
+
+The detail pane includes per-application observations, residual findings for the selected target, release-set artifacts to assess together, and source evidence. **Latest releases · published patch targets** shows the highest version label per major/minor line, with same-line targets first. This is numeric-aware version-label ordering, not an authoritative release chronology or compatibility ranking. Two-part version lines are supported; older lines are flagged for assessment.
+
+The three summary counts are distinct target counts, not summed CVEs or applications. All published patches includes targets outside the selected estate. Main filters scope estate observations, not the global published catalog. Hidden enabled sources contribute to counts but their exclusive targets and evidence are hidden. Partial inventory remains a lower bound on adoption.
 
 The left pane has one scroll surface: navigation, filters, patch controls and rows scroll together, with table column headings staying visible while browsing rows. The right details pane scrolls independently. Libraries keeps patch controls compact; Manage sources exposes timestamps and source settings.
 
