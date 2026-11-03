@@ -125,6 +125,14 @@ function estateCard(item) {
     }).join('')||'<li>No consumer application evidence in this scope.</li>'}</ul></details>`;
   }).join(''):'<p>No package observation in the selected scope.</p>'}<p class="small">Expand a version to see who uses it. Package presence does not prove patch applicability or deployment. Partial inventories may omit consumers.</p></section>`;
 }
+function versionRows(lib) {
+  const key=purl(libraryPurl(lib))?.key;
+  if(!key)return [];
+  const feeds=patchState.feeds.filter(f=>f.enabled&&f.visible!==false).map(f=>({...f,patches:f.patches.filter(p=>p.provider==='OSERA'&&purl(p.target)?.key===key)}));
+  const entries=latestCatalog(inventory({libraries:[]},feeds));
+  return entries.map(entry=>({release:purl(entry.target).version,osera:true,is_safe:null,cve_count:null,max_cvss:null,age:'Not supplied',
+    fixed_advisories:entry.advisories,notes:'Latest OSERA patch in this minor line · applicability review required',consumed:false,consumed_projects:0,consumed_direct:0,consumed_transitive:0}));
+}
 function libraryVersions(lib) {
   const identity=libraryPurl(lib), parsed=purl(identity);
   if(!parsed)return '';
@@ -240,7 +248,7 @@ function renderMode(libs,scope,selected,onSelect) {
   return rows.find(row=>row.id===selected)||rows[0]||null;
 }
 
-window.riskPatches={libraryVersions,inventoryDetail,badge,detail,matchesFilter,renderMode,resultFor,setView(mode,callback){refreshView=callback;if(q('#inventoryViews'))q('#inventoryViews').hidden=mode!=='patch-coverage';host.dataset.mode=mode;q('#patchStatusFilter').closest('.patch-actions').hidden=mode==='patch-coverage';q('.patch-heading strong').textContent=mode==='libraries'?'Patch sources':'Patch inventory';host.hidden=!['libraries','patch-coverage'].includes(mode);q('#patchMetrics').hidden=mode!=='patch-coverage';q('#patchScope').hidden=mode!=='patch-coverage';},open(){window.dispatchEvent(new CustomEvent('risk-nav:open-patches'));}};
+window.riskPatches={versionRows,libraryVersions,inventoryDetail,badge,detail,matchesFilter,renderMode,resultFor,setView(mode,callback){refreshView=callback;if(q('#inventoryViews'))q('#inventoryViews').hidden=mode!=='patch-coverage';host.dataset.mode=mode;q('#patchStatusFilter').closest('.patch-actions').hidden=mode==='patch-coverage';q('.patch-heading strong').textContent=mode==='libraries'?'Patch sources':'Patch inventory';host.hidden=!['libraries','patch-coverage'].includes(mode);q('#patchMetrics').hidden=mode!=='patch-coverage';q('#patchScope').hidden=mode!=='patch-coverage';},open(){window.dispatchEvent(new CustomEvent('risk-nav:open-patches'));}};
 window.addEventListener('risk-nav:dataset',event=>{patchState.dataset=event.detail;inventoryCache=null;cache.clear();patchState.filters={};q('#patchStatusFilter').value='';window.dispatchEvent(new CustomEvent('risk-nav:patch-coverage',{detail:patchState}));});
 if(window.riskPatchDataset)patchState.dataset=window.riskPatchDataset;
 renderSources();

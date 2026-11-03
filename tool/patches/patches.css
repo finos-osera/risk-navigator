@@ -61,3 +61,7 @@
 .patch-library-versions { border:1px solid var(--line); border-radius:10px; padding:14px; margin:16px 0; background:var(--primary-soft); }
 .patch-library-versions h4 { margin:0 0 8px; }
 .patch-library-versions pre { white-space:pre-wrap; overflow:auto; max-height:220px; }
+.osera-version-row { background:var(--primary-soft); }
+.osera-version-row td:first-child { border-left:3px solid var(--link); font-weight:700; }
+.osera-version-badge { color:var(--link); border:1px solid var(--link); font-weight:700; }
+.osera-version-row td:last-child { white-space:normal; min-width:220px; }
