@@ -5058,6 +5058,69 @@ function activeDatasetDisplayName() {
   return division ? `${division} / ${scopeLabel}` : scopeLabel;
 }
 
+function renderPatchFeedAdoptionDashboard(dataset) {
+  const adoption = dataset && dataset.patch_feed_adoption;
+  if (!adoption || typeof adoption !== "object") return "";
+  const m = adoption.metrics || {};
+  const avail = m.applications_with_available_patch || {};
+  const obs = m.applications_with_observed_patch_use || {};
+  const inst = m.patched_eligible_component_instances || {};
+  const pkgStates = m.package_state_counts || {};
+  const exp = m.exposure_summary || {};
+  const feeds = Array.isArray(adoption.feeds) ? adoption.feeds : [];
+  const uncovered = Array.isArray(adoption.uncovered_demand_cart) ? adoption.uncovered_demand_cart : [];
+
+  const feedRows = feeds.map(f => `
+    <tr>
+      <td><strong>${escapeHtml(f.provider || "-")}</strong> (<code>${escapeHtml(f.feed_id || "-")}</code>)</td>
+      <td>${escapeHtml(f.adapter || "-")}</td>
+      <td><code>${escapeHtml(f.snapshot_version || "-")}</code></td>
+      <td>${escapeHtml(f.last_refresh || "-")}</td>
+      <td>${f.enabled ? "Enabled" : "Disabled"}</td>
+      <td>${Number(f.patch_count || 0)} patches / ${Number(f.vex_statement_count || 0)} VEX</td>
+      <td>${(f.validation_errors || []).length ? `${f.validation_errors.length} error(s)` : ((f.validation_warnings || []).length ? `${f.validation_warnings.length} warning(s)` : "Valid")}</td>
+    </tr>
+  `).join("");
+
+  return `
+    <section class="dashboard-section">
+      <h3>Estate Patch Availability &amp; Observed Adoption (SBOM / Build Observation)</h3>
+      <div class="dashboard-note" style="margin-bottom:8px;">
+        Snapshot <code>${escapeHtml(adoption.snapshot_date || "-")}</code> · Observation basis: <code>${escapeHtml(m.observation_basis || "sbom_build_observation_not_verified_runtime")}</code> (not verified runtime deployment). VEX <code>not_affected</code> / <code>under_investigation</code> and unreleased / withdrawn entries do not count as available patches.
+      </div>
+      <div class="dashboard-kpis" style="margin-bottom:10px;">
+        <section class="dashboard-card">
+          <div class="label">Apps with available patch</div>
+          <div class="value">${escapeHtml(avail.display || "Not applicable")}</div>
+          <div class="sub">${escapeHtml(avail.numerator_label || "apps with available patch")} / ${escapeHtml(avail.denominator_label || "inventoried apps")}</div>
+        </section>
+        <section class="dashboard-card">
+          <div class="label">Apps with observed patch use</div>
+          <div class="value">${escapeHtml(obs.display || "Not applicable")}</div>
+          <div class="sub">${escapeHtml(obs.numerator_label || "apps with observed patch")} / ${escapeHtml(obs.denominator_label || "inventoried apps")}</div>
+        </section>
+        <section class="dashboard-card">
+          <div class="label">Patched eligible instances</div>
+          <div class="value">${escapeHtml(inst.display || "Not applicable")}</div>
+          <div class="sub">${escapeHtml(inst.numerator_label || "patched eligible instances")} / ${escapeHtml(inst.denominator_label || "eligible instances")}</div>
+        </section>
+        <section class="dashboard-card">
+          <div class="label">States &amp; Uncovered Demand</div>
+          <div class="value">${Number(pkgStates.observed_patched || 0)} patched · ${Number(pkgStates.partially_adopted || 0)} partial · ${Number(pkgStates.applicable_unadopted || 0)} unadopted</div>
+          <div class="sub">${Number(pkgStates.no_known_patch || 0)} coverage gap(s) (${uncovered.length} request-cart item(s)) · ${Number(pkgStates.unknown_evidence || 0)} unknown</div>
+        </section>
+      </div>
+      <div class="small" style="margin-bottom:8px;">
+        <strong>Exposure accounting:</strong>
+        Observed remediated CVEs: <code>${(exp.observed_remediated_cves || []).length}</code> (KEV: <code>${(exp.observed_remediated_kevs || []).length}</code>) ·
+        Potential reducible CVEs from remaining patches: <code>${(exp.potential_reducible_cves || []).length}</code> (KEV: <code>${(exp.potential_reducible_kevs || []).length}</code>) ·
+        Residual CVEs: <code>${(exp.residual_cves || []).length}</code>
+      </div>
+      ${feedRows ? `<div class="libs-table-wrap"><table class="libs-table"><thead><tr><th>Feed / Provider</th><th>Adapter</th><th>Snapshot</th><th>Last Refresh</th><th>State</th><th>Records</th><th>Validation</th></tr></thead><tbody>${feedRows}</tbody></table></div>` : ""}
+    </section>
+  `;
+}
+
 function renderDashboard(filteredLibraries) {
   if (!els.dashboardView || !els.mainTable) return;
   const metrics = computeDashboardMetrics(filteredLibraries);
@@ -5163,6 +5226,7 @@ function renderDashboard(filteredLibraries) {
         </table>
       </div>
     </section>
+    ${renderPatchFeedAdoptionDashboard(state.dataset)}
   `;
   renderDashboardFilterSidebar(metrics);
 }
