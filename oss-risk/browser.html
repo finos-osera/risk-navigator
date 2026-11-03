@@ -917,6 +917,83 @@ a:hover {
   border-top: 0;
   padding-top: 0;
 }
+.source-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.vuln-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8fafc;
+  justify-self: start;
+}
+.vuln-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.1;
+  cursor: pointer;
+}
+.vuln-tab:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--blue) 30%, var(--line) 70%);
+}
+.vuln-tab[aria-selected="true"] {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+.vuln-tab.alert:not([aria-selected="true"]) {
+  color: var(--red);
+  border-color: color-mix(in srgb, var(--red) 32%, var(--line) 68%);
+  background: #fff7f7;
+}
+.vuln-tab.alert[aria-selected="true"] {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+.vuln-tab:disabled,
+.vuln-tab[aria-disabled="true"] {
+  opacity: .56;
+  cursor: not-allowed;
+}
+.vuln-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: rgba(15, 23, 42, .08);
+  color: inherit;
+}
+.vuln-tab[aria-selected="true"] .vuln-tab-count {
+  background: rgba(255, 255, 255, .2);
+  color: #fff;
+}
+.vuln-tab-panel {
+  display: grid;
+  gap: 8px;
+}
+.vuln-tab-panel[hidden] {
+  display: none;
+}
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -1610,7 +1687,7 @@ a:hover {
         <li>OpenSSF Scorecard supplies security posture checks and direct links to the Scorecard viewer.</li>
         <li>GitHub API metadata supplies activity, releases, contributors, issue, and pull request signals.</li>
         <li>deps.dev and npm downloads supply package registry health where the ecosystem supports it.</li>
-        <li>OSV supplies package vulnerability records; CISA KEV matches are derived from OSV CVE aliases.</li>
+        <li>OSV supplies package vulnerability records; CISA KEV matches are derived from OSV CVE aliases and surfaced together in the unified Vulnerability Intelligence card.</li>
         <li>FINOS OSERA backpatch metadata links each focused library to its OSERA fork and upstream repository.</li>
         <li>Risk Navigator collections provide enterprise exposure by matching package coordinates from the selected dataset.</li>
       </ul>
@@ -1700,8 +1777,9 @@ a:hover {
         Muted source cards mean the package coordinate does not apply to that collector. For example,
         generic system packages such as <code>system/openssl</code> need distro-specific OSV ecosystems
         such as <code>Debian/openssl</code>, <code>Ubuntu/openssl</code>, or
-        <code>AlmaLinux/openssl</code>. A muted OSV card is therefore a coordinate-scope signal, not a
-        vulnerability clean bill of health.
+        <code>AlmaLinux/openssl</code>. A muted Vulnerability Intelligence card is therefore a
+        coordinate-scope signal (with CISA KEV enrichment disabled until CVE aliases are available),
+        not a vulnerability clean bill of health.
       </p>
     </section>
     <section class="method-tab-panel" id="methodPanelSources" role="tabpanel" aria-labelledby="methodTabSources" hidden>
@@ -1826,7 +1904,7 @@ const SOURCE_LABELS = {
   openssf_scorecard: "OpenSSF Scorecard",
   openssf_criticality: "OpenSSF Criticality",
   chaoss_derived: "CHAOSS-derived health",
-  osv: "OSV",
+  osv: "Vulnerability Intelligence",
   cisa_kev: "CISA KEV",
   epss: "FIRST EPSS",
   github: "Repository metadata",
@@ -2521,7 +2599,10 @@ function renderSourceLinks(key, source, record) {
       links.push(`<a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">CISA KEV catalog</a>`);
     }
   } else if (key === "osv") {
+    const kevSource = record?.evidence?.cisa_kev || null;
+    const kevCatalogUrl = kevSource?.url || "https://www.cisa.gov/known-exploited-vulnerabilities-catalog";
     links.push(`<a href="https://osv.dev/" target="_blank" rel="noreferrer">OSV</a>`);
+    links.push(`<a href="${escapeHtml(kevCatalogUrl)}" target="_blank" rel="noreferrer">CISA KEV catalog</a>`);
   } else if (source.url) {
     links.push(`<a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">Open source</a>`);
   }
@@ -2744,8 +2825,13 @@ function renderBackpatchDetails(source) {
   `;
 }
 
-function renderOsvDetails(source, record) {
-  const unsupported = source.error || source.source === "disabled" || source.source === "not-applicable";
+const vulnTabState = new Map();
+
+function vulnerabilityRecordKey(record) {
+  return String(record?._id || `${record?.project?.ecosystem || "unknown"}:${record?.project?.package || record?.project?.name || "record"}`);
+}
+
+function renderOsvTabPanel(source, record, unsupported) {
   if (unsupported) {
     const ecosystem = escapeHtml(record.project?.ecosystem || "unknown");
     const pkg = escapeHtml(record.project?.package || "");
@@ -2754,17 +2840,16 @@ function renderOsvDetails(source, record) {
       : `No OSV package query is configured for ${ecosystem}/${pkg}.`;
     return `<div class="source-callout">${hint}</div>`;
   }
-  const kevSource = record.evidence?.cisa_kev || null;
-  const vulnCount = Number(source.vulnerability_count || 0);
-  const cveCount = Number(source.cve_count || 0);
+  const vulnCount = Number(source?.vulnerability_count || 0);
+  const cveCount = Number(source?.cve_count || 0);
   const status = vulnCount
     ? `<span class="status-pill warn">${numberFormat(vulnCount)} OSV record(s)</span>`
     : `<span class="status-pill muted">No OSV records returned</span>`;
-  const cves = Array.isArray(source.cves) ? source.cves : [];
+  const cves = Array.isArray(source?.cves) ? source.cves : [];
   const cveHtml = cves.length
     ? `<div class="evidence-facts">${cves.slice(0, 12).map(cve => `<span class="fact">${escapeHtml(cve)}</span>`).join("")}${cves.length > 12 ? `<span class="fact">+${numberFormat(cves.length - 12)} more</span>` : ""}</div>`
     : "";
-  const vulns = Array.isArray(source.vulnerabilities) ? source.vulnerabilities.slice(0, 6) : [];
+  const vulns = Array.isArray(source?.vulnerabilities) ? source.vulnerabilities : [];
   const vulnHtml = vulns.length ? `
     <div class="vulnerability-scroll">
       <div class="check-list">
@@ -2782,15 +2867,17 @@ function renderOsvDetails(source, record) {
   ` : "";
   return `
     <div class="evidence-facts">${status}<span class="fact">${numberFormat(cveCount)} CVE alias(es)</span></div>
-    ${renderKevSummary(kevSource)}
     ${cveHtml}
     ${vulnHtml}
   `;
 }
 
 function renderKevSummary(source) {
-  if (!source || source.source === "disabled") {
+  if (!source || source.source === "disabled" || source.source === "not-applicable") {
     return `<div class="source-callout">CISA KEV matching is disabled because no CVE aliases were available from OSV for this record.</div>`;
+  }
+  if (source.source === "pending-collector") {
+    return `<div class="source-callout">CISA KEV enrichment is pending collector execution for this record.</div>`;
   }
   const matched = Number(source.matched_count || 0);
   const status = matched
@@ -2803,30 +2890,153 @@ function renderKevSummary(source) {
   `;
 }
 
-function renderKevDetails(source) {
-  if (!source || source.source === "disabled") {
-    return `<div class="source-callout">KEV matching is disabled because no CVE aliases were available from OSV for this record.</div>`;
+function renderKevDetails(source, osvUnsupported = false) {
+  if (!source || source.source === "disabled" || source.source === "not-applicable" || (osvUnsupported && !Number(source?.matched_count || 0))) {
+    return `
+      <div class="evidence-facts"><span class="status-pill muted">KEV matching disabled</span></div>
+      <div class="source-callout">CISA KEV matching is disabled because no CVE aliases were available from OSV for this record.</div>
+    `;
+  }
+  if (source.source === "pending-collector" && !Number(source.matched_count || 0)) {
+    return `
+      <div class="evidence-facts"><span class="status-pill muted">Pending collector</span></div>
+      <div class="source-callout">CISA KEV enrichment has not been collected for this fixture yet.</div>
+    `;
   }
   const matches = Array.isArray(source.matches) ? source.matches : [];
   const matched = Number(source.matched_count || 0);
-  const status = matched
-    ? `<span class="status-pill risk">${numberFormat(matched)} KEV match(es)</span>`
-    : `<span class="status-pill muted">No KEV matches</span>`;
-  const facts = `<div class="evidence-facts">${status}<span class="fact">catalog entries: ${numberFormat(source.catalog_count || 0)}</span></div>`;
-  const rows = matches.slice(0, 8).map(match => {
+  const rows = matches.map(match => {
     const cve = match.cveID || "";
     const cisaUrl = `https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=${encodeURIComponent(cve)}`;
+    const metaParts = [match.vendorProject, match.product].filter(Boolean).join(" / ") || "CISA KEV entry";
+    const dateNote = match.dateAdded ? ` (added ${match.dateAdded})` : "";
     return `
       <div class="check-row">
         <div class="check-score"><a href="${cisaUrl}" target="_blank" rel="noreferrer">${escapeHtml(cve)}</a></div>
         <div>
-          <div class="check-name">${escapeHtml([match.vendorProject, match.product].filter(Boolean).join(" / ") || "CISA KEV entry")}</div>
+          <div class="check-name">${escapeHtml(metaParts + dateNote)}</div>
           <div class="check-reason">${escapeHtml(match.shortDescription || "")}</div>
         </div>
       </div>
     `;
   }).join("");
-  return `${facts}${rows ? `<div class="check-list">${rows}</div>` : ""}`;
+  const noMatchCallout = matched === 0
+    ? `<div class="source-callout">No OSV CVE aliases for this package matched the CISA Known Exploited Vulnerabilities catalog.</div>`
+    : "";
+  return `
+    ${renderKevSummary(source)}
+    ${rows ? `<div class="vulnerability-scroll"><div class="check-list">${rows}</div></div>` : noMatchCallout}
+  `;
+}
+
+function renderOsvDetails(source, record) {
+  const osvSource = source || {};
+  const kevSource = record.evidence?.cisa_kev || null;
+  const unsupported = Boolean(osvSource.error || osvSource.source === "disabled" || osvSource.source === "not-applicable");
+  const vulnCount = Number(osvSource.vulnerability_count || 0);
+  const cveCount = Number(osvSource.cve_count || (Array.isArray(osvSource.cves) ? osvSource.cves.length : 0));
+  const kevMatched = Number(kevSource?.matched_count || 0);
+  const kevDisabled = Boolean(!kevSource || kevSource.source === "disabled" || kevSource.source === "not-applicable" || (unsupported && cveCount === 0 && kevMatched === 0));
+  const kevTabDisabled = Boolean(unsupported && cveCount === 0 && kevMatched === 0);
+
+  const recordKey = vulnerabilityRecordKey(record);
+  const defaultTab = kevMatched > 0 ? "kev" : "osv";
+  const storedTab = vulnTabState.get(recordKey);
+  const activeTab = kevTabDisabled ? "osv" : (storedTab === "kev" || storedTab === "osv" ? storedTab : defaultTab);
+
+  const osvMetricValue = unsupported ? "n/a" : numberFormat(vulnCount);
+  const osvMetricNote = unsupported
+    ? "coordinate not applicable"
+    : (vulnCount > 0 ? "package advisories" : "no advisories");
+  const osvMetricTone = unsupported ? "" : (vulnCount > 0 ? "warn" : "good");
+
+  const cveMetricValue = unsupported && cveCount === 0 ? "n/a" : numberFormat(cveCount);
+  const cveMetricNote = cveCount > 0
+    ? "derived from OSV"
+    : (unsupported ? "no OSV query" : "none mapped");
+  const cveMetricTone = cveCount > 0 ? "warn" : "";
+
+  const kevMetricValue = kevDisabled && kevMatched === 0 ? "0" : numberFormat(kevMatched);
+  const kevMetricNote = kevMatched > 0
+    ? "known exploited"
+    : (kevDisabled
+      ? "disabled (no CVE aliases)"
+      : (kevSource?.catalog_count ? `${numberFormat(kevSource.catalog_count)} catalog entries` : "no KEV matches"));
+  const kevMetricTone = kevMatched > 0 ? "risk" : (kevDisabled ? "" : "good");
+
+  const confidenceValue = unsupported ? "Not applicable" : percentConfidence(osvSource.confidence);
+  const confidenceNote = unsupported
+    ? `${record.project?.ecosystem || "unknown"}/${record.project?.package || "package"}`
+    : (kevSource && typeof kevSource.confidence === "number"
+      ? `KEV ${percentConfidence(kevSource.confidence)}`
+      : (osvSource.source || "collector"));
+  const confidenceTone = unsupported
+    ? ""
+    : (Number(osvSource.confidence || 0) >= 0.75 ? "good" : Number(osvSource.confidence || 0) >= 0.4 ? "warn" : "");
+
+  const osvTabCount = unsupported ? "n/a" : numberFormat(vulnCount);
+  const kevTabCount = kevTabDisabled ? "disabled" : numberFormat(kevMatched);
+  const osvTabId = `vulnTabOsv-${escapeHtml(recordKey)}`;
+  const kevTabId = `vulnTabKev-${escapeHtml(recordKey)}`;
+  const osvPanelId = `vulnPanelOsv-${escapeHtml(recordKey)}`;
+  const kevPanelId = `vulnPanelKev-${escapeHtml(recordKey)}`;
+
+  return `
+    <div class="source-summary" data-vuln-card="${escapeHtml(recordKey)}">
+      <div class="source-metrics">
+        ${sourceMetric("OSV records", osvMetricValue, osvMetricNote, osvMetricTone)}
+        ${sourceMetric("CVE aliases", cveMetricValue, cveMetricNote, cveMetricTone)}
+        ${sourceMetric("CISA KEV matches", kevMetricValue, kevMetricNote, kevMetricTone)}
+        ${sourceMetric("Collector confidence", confidenceValue, confidenceNote, confidenceTone)}
+      </div>
+      <div class="vuln-tabs" role="tablist" aria-label="Vulnerability intelligence views">
+        <button
+          class="vuln-tab"
+          id="${osvTabId}"
+          type="button"
+          role="tab"
+          data-vuln-tab="osv"
+          data-vuln-record="${escapeHtml(recordKey)}"
+          aria-selected="${activeTab === "osv" ? "true" : "false"}"
+          aria-controls="${osvPanelId}">
+          <span>OSV</span>
+          <span class="vuln-tab-count">${escapeHtml(osvTabCount)}</span>
+        </button>
+        <button
+          class="vuln-tab ${kevMatched > 0 ? "alert" : ""}"
+          id="${kevTabId}"
+          type="button"
+          role="tab"
+          data-vuln-tab="kev"
+          data-vuln-record="${escapeHtml(recordKey)}"
+          aria-selected="${activeTab === "kev" ? "true" : "false"}"
+          aria-controls="${kevPanelId}"
+          aria-disabled="${kevTabDisabled ? "true" : "false"}"
+          ${kevTabDisabled ? 'disabled title="CISA KEV matching requires CVE aliases from OSV"' : ""}>
+          <span>CISA KEV</span>
+          <span class="vuln-tab-count">${escapeHtml(kevTabCount)}</span>
+        </button>
+      </div>
+      <div
+        class="vuln-tab-panel"
+        id="${osvPanelId}"
+        role="tabpanel"
+        data-vuln-panel="osv"
+        aria-labelledby="${osvTabId}"
+        ${activeTab === "osv" ? "" : "hidden"}>
+        ${renderOsvTabPanel(osvSource, record, unsupported)}
+      </div>
+      <div
+        class="vuln-tab-panel"
+        id="${kevPanelId}"
+        role="tabpanel"
+        data-vuln-panel="kev"
+        aria-labelledby="${kevTabId}"
+        ${activeTab === "kev" ? "" : "hidden"}>
+        ${renderKevDetails(kevSource, unsupported)}
+      </div>
+    </div>
+  `;
 }
 
 function toneForRatio(value, warnAt = 0.5, goodAt = 0.75) {
@@ -2946,10 +3156,17 @@ function renderCustomSourceDetails(key, source, record) {
   return renderGenericUnavailable(source);
 }
 
-function sourceCardClass(key, source) {
+function sourceCardClass(key, source, record) {
+  if (key === "osv") {
+    const kevSource = record?.evidence?.cisa_kev;
+    if (Number(kevSource?.matched_count || 0) > 0) return "source alert";
+    if (source?.error || source?.source === "disabled" || source?.source === "not-applicable") {
+      return "source muted";
+    }
+    return "source";
+  }
   if (key === "cisa_kev" && Number(source.matched_count || 0) > 0) return "source alert";
-  if ((key === "osv" && (source.error || source.source === "disabled" || source.source === "not-applicable")) ||
-      (key === "cisa_kev" && Number(source.matched_count || 0) === 0) ||
+  if ((key === "cisa_kev" && Number(source.matched_count || 0) === 0) ||
       source.source === "not-collected" ||
       source.source === "not-applicable" ||
       source.error) {
@@ -2960,7 +3177,7 @@ function sourceCardClass(key, source) {
 
 function shouldRenderSource(key, source) {
   if (key === "cisa_kev") {
-    return Number(source?.matched_count || 0) > 0;
+    return false;
   }
   if (key !== "openssf_criticality") return true;
   if (!source || typeof source !== "object") return false;
@@ -3154,7 +3371,15 @@ function renderDimensions(record) {
 
 function renderSources(record) {
   const evidence = record.evidence || {};
-  const sources = Object.entries(evidence)
+  const entries = Object.entries(evidence);
+  if (!evidence.osv && evidence.cisa_kev && typeof evidence.cisa_kev === "object") {
+    entries.push(["osv", {
+      source: "not-applicable",
+      confidence: evidence.cisa_kev.confidence ?? 0,
+      observed_at: evidence.cisa_kev.observed_at
+    }]);
+  }
+  const sources = entries
     .filter(([key, source]) => source && typeof source === "object" && shouldRenderSource(key, source));
   if (!sources.length) {
     return `<div class="sub">No evidence sources attached.</div>`;
@@ -3163,14 +3388,22 @@ function renderSources(record) {
     const links = renderSourceLinks(key, source, record);
     const facts = ["github", "package_registry", "openssf_scorecard", "finos_osera_backpatch", "osv", "cisa_kev", "chaoss_derived"].includes(key) ? "" : sourceFacts(source);
     const customDetails = renderCustomSourceDetails(key, source, record);
+    const badges = key === "osv"
+      ? `<span class="source-badges">${renderSourceBadge("osv")}${renderSourceBadge("cisa_kev")}</span>`
+      : renderSourceBadge(key);
+    const kevSource = key === "osv" ? record.evidence?.cisa_kev : null;
+    const sourceKindLabel = key === "osv"
+      ? `${source.source || "osv"}${kevSource?.source ? ` + ${kevSource.source}` : " + cisa-kev"}`
+      : (source.source || "source");
+    const observedAt = source.observed_at || kevSource?.observed_at || "";
     return `
-      <div class="${sourceCardClass(key, source)}">
+      <div class="${sourceCardClass(key, source, record)}">
         <div class="source-top">
           <div class="source-title">
-            ${renderSourceBadge(key)}
+            ${badges}
             <div>
               <div class="source-name">${escapeHtml(SOURCE_LABELS[key] || key)}</div>
-              <div class="source-kind">${escapeHtml(source.source || "source")}${source.observed_at ? `, observed ${escapeHtml(source.observed_at)}` : ""}</div>
+              <div class="source-kind">${escapeHtml(sourceKindLabel)}${observedAt ? `, observed ${escapeHtml(observedAt)}` : ""}</div>
             </div>
           </div>
           <div class="confidence">${percentConfidence(source.confidence)}</div>
@@ -3314,6 +3547,24 @@ function renderDetail() {
       </section>
     </div>
   `;
+
+  detailPanel.querySelectorAll(".vuln-tab").forEach(button => {
+    button.addEventListener("click", () => {
+      if (button.disabled || button.getAttribute("aria-disabled") === "true") return;
+      const tabKey = button.dataset.vulnTab;
+      const recordKey = button.dataset.vulnRecord;
+      if (!tabKey || !recordKey) return;
+      vulnTabState.set(recordKey, tabKey);
+      const card = button.closest("[data-vuln-card]");
+      if (!card) return;
+      card.querySelectorAll(".vuln-tab").forEach(item => {
+        item.setAttribute("aria-selected", String(item === button));
+      });
+      card.querySelectorAll(".vuln-tab-panel").forEach(panel => {
+        panel.hidden = panel.dataset.vulnPanel !== tabKey;
+      });
+    });
+  });
 }
 
 function render() {

@@ -39,8 +39,9 @@ the aggregate grid.
 
 - OpenSSF Scorecard details, including a direct Scorecard viewer link and the
   lowest scoring checks.
-- OSV package vulnerability summaries when the package ecosystem is supported.
-- CISA Known Exploited Vulnerabilities matches derived from OSV CVE aliases.
+- A unified Vulnerability Intelligence card combining OSV package vulnerability
+  summaries with CISA Known Exploited Vulnerabilities (KEV) enrichment derived
+  from OSV CVE aliases.
 - Repository, package registry, and CHAOSS-derived project-health evidence.
 - FINOS OSERA backpatch fork provenance and upstream repository links.
 - Enterprise exposure overlaid from selected Risk Navigator datasets.
@@ -141,10 +142,13 @@ example, OpenSSL can be queried as `Debian/openssl`, `Ubuntu/openssl`,
 `AlmaLinux/openssl`, or `Rocky Linux/openssl`; generic `system/openssl` or
 `rpm/openssl` is intentionally rendered as not applicable.
 
-CISA KEV matching uses CVE aliases returned by OSV. If OSV is not applicable or
-returns no CVE aliases, KEV either shows no matches or a disabled state. A KEV
-match is a known-exploitation signal; deployed-version impact still depends on
-the actual versions in the enterprise inventory.
+OSV and CISA KEV are presented together in a single `Vulnerability Intelligence`
+card with `OSV` and `CISA KEV` tabs. CISA KEV matching uses CVE aliases returned
+by OSV: when KEV matches exist, the card highlights with an alert border and
+opens the `CISA KEV` tab by default; when OSV is not applicable or returns no
+CVE aliases, KEV shows a disabled or no-match state without consuming a separate
+source-card slot. A KEV match is a known-exploitation signal; deployed-version
+impact still depends on the actual versions in the enterprise inventory.
 
 ## Updating The Data
 
