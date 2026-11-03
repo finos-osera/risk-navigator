@@ -22,3 +22,29 @@ test('distance labels do not imply upgrade suitability and flag older versions',
  assert.equal(distance('pkg:maven/org.example/core@1.1.0',target),'Minor upgrade');
  assert.equal(distance('pkg:maven/org.example/core@0.2.0',target),'Major migration');
 });
+
+import { selectInventory, releaseTier, compareReleases, latestCatalog } from '../tool/patches/inventory.mjs';
+function choices(source, versions) {
+ const observation={key:'app|'+source,identity:'pkg:maven/org.example/core@'+source,project:'app'};
+ return versions.map(version=>({target:'pkg:maven/org.example/core@'+version,providers:['OSERA'],adopted:[],available:[],candidates:[observation],blocked:[],observations:[observation]}));
+}
+test('two-part baseline selects only latest same-minor release, never older lines',()=>{
+ const rows=choices('1.33',['1.26.1-osera-99999','1.33.1-osera-00001','1.33.1-osera-00009','1.33.1-osera-00010','1.34.1-osera-00001']);
+ assert.deepEqual(selectInventory(rows).map(r=>r.target.split('@')[1]),['1.33.1-osera-00010']);
+ assert.deepEqual(selectInventory(rows,'minor').map(r=>r.target.split('@')[1]),['1.33.1-osera-00010']);
+});
+test('exact baseline first, later patches and minors are opt-in fallbacks',()=>{
+ const versions=['1.2.4.1-osera-5555','1.2.10-osera-9999','1.3.0-osera-1','2.0.0-osera-1'];
+ assert.equal(selectInventory(choices('1.2.4',versions),'minor')[0].target.split('@')[1],versions[0]);
+ assert.equal(selectInventory(choices('1.2.4',versions.slice(1))).length,0);
+ assert.equal(selectInventory(choices('1.2.4',versions.slice(1)),'patch')[0].target.split('@')[1],versions[1]);
+ assert.equal(selectInventory(choices('1.2.4',versions.slice(2)),'patch').length,0);
+ assert.equal(selectInventory(choices('1.2.4',versions.slice(2)),'minor')[0].target.split('@')[1],versions[2]);
+ assert.equal(selectInventory(choices('1.2.4',['1.2.3-osera-99999','2.0.0-osera-1']),'minor').length,0);
+});
+test('OSERA revision and extra numeric segments are compared numerically',()=>{
+ assert.ok(compareReleases('1.2.4.10-osera-9','1.2.4.2-osera-100')>0);
+ assert.equal(releaseTier('pkg:maven/org.example/core@1.2.4-osera-10','pkg:maven/org.example/core@1.2.4-osera-9'),null);
+ assert.equal(releaseTier('pkg:maven/org.example/core@1.2.4','pkg:maven/org.example/core@1.20.4-osera-1'),2);
+ assert.equal(latestCatalog(choices('1.33',['1.33.1-osera-1','1.33.1-osera-10'])).length,1);
+});

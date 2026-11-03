@@ -1,12 +1,12 @@
 # Patch inventory and observed estate coverage
 
-Select **Patch inventory** beside Libraries. Browse Estate patches, Ready to adopt, Needs review, Adopted, or All published patches. Each row represents one exact target artifact, combining overlapping feed assertions. A target may appear in both Ready to adopt and Adopted during partial rollout. Search by package, version, advisory or provider. Libraries retains compact coverage badges.
+Select **Patch inventory** beside Libraries. Browse Estate patches, Ready to adopt, Needs review, Adopted, or Latest published patches. Each row represents one exact target artifact, combining overlapping feed assertions. A target may appear in both Ready to adopt and Adopted during partial rollout. Search by package, version, advisory or provider. Libraries retains compact coverage badges.
 
-Rows show current → target versions, observed / confirmed eligible component instances, review candidates, affected applications and version-distance effort hints. Zero eligible instances displays N/A. Same-major/minor OSERA backpatches appear before more distant review candidates. Distance does not establish compatibility: OSERA records without explicit source-version evidence remain Needs review.
+Rows show current → target versions, observed / confirmed eligible component instances, review candidates, affected applications and version-distance effort hints. Zero eligible instances displays N/A. Only the latest suggested target per observed version and provider appears. Distance does not establish compatibility: OSERA records without explicit source-version evidence remain Needs review.
 
-The detail pane includes per-application observations, residual findings for the selected target, release-set artifacts to assess together, and source evidence. **Latest releases · published patch targets** shows the highest version label per major/minor line, with same-line targets first. This is numeric-aware version-label ordering, not an authoritative release chronology or compatibility ranking. Two-part version lines are supported; older lines are flagged for assessment.
+The detail pane includes per-application observations, residual findings for the selected target, release-set artifacts to assess together, and source evidence. **Latest releases · published patch targets** uses the same latest-only selection policy as estate rows. Downgrades and major-version jumps are excluded. This is numeric-aware version-label ordering, not an authoritative release chronology or compatibility ranking. Two-part version lines are supported; older lines are flagged for assessment.
 
-The three summary counts are distinct target counts, not summed CVEs or applications. All published patches includes targets outside the selected estate. Main filters scope estate observations, not the global published catalog. Hidden enabled sources contribute to counts but their exclusive targets and evidence are hidden. Partial inventory remains a lower bound on adoption.
+The three summary counts are distinct target counts, not summed CVEs or applications. Latest published patches includes targets outside the selected estate. Main filters scope estate observations, not the global published catalog. Hidden enabled sources contribute to counts but their exclusive targets and evidence are hidden. Partial inventory remains a lower bound on adoption.
 
 The left pane has one scroll surface: navigation, filters, patch controls and rows scroll together, with table column headings staying visible while browsing rows. The right details pane scrolls independently. Libraries keeps patch controls compact; Manage sources exposes timestamps and source settings.
 
@@ -65,3 +65,9 @@ Current generated datasets largely contain vulnerable libraries and may truncate
 This is a first delivery slice of #41. It supports exact package identities and explicit version lists, not automatic compatibility decisions, entitlement checks, range evaluation, signature verification, deployment verification or a full SBOM importer. Live backlog intake and provider-specific policy gates remain separate work. Do not automatically close #41: broader inventory ingestion, freshness policy, and the remaining acceptance criteria require follow-up.
 
 Run `npm run test:patches` for the deterministic feed/matching tests and `npm run docs:build` to verify both published tool paths carry the modules.
+
+## Upgrade scope
+
+The default **Current baseline only** preserves every numeric component of the observed upstream version: `1.33` selects the latest `1.33.*` patch, while `1.2.4` selects the latest `1.2.4.*` or OSERA revision. **Allow later patches in same minor** permits `1.2.10` only when no current-baseline candidate exists. **Allow newer minor as fallback** additionally permits a newer minor within the same major when no closer candidate exists. Numeric segments and OSERA revisions are compared numerically; downgrades, major jumps and unrecognized version syntax are never inferred as suggestions. This policy narrows candidates; it does not prove compatibility.
+
+Previously adopted exact artifacts remain visible as observations, even when a newer target exists. Latest published patches is a separate catalog with one latest target per provider/package/major-minor line; outside-scope targets have no suggested estate upgrade attached.
