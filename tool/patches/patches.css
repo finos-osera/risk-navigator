@@ -40,11 +40,10 @@
 .patch-market-top { display:flex; justify-content:space-between; align-items:center; gap:8px; }
 .patch-coordinate { font-family:monospace; overflow-wrap:anywhere; }
 .patch-market-presence { border-top:1px solid var(--line); padding-top:10px; margin-top:auto; font-size:12px; }
-.patch-advisories { display:grid; gap:8px; margin:12px 0; }
-.patch-advisory { padding:12px; border:1px solid var(--line); border-radius:9px; background:var(--panel); }
-.patch-advisory > .small { display:block; margin-top:6px; }
+.patch-advisories { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; margin:12px 0; }
+.patch-advisory { display:inline; white-space:nowrap; }
 .patch-advisory a { color:var(--ink); text-decoration:underline; }
-.patch-advisory-signals { display:inline-flex; gap:5px; margin-left:6px; }
+.patch-advisory .cve-link { padding:0; }
 .patch-estate { background:var(--primary-soft); border:1px solid var(--line); padding:14px; margin:18px 0; border-radius:12px; }
 .patch-estate h4 { margin:0; }
 .patch-estate-stats { display:flex; gap:24px; margin:16px 0; }

@@ -106,8 +106,10 @@ function advisoryCards(ids) {
   return `<div class="patch-advisories">${ids.map(id=>{
     const cve=known.get(id);
     const external=/^CVE-\d{4}-\d+$/.test(id)?`https://nvd.nist.gov/vuln/detail/${encodeURIComponent(id)}`:/^GHSA-[a-z0-9-]+$/i.test(id)?`https://github.com/advisories/${encodeURIComponent(id)}`:null;
-    const action=cve?`<button class="cve-link" data-open-cve="${h(id)}" title="Open estate CVE details">${h(id)} ↗</button>`:external?`<a href="${h(external)}" target="_blank" rel="noreferrer" title="Open public advisory in a new tab">${h(id)} ↗</a>`:`<strong>${h(id)}</strong>`;
-    return `<div class="patch-advisory">${action}<span class="patch-advisory-signals">${cve?.cvss!=null?`<span class="patch-badge">CVSS ${h(cve.cvss)}</span>`:''}${cve?.kev?'<span class="patch-badge patch-unconfirmed">KEV</span>':''}</span><span class="small">${cve?'Estate details available':external?'Public advisory · no local details':'Feed assertion · no local details'}</span>${cve?.summary?`<p class="small">${h(cve.summary.slice(0,180))}</p>`:''}</div>`;
+    const description=cve?.summary || cve?.description || '';
+    const tooltip=[description,cve?.cvss!=null?`CVSS ${cve.cvss}`:'',cve?.kev?'Known exploited vulnerability':''].filter(Boolean).join(' · ');
+    const action=cve?`<button class="cve-link" data-open-cve="${h(id)}" title="${h(tooltip || 'Open estate CVE details')}">${h(id)}</button>`:external?`<a href="${h(external)}" target="_blank" rel="noreferrer" title="Open public advisory">${h(id)}</a>`:`<strong>${h(id)}</strong>`;
+    return `<span class="patch-advisory">${action}</span>`;
   }).join('')}</div>`;
 }
 function estateCard(item) {
