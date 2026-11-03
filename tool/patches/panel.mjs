@@ -49,10 +49,10 @@ async function fetchJson(url) {
 }
 export async function refreshOsera() {
   if(patchState.loading)return;
-  patchState.loading=true;renderSources();
+  patchState.loading=true;renderSources();window.dispatchEvent(new CustomEvent("risk-nav:patch-coverage",{detail:patchState}));
   try { const [vex,sets]=await Promise.all([fetchJson('https://feed.finos.org/openvex.json'),fetchJson('https://feed.finos.org/sets.json')]);installFeed(vex,'https://feed.finos.org/openvex.json',sets); }
   catch(error){patchState.error=`${error.message} Cached evidence retained; it may be stale.`;message(patchState.error);}
-  finally{patchState.loading=false;renderSources();refreshView();}
+  finally{patchState.loading=false;renderSources();refreshView();window.dispatchEvent(new CustomEvent("risk-nav:patch-coverage",{detail:patchState}));}
 }
 q('#loadOsera').onclick=refreshOsera;
 q('#managePatchSources').onclick=()=>{const panel=q('#patchSourcesManager');panel.hidden=!panel.hidden;q('#managePatchSources').setAttribute('aria-expanded',String(!panel.hidden));};
@@ -112,6 +112,9 @@ function advisoryCards(ids) {
     return `<span class="patch-advisory">${action}</span>`;
   }).join('')}</div>`;
 }
+function requestAction(lib) {
+  return (lib.cves||[]).length ? `<button class="ghost" data-request-library="${h(lib.id)}" title="Review coverage before requesting a new patch">Review / request coverage for ${h(lib.release)}</button>` : '';
+}
 function estateCard(item) {
   const projects=new Map((patchState.scope?.consumer_projects||[]).map(p=>[p.id,p]));
   const ids=unique(item.estateMatches.flatMap(m=>m.lib.consumer_project_ids||[]));
@@ -119,7 +122,7 @@ function estateCard(item) {
   return `<section class="patch-estate"><div class="patch-market-top"><h4>In your estate</h4><span class="patch-badge ${item.exactUse?'patch-observed':item.sameLineVersions.length?'patch-candidate':''}">${status}</span></div><div class="patch-estate-stats"><div><strong>${ids.length}</strong><span>applications</span></div><div><strong>${item.estateVersions.length}</strong><span>versions found</span></div></div>${item.estateMatches.length?item.estateMatches.map(({identity,lib})=>{
     const consumers=unique(lib.consumer_project_ids||[]);
     const direct=new Set(lib.direct_consumer_project_ids||[]);
-    return `<details class="patch-consumers"><summary><span class="patch-coordinate">${h(purl(identity)?.version)}</span> <span class="small">· ${consumers.length} applications</span></summary><p><button class="ghost" data-open-library="${h(lib.id)}" title="Inspect this library and its dependency evidence">Inspect library details ↗</button></p><ul>${consumers.map(id=>{
+    return `<details class="patch-consumers"><summary><span class="patch-coordinate">${h(purl(identity)?.version)}</span> <span class="small">· ${consumers.length} applications</span></summary><p><button class="ghost" data-open-library="${h(lib.id)}" title="Inspect this library and its dependency evidence">Inspect library details ↗</button> ${requestAction(lib)}</p><ul>${consumers.map(id=>{
       const project=projects.get(id),label=project?.project_ref||project?.proj||id;
       return `<li><span>${h(label)}</span><span class="patch-badge">${direct.has(id)?'Direct':'Transitive'}</span></li>`;
     }).join('')||'<li>No consumer application evidence in this scope.</li>'}</ul></details>`;
@@ -181,6 +184,7 @@ function inventoryDetail(item) {
   return `<section class="patch-detail"><h3>${h(identity?.name || item.target)}</h3><p><strong>Target ${h(identity?.version)}</strong> · ${h(item.providers.join(', '))}</p>
     <p>${item.adopted.length + item.available.length ? `${item.adopted.length} of ${item.adopted.length + item.available.length} confirmed eligible component instances observed; ${item.available.length} remaining.` : "Adoption: N/A until applicability is confirmed or an exact target is observed."} ${item.candidates.length} require applicability review.</p>
     <p class="small">Adoption means an exact artifact in inventory, not verified deployment. Version distance is an effort hint, not compatibility evidence.</p>
+    <div class="patch-actions">${[...new Map(item.observations.map(row=>[row.library.id,row.library])).values()].map(requestAction).join('')}</div>
     <h4>Adoption effort</h4><p>${h(item.efforts.join(' · ') || 'Outside the scoped estate · needs assessment')}</p>
     <p>${item.projects.length} affected applications · ${item.observations.filter(r=>!r.direct).length} transitive instances (assess parent or dependency-management changes).</p>
     <details><summary>Release-set artifacts (${item.companions.length})</summary><p class="small">Review these together; the feed does not establish that every artifact must change.</p><ul>${item.companions.map(c=>`<li>${h(c)}</li>`).join('')}</ul></details>
