@@ -173,3 +173,98 @@ def test_exact_osv_resolution_replaces_stale_edges_and_materializes_ranges(tmp_p
     osv.resolve_inventory(db, [DepEdge('repo', f'npm||a|{v}', 1, 'runtime') for v in ('1.0.0', '2.0.0')], tmp_path)
     with sqlite3.connect(db) as conn:
         assert conn.execute('SELECT release FROM vuln_version_edges').fetchall() == [('1.0.0',)]
+
+
+@pytest.mark.parametrize(('inventory_name', 'advisory_name', 'canonical'), [
+    ('PyYAML', 'pyyaml', 'pyyaml'),
+    ('python_multipart', 'python-multipart', 'python-multipart'),
+    ('Friendly._--BARD', 'friendly-bard', 'friendly-bard'),
+])
+def test_pypi_identity_survives_extraction_query_ingestion_and_join(tmp_path, monkeypatch, inventory_name, advisory_name, canonical):
+    import sqlite3
+    import resolve_osv_inventory as osv
+    from common import make_library_id
+    from extract_org import parse_requirements_dependencies, load_vuln_edges
+    from ingest_vulns import ensure_schema, normalize_package_key
+    ns, meta, proj, version, qualifier = parse_requirements_dependencies(f'{inventory_name}==1.2.3')[0]
+    lid = make_library_id(ns, meta, proj, version)
+    assert lid == f'pypi||{canonical}|1.2.3'
+    assert normalize_package_key('pypi', '', inventory_name) == ('pypi', '', canonical)
+    db = tmp_path / 'vulns.db'
+    with sqlite3.connect(db) as conn:
+        ensure_schema(conn)
+    def query(items):
+        assert items == [(lid, {'package': {'ecosystem': 'PyPI', 'name': canonical}, 'version': '1.2.3'})]
+        return {'GHSA-test': {lid}}
+    monkeypatch.setattr(osv, 'query_versions', query)
+    monkeypatch.setattr(osv, 'request_json', lambda *a: {
+        'id': 'GHSA-test', 'aliases': ['CVE-2026-10000'], 'affected': [
+            {'package': {'ecosystem': 'PyPI', 'name': advisory_name}, 'ranges': [{'type': 'ECOSYSTEM'}]}]})
+    osv.resolve_inventory(db, [DepEdge('repo', lid, 1, qualifier)], tmp_path)
+    assert load_vuln_edges(db)[lid][0]['cve_id'] == 'CVE-2026-10000'
+    with sqlite3.connect(db) as conn:
+        assert conn.execute('SELECT namespace, proj, release FROM vuln_version_edges').fetchall() == [('pypi', canonical, '1.2.3')]
+
+
+@pytest.mark.parametrize('namespace', ['npm', 'pypi'])
+@pytest.mark.parametrize('inventory_version', ['1.0.0', 'v1.0.0', 'V1.0.0'])
+def test_negative_exact_query_clears_all_legacy_release_prefixes(tmp_path, monkeypatch, namespace, inventory_version):
+    import sqlite3
+    import resolve_osv_inventory as osv
+    from ingest_vulns import ensure_schema
+    from extract_org import load_vuln_edges
+    db = tmp_path / 'vulns.db'
+    with sqlite3.connect(db) as conn:
+        ensure_schema(conn)
+        # Insert historical rows directly to exercise migration, not new ingestion.
+        for version in ('1.0.0', 'v1.0.0', 'V1.0.0', '2.0.0'):
+            conn.execute('INSERT INTO vuln_version_edges (cve_id,namespace,meta,proj,release,cvss) VALUES (?,?,?,?,?,?)',
+                         ('CVE-2026-10000', namespace, '', 'Example_Pkg' if namespace == 'pypi' else 'example-pkg', version, 9.8))
+        conn.execute('INSERT INTO vuln_version_edges (cve_id,namespace,meta,proj,release,cvss) VALUES (?,?,?,?,?,?)',
+                     ('CVE-2026-10000', 'maven', 'org.example', 'example-pkg', 'v1.0.0', 9.8))
+    def query(items):
+        assert items[0][1]['version'] == '1.0.0'
+        return {}
+    monkeypatch.setattr(osv, 'query_versions', query)
+    osv.resolve_inventory(db, [DepEdge('repo', f'{namespace}||example-pkg|{inventory_version}', 1, 'runtime')], tmp_path)
+    findings = load_vuln_edges(db)
+    assert f'{namespace}||example-pkg|1.0.0' not in findings
+    assert f'{namespace}||example-pkg|2.0.0' in findings
+    assert 'maven|org.example|example-pkg|v1.0.0' in findings
+
+
+def test_prerelease_and_build_metadata_retain_parent_relationship():
+    edges = npm_lock_edges(lock({
+        '': {'dependencies': {'parent': '1.2.3-rc.1+build.2'}},
+        'node_modules/parent': {'version': '1.2.3-rc.1+build.2', 'dependencies': {'child': '2.0.0+build.5'}},
+        'node_modules/child': {'version': '2.0.0+build.5'},
+    }), 'repo')
+    assert {(e.library_id, e.direct, e.parent_id) for e in edges} == {
+        ('npm||parent|1.2.3-rc.1+build.2', 1, ''),
+        ('npm||child|2.0.0+build.5', 0, 'npm||parent|1.2.3-rc.1+build.2'),
+    }
+
+
+def test_package_name_normalization_is_pypi_only():
+    from common import make_library_id, split_coords
+    assert make_library_id('maven', 'Org.Example', 'Some_Library', 'v1.0.0') == 'maven|Org.Example|Some_Library|v1.0.0'
+    assert split_coords('npm', '@Scope/pkg.name') == ('npm', '@Scope', 'pkg.name')
+
+
+def test_legacy_ingestion_cache_is_invalidated_for_identity_normalization(tmp_path):
+    from ingest_vulns import build_ingest_fingerprint, should_skip_ingest
+    db = tmp_path / 'vulns.db'
+    current = build_ingest_fingerprint(None, tmp_path, set(), None)
+    legacy = {k: v for k, v in current.items() if k != 'identity_schema_version'}
+    db.with_suffix('.db.meta.json').write_text(json.dumps({'fingerprint': legacy}))
+    assert not should_skip_ingest(db, current)
+    db.with_suffix('.db.meta.json').write_text(json.dumps({'fingerprint': current}))
+    assert should_skip_ingest(db, current)
+
+
+def test_matching_advisory_cannot_restore_another_versions_negative_query():
+    from resolve_osv_inventory import observed_record
+    record = {'id': 'GHSA-test', 'affected': [
+        {'package': {'ecosystem': 'npm', 'name': 'a'}, 'versions': ['v1.0.0', 'V1.0.0', '2.0.0', '3.0.0']}]}
+    adjusted = observed_record(record, {'npm||a|2.0.0'}, {'npm||a|1.0.0', 'npm||a|2.0.0'})
+    assert adjusted['affected'][0]['versions'] == ['2.0.0', '3.0.0']

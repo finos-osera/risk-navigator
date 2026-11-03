@@ -760,7 +760,7 @@ def npm_lock_edges(content: str, project_id: str) -> List[DepEdge]:
         row = packages.get(path, {})
         version = str(row.get("version") or "")
         name = str(row.get("name") or path.rsplit("node_modules/", 1)[-1])
-        if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?", version):
+        if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?", version):
             return None
         meta, proj = name.split("/", 1) if name.startswith("@") and "/" in name else ("", name)
         return make_library_id("npm", meta, proj, version)

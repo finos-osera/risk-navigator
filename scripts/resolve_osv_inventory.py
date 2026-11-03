@@ -11,7 +11,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import quote
 
-from common import parse_library_id, split_coords
+from common import canonical_library_id, parse_library_id, split_coords
 from extract_org import now_iso
 from ingest_vulns import ingest_records
 
@@ -49,22 +49,31 @@ def query_versions(items):
     return findings
 
 
-def observed_record(record, identities):
+def observed_record(record, identities, queried=()):
     """Add only API-confirmed observed versions to their matching affected package."""
     if record.get('withdrawn'):
         return None
     result = copy.deepcopy(record)
+    confirmed = {canonical_library_id(lid) for lid in identities}
+    queried = set(queried)
     for affected in result.get('affected', []):
         package = affected.get('package', {})
         coords = split_coords(package.get('ecosystem', ''), package.get('name', ''))
-        observed = [release for ns, meta, proj, release in map(parse_library_id, identities) if (ns, meta, proj) == coords]
-        affected['versions'] = sorted(set(affected.get('versions', [])) | set(observed))
+        observed = [release for ns, meta, proj, release in map(parse_library_id, confirmed) if (ns, meta, proj) == coords]
+        # A fetched advisory can also enumerate legacy-prefixed versions that a
+        # different exact query rejected. Do not reintroduce those during ingest.
+        retained = []
+        for version in affected.get('versions', []):
+            lid = canonical_library_id('|'.join((*coords, version)))
+            if lid not in queried or lid in confirmed:
+                retained.append(version)
+        affected['versions'] = sorted(set(retained) | set(observed))
     return result
 
 
 def resolve_inventory(db, edges, local):
     items = []
-    for lid in sorted({e.library_id for e in edges}):
+    for lid in sorted({canonical_library_id(e.library_id) for e in edges}):
         ns, meta, proj, version = parse_library_id(lid)
         if ns not in ECOSYSTEMS or not re.fullmatch(r'[0-9][0-9A-Za-z_.+!-]*', version):
             continue
@@ -79,13 +88,17 @@ def resolve_inventory(db, edges, local):
     ids = sorted(matched)
     with ThreadPoolExecutor(max_workers=8) as pool:
         records = list(pool.map(lambda rid: request_json(f'{API}/vulns/{quote(rid, safe="")}'), ids))
-    adjusted = [observed_record(record, matched[record['id']]) for record in records]
+    queried = {lid for lid, _ in items}
+    adjusted = [observed_record(record, matched[record['id']], queried) for record in records]
     adjusted = [record for record in adjusted if record is not None]
     # All network work must succeed before updating the local DB.
     conn = sqlite3.connect(db)
     try:
-        for lid, _ in items:
-            conn.execute('DELETE FROM vuln_version_edges WHERE namespace=? AND meta=? AND proj=? AND release=?', parse_library_id(lid))
+        # Normalize legacy DB rows too: exact-query results must supersede all
+        # equivalent package spellings and v/V release prefixes in the archive.
+        rows = conn.execute('SELECT rowid, namespace, meta, proj, release FROM vuln_version_edges').fetchall()
+        stale = [(row[0],) for row in rows if canonical_library_id('|'.join(row[1:])) in queried]
+        conn.executemany('DELETE FROM vuln_version_edges WHERE rowid=?', stale)
         ingest_records(conn, adjusted, progress_every=0)
     finally:
         conn.close()
