@@ -1,10 +1,23 @@
+import { releaseTier, compareReleases } from './inventory.mjs';
 import { patchState, escapeHtml as h } from './panel.mjs';
-import { activePatches } from './catalog.mjs';
+import { activePatches, purl, unique } from './catalog.mjs';
 import { addRequest, requestFromLibrary, requestKey, validateRequest, normalizeWork, reviewRequest, impact, exportRequests, requestSummary } from './requests.mjs';
 const mount = document.getElementById('patchRequestMount');
 document.querySelector('.table-wrap').append(mount);
 mount.hidden=true;
 let scope = '', items = [], work = [], savedSnapshot = '', exported = '', editing = null;
+function patchEvidence(item, review) {
+  const visible=[...review.available,...review.adopted,...review.candidates].filter(p=>patchState.feeds.some(f=>f.id===p.feed_id&&f.visible!==false));
+  const targets=new Map();
+  for(const patch of visible) {
+    const tier=releaseTier(item.identity,patch.target);
+    if(tier===null || tier>1)continue;
+    const key=`${patch.provider}|${tier}`;
+    const previous=targets.get(key);
+    if(!previous || compareReleases(purl(patch.target).version,purl(previous.target).version)>0)targets.set(key,patch);
+  }
+  return [...targets.values()].map(p=>`<div class="patch-target"><span class="patch-badge">${h(p.provider)}</span> <strong>${h(purl(p.target)?.version)}</strong><p class="small">${releaseTier(item.identity,p.target)===0?'Current baseline':'Later patch in the same minor line'} · ${review.available.some(a=>a.target===p.target)?'Applicability confirmed':review.adopted.some(a=>a.target===p.target)?'Exact artifact observed':'Review applicability'}</p><p class="small">Published fixes: ${h(unique(visible.filter(a=>a.target===p.target).flatMap(a=>a.advisories)).join(', '))}</p></div>`).join('');
+}
 function snapshot() { return JSON.stringify([patchState.dataset?.meta?.extracted_at,patchState.feeds.map(f=>[f.id,f.version,f.generated_at,f.enabled])]); }
 function storageKey() { return `risk-nav-osera-request-cart:v1:${encodeURIComponent(scope)}`; }
 function note(text) { const el=mount.querySelector('#requestMessage'); if(el)el.textContent=text; }
@@ -54,7 +67,9 @@ function render(preserveDraft = false) {
   loadScope();
   const wasOpen=mount.querySelector('details')?.open||false;
   const count=impact(items,patchState.dataset,patchState.feeds);
+  const waiting=patchState.loading;
   mount.innerHTML=`<details ${wasOpen?'open':''}><summary>OSERA patch request cart (${items.length})</summary>
+    <div class="patch-request-feed" role="status">${waiting?'Checking latest patch feeds…':patchState.error?h(patchState.error):`${patchState.feeds.filter(f=>f.enabled).length} enabled sources checked · ${h(patchState.feeds.filter(f=>f.enabled).map(f=>`${f.name||f.provider}: ${f.generated_at}`).join(' · '))||'No patch sources loaded; coverage is unknown.'}`}</div>
     <p>Requests are scoped to this dataset and are independent of library display filters. Collect missing patch coverage, check existing fixes, then review a local export. Export does not submit a request or mark a patch deployed.</p>
     <p class="small">Scope: ${h(scope)} · ${items.length} requests · ${count.applications} unique applications · ${count.instances} observed component instances · ${count.direct} direct / ${count.transitive} transitive applications (may overlap) · ${count.advisories} observed advisories · ${count.kev} KEVs. Potential impact only; partial inventories undercount.</p>
     ${savedSnapshot && savedSnapshot!==snapshot()?'<p class="patch-warning">Feed or inventory evidence changed since the cart was saved. Coverage below has been recalculated; review before export.</p>':''}
@@ -64,9 +79,10 @@ function render(preserveDraft = false) {
     <div class="request-list">${items.map((item,index)=>{
       const r=reviewRequest(item,patchState.dataset,patchState.feeds,work);
       return `<article class="patch-source"><strong>${h(item.package)} · ${h(item.line)} (${h(item.precision)})</strong><p>${h(r.state)} · remaining: ${h(r.remaining.join(', ')||'none of the requested advisories')}</p>
-      <p class="small">Requested: ${h(item.advisories.join(', '))}. ${r.available.length} applicable records · ${r.adopted.length} exact-artifact matches · ${r.candidates.length} published candidate records. ${r.staleAdvisories.length?'Not present in current observed findings: '+h(r.staleAdvisories.join(', '))+'. Check manual/stale requests.':''}</p>
+      <p class="small">Requested: ${h(item.advisories.join(', '))}. ${unique(r.available.map(p=>p.target)).length} applicable targets · ${unique(r.adopted.map(p=>p.target)).length} observed targets · ${unique(r.candidates.map(p=>p.target)).length} published candidates across all lines. ${r.staleAdvisories.length?'Not present in current observed findings: '+h(r.staleAdvisories.join(', '))+'. Check manual/stale requests.':''}</p>
       ${r.candidates.length?'<p class="patch-warning">A published fix may already address this need. Review its applicability before requesting production.</p>':''}
-      <details><summary>Existing patch / work evidence</summary><p class="small">Only visible source details are shown; enabled hidden sources still contribute to coverage checks.</p><pre>${h(JSON.stringify([...r.available,...r.adopted,...r.candidates].filter(p=>patchState.feeds.some(f=>f.id===p.feed_id&&f.visible)).map(p=>({target:p.target,provider:p.provider,advisories:p.advisories,evidence:p.evidence,release_set:p.release_set})),null,2))}</pre>${r.work.map(w=>`<p><a href="${h(w.url)}" target="_blank" rel="noreferrer">${h(w.status)}: ${h(w.line)}</a> · ${h(w.advisories.join(', '))}</p>`).join('')||'<p>No matching imported work reference.</p>'}</details>
+      ${patchEvidence(item,r)}
+      <details><summary>All existing patch / work evidence</summary><p class="small">Only visible source details are shown; enabled hidden sources still contribute to coverage checks.</p><pre>${h(JSON.stringify([...r.available,...r.adopted,...r.candidates].filter(p=>patchState.feeds.some(f=>f.id===p.feed_id&&f.visible)).map(p=>({target:p.target,provider:p.provider,advisories:p.advisories,evidence:p.evidence,release_set:p.release_set})),null,2))}</pre>${r.work.map(w=>`<p><a href="${h(w.url)}" target="_blank" rel="noreferrer">${h(w.status)}: ${h(w.line)}</a> · ${h(w.advisories.join(', '))}</p>`).join('')||'<p>No matching imported work reference.</p>'}</details>
       ${item.incompatibility?`<p>Existing-fix exception: ${h(item.incompatibility)}</p>`:''}
       <button data-edit="${index}">Edit</button> <button data-delete="${index}">Remove</button></article>`;
     }).join('')||'<p>No requests yet. Add one from an estate row or enter one below.</p>'}</div>
@@ -78,7 +94,7 @@ function render(preserveDraft = false) {
       <label>Acceptable fixes <select name="remediation"><option value="backpatch">Backpatch</option><option value="backpatch,upstream-fix">Backpatch or upstream fix</option><option value="backpatch,upstream-fix,replacement">Backpatch, upstream fix or replacement</option></select></label>
     </div><div class="patch-actions"><label>Rationale (included in export)<textarea name="rationale" maxlength="2000"></textarea></label><label>Existing fix incompatibility (included in export)<textarea name="incompatibility" maxlength="2000"></textarea></label></div>
     <button id="requestSave" type="submit">Add request</button> <button id="requestCancel" type="button">Reset form</button></form>
-    <div class="patch-actions"><button id="previewRequests">Review export</button><button id="clearRequests">Clear cart</button></div>
+    <div class="patch-actions"><button id="previewRequests" ${waiting?'disabled':''}>Review export</button><button id="clearRequests">Clear cart</button></div>
     <p class="small">Exports omit application names, owners, dependency paths and contracts. Review your free-text rationale and exceptions for sensitive information.</p>
     <div id="requestPreview"></div></details>`;
   mount.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editForm(items[Number(b.dataset.edit)]));
@@ -113,15 +129,21 @@ function render(preserveDraft = false) {
     mount.querySelector('#requestSave').textContent=editing?'Save changes':'Add request';
   }
 }
-const openButton=document.createElement('button');openButton.textContent='OSERA request cart';openButton.id='openRequestCart';openButton.onclick=openCart;
+const openButton=document.createElement('button');openButton.textContent='Patch requests';openButton.id='openRequestCart';openButton.onclick=openCart;
 document.querySelector('#patchCoverage .patch-actions').append(openButton);
 window.addEventListener('risk-nav:patch-coverage',()=>render(true));
 window.addEventListener('risk-nav:request-patch',event=>addLibrary(event.detail));
+document.getElementById('detail').addEventListener('click',event=>{
+  const button=event.target.closest('[data-request-library]');
+  if(!button)return;
+  const lib=patchState.dataset?.libraries.find(lib=>lib.id===button.dataset.requestLibrary);
+  if(lib)addLibrary(lib);
+});
 window.riskRequests={open:openCart,setView(mode){mount.hidden=mode!=='patch-requests';},renderMode(){
   render(true);mount.hidden=false;const details=mount.querySelector('details');if(details)details.open=true;
   document.getElementById('mainTable').hidden=true;document.getElementById('dashboardView').hidden=true;
   document.getElementById('rowCount').textContent=`${items.length} requests`;
-  document.getElementById('detail').innerHTML='<h3>OSERA patch requests</h3><p>Add missing coverage from Libraries or Patch coverage, or enter it manually here.</p><p>Enabled sources, including hidden ones, are checked before export. Manage sources in Patch coverage.</p><p>Review the JSON before downloading. Downloads stay local and do not submit to OSERA.</p>';
+  document.getElementById('detail').innerHTML='<h3>OSERA patch requests</h3><p>Add missing coverage from Libraries or Patch inventory, or enter it manually here.</p><p>Enabled sources, including hidden ones, are checked before export. Manage sources in Patch inventory.</p><p>Review the JSON before downloading. Downloads stay local and do not submit to OSERA.</p>';
 }};
 render();
 

@@ -1,14 +1,14 @@
 # OSERA patch request cart
 
-The OSERA cart is independent of the Maven OpenRewrite cart. Choose **Request missing coverage** in the library details pane from Libraries or Patch coverage. This opens the **Patch requests** mode, which also supports manual entry. The cart is no longer embedded in the removed bottom coverage drawer. Its requests belong to the selected dataset and are independent of display filters.
+The OSERA cart is independent of the Maven OpenRewrite cart. Choose **Request missing coverage** in the library details pane from Libraries, or **Review / request coverage** beside an installed version in Patch inventory. This opens the **Patch requests** mode, which also supports manual entry. The cart is no longer embedded in the removed bottom coverage drawer. Its requests belong to the selected dataset and are independent of display filters.
 
 Requests are stored locally per dataset scope. Repeated adds merge advisory coverage for the same package and line; different versions/line precision stay distinct. Direct/transitive impacts are local observations with shared applications deduplicated. Those application counts can overlap and are not proof of deployment or predicted risk-score reduction.
 
 ## Existing patches and work
 
-The cart uses the enabled catalogs from the coverage view (#41). Hidden enabled sources still participate in coverage checks; hiding a source only hides its evidence details. Disabling a source removes it from coverage checks. Startup refresh and source changes recalculate coverage while preserving an in-progress edit. Exact-version applicable fixes and exact patched-artifact observations reduce remaining requested advisories. A published OSERA VEX product with no source compatibility mapping is flagged as a candidate for review; it cannot automatically suppress a request for an older version. A request fully covered by an applicable fix requires an incompatibility explanation before export. Partial coverage exports the remaining advisories. An exact example artifact never establishes coverage for every version in a minor or major line.
+The cart uses the enabled catalogs from Patch inventory (#41). Hidden enabled sources still participate in coverage checks; hiding a source only hides its evidence details. Disabling a source removes it from coverage checks. Startup refresh and source changes recalculate coverage while preserving an in-progress edit. Exact-version applicable fixes and exact patched-artifact observations reduce remaining requested advisories. A published OSERA VEX product with no source compatibility mapping is flagged as a candidate for review; it cannot automatically suppress a request for an older version. A request fully covered by an applicable fix requires an incompatibility explanation before export. Partial coverage exports the remaining advisories. An exact example artifact never establishes coverage for every version in a minor or major line.
 
-The coverage view currently loads released patch evidence, not live OSERA production requests. You can optionally import work references using:
+Patch inventory currently loads released patch evidence, not live OSERA production requests. You can optionally import work references using:
 
 ```json
 {
@@ -26,6 +26,8 @@ The coverage view currently loads released patch evidence, not live OSERA produc
 ```
 
 Supported work statuses are `requested`, `in_progress`, and `covered`. These are imported source claims with work links, not deployment states. The cart explicitly reports that existing requests are unknown when no work snapshot is loaded. Work matching is exact package + scope precision + line with advisory overlap; cross-line aggregation and co-release grouping are not inferred.
+
+The cart highlights the latest published target for the current baseline and, when present, a later patch in the same minor line. Historical and other-line evidence remains collapsed for inspection. Candidate targets still require applicability review. Feed refresh status is visible and export review is paused while refresh is running.
 
 ## Review and export
 
