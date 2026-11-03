@@ -8,6 +8,8 @@ export const patchState = { dataset: null, feeds: [], filters: {}, lastResult: n
 let refreshView = () => {}, cache = new Map(), initialized = false;
 let inventoryView = 'estate';
 let releasePolicy = 'baseline';
+let inventoryCache = null;
+let redrawInventory = () => {};
 let inventorySearch = '';
 let autoRefresh = true;
 try { autoRefresh = localStorage.getItem('risk-nav-osera-auto-refresh') !== 'false'; } catch {}
@@ -30,7 +32,7 @@ function save() {
   try { localStorage.setItem(storageKey, JSON.stringify(patchState.feeds.map(({document,source,releaseSets,enabled,visible,name,loaded_at})=>({document,source,releaseSets,enabled,visible,name,loaded_at})))); }
   catch { message('Changes apply to this session; browser storage is unavailable or full.'); }
 }
-function changed() { cache.clear(); renderSources(); refreshView(); window.dispatchEvent(new CustomEvent('risk-nav:patch-coverage',{detail:patchState})); }
+function changed() { inventoryCache=null; cache.clear(); renderSources(); refreshView(); window.dispatchEvent(new CustomEvent('risk-nav:patch-coverage',{detail:patchState})); }
 export function installFeed(document, source, releaseSets = null) {
   const parsed = normalizeFeed(document,source,releaseSets);
   const previous = patchState.feeds.find(f=>f.id===parsed.id);
@@ -125,8 +127,11 @@ function inventoryDetail(item) {
     <details><summary>Source evidence</summary><pre>${h(JSON.stringify(visibleRecords,null,2))}</pre></details></section>`;
 }
 function renderMode(libs,scope,selected,onSelect) {
+  redrawInventory=()=>{const item=renderMode(libs,scope,selected,onSelect);onSelect(item);};
   patchState.scope={...scope,libraries:libs};
-  const all = inventory(patchState.scope,patchState.feeds);
+  const scopeKey=JSON.stringify(libs.map(lib=>[lib.id,lib.consumer_project_ids,lib.direct_consumer_project_ids]));
+  if(!inventoryCache || inventoryCache.key!==scopeKey)inventoryCache={key:scopeKey,all:inventory(patchState.scope,patchState.feeds),selected:new Map()};
+  const all = inventoryCache.all;
   patchState.inventory = all;
   const visibleIds = new Set(patchState.feeds.filter(f=>f.visible!==false).map(f=>f.id));
   for(const row of all) {
@@ -135,15 +140,16 @@ function renderMode(libs,scope,selected,onSelect) {
     row.companions=unique(shown.flatMap(r=>r.companions||[]));
     row.advisories=unique(shown.flatMap(r=>r.advisories));
   }
-  const estate = selectInventory(all,releasePolicy);
+  if(!inventoryCache.selected.has(releasePolicy))inventoryCache.selected.set(releasePolicy,selectInventory(all,releasePolicy));
+  const estate = inventoryCache.selected.get(releasePolicy);
   patchState.inventory = estate;
   const choices = {estate:'Estate patches',available:'Ready to adopt',candidates:'Needs review',adopted:'Adopted',all:'Latest published patches'};
   if(!q('#inventoryViews')) {
     const controls=document.createElement('div');controls.id='inventoryViews';controls.innerHTML=`<div class="patch-actions" role="group" aria-label="Patch inventory views">${Object.entries(choices).map(([key,label])=>`<button data-inventory-view="${key}">${label}</button>`).join('')}</div><label>Upgrade scope <select id="releasePolicy"><option value="baseline">Current baseline only</option><option value="patch">Allow later patches in same minor</option><option value="minor">Allow newer minor as fallback</option></select></label><p class="small">Latest target only. Prefer the current baseline (1.2.4 → 1.2.4.x); broader moves are fallbacks when no closer target exists. No downgrades or major upgrades.</p><label>Find a patch <input id="inventorySearch" type="search" placeholder="Package, version, CVE or provider"></label>`;
     q('#patchMetrics').before(controls);
-    controls.querySelectorAll('[data-inventory-view]').forEach(button=>button.onclick=()=>{inventoryView=button.dataset.inventoryView;refreshView();});
-    q('#releasePolicy').onchange=event=>{releasePolicy=event.target.value;refreshView();};
-    q('#inventorySearch').oninput=event=>{inventorySearch=event.target.value;refreshView();};
+    controls.querySelectorAll('[data-inventory-view]').forEach(button=>button.onclick=()=>{inventoryView=button.dataset.inventoryView;redrawInventory();});
+    q('#releasePolicy').onchange=event=>{releasePolicy=event.target.value;redrawInventory();};
+    q('#inventorySearch').oninput=event=>{inventorySearch=event.target.value;redrawInventory();};
   }
   q('#inventoryViews').hidden=false;
   for(const button of q('#inventoryViews').querySelectorAll('button'))button.setAttribute('aria-pressed',String(button.dataset.inventoryView===inventoryView));
@@ -156,13 +162,13 @@ function renderMode(libs,scope,selected,onSelect) {
   const table=document.getElementById('mainTable');table.hidden=false;document.getElementById('dashboardView').hidden=true;
   document.getElementById('tableHead').innerHTML=['Patch target / provider','Current → target','Adoption (instances)','Adoption effort','Published fixes'].map(t=>`<th>${t}</th>`).join('');
   const body=document.getElementById('tableBody');body.innerHTML=rows.map((row,i)=>`<tr tabindex="0" aria-label="Inspect ${h(row.target)}" data-patch-row="${i}" class="${row.id===selected?'sel':''}"><td><strong>${h(purl(row.target)?.name)}</strong><br>${h(row.providers.join(', '))}</td><td>${h(row.versions.join(', ')||'Not observed')} → <strong>${h(purl(row.target)?.version)}</strong></td><td>${row.adopted.length+row.available.length ? `${row.adopted.length} / ${row.adopted.length+row.available.length} observed` : 'N/A · applicability unconfirmed'}<br>${row.available.length} ready · ${row.candidates.length} review${row.blocked.length?` · ${row.blocked.length} blocked`:''}</td><td>${h(row.efforts.join(' · ')||'Needs assessment')}<br><span class="small">${row.projects.length} applications</span></td><td>${row.advisories.length} advisory IDs</td></tr>`).join('')||'<tr><td colspan="5">No patches in this view. Try a broader upgrade scope, Needs review, or Latest published patches.</td></tr>';
-  body.querySelectorAll('[data-patch-row]').forEach(tr=>{tr.onclick=()=>onSelect(rows[Number(tr.dataset.patchRow)]);tr.onkeydown=event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();tr.click();}};});
+  body.querySelectorAll('[data-patch-row]').forEach(tr=>{tr.onclick=()=>{selected=rows[Number(tr.dataset.patchRow)].id;body.querySelectorAll("[data-patch-row]").forEach(row=>row.classList.toggle("sel",row===tr));onSelect(rows[Number(tr.dataset.patchRow)]);};tr.onkeydown=event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();tr.click();}};});
   document.getElementById('rowCount').textContent=`${rows.length} patch targets`;
   return rows.find(row=>row.id===selected)||rows[0]||null;
 }
 
 window.riskPatches={inventoryDetail,badge,detail,matchesFilter,renderMode,resultFor,setView(mode,callback){refreshView=callback;if(q('#inventoryViews'))q('#inventoryViews').hidden=mode!=='patch-coverage';host.dataset.mode=mode;q('#patchStatusFilter').closest('.patch-actions').hidden=mode==='patch-coverage';q('.patch-heading strong').textContent=mode==='libraries'?'Patch sources':'Patch inventory';host.hidden=!['libraries','patch-coverage'].includes(mode);q('#patchMetrics').hidden=mode!=='patch-coverage';q('#patchScope').hidden=mode!=='patch-coverage';},open(){window.dispatchEvent(new CustomEvent('risk-nav:open-patches'));}};
-window.addEventListener('risk-nav:dataset',event=>{patchState.dataset=event.detail;cache.clear();patchState.filters={};q('#patchStatusFilter').value='';window.dispatchEvent(new CustomEvent('risk-nav:patch-coverage',{detail:patchState}));});
+window.addEventListener('risk-nav:dataset',event=>{patchState.dataset=event.detail;inventoryCache=null;cache.clear();patchState.filters={};q('#patchStatusFilter').value='';window.dispatchEvent(new CustomEvent('risk-nav:patch-coverage',{detail:patchState}));});
 if(window.riskPatchDataset)patchState.dataset=window.riskPatchDataset;
 renderSources();
 window.dispatchEvent(new CustomEvent('risk-nav:patch-ready'));

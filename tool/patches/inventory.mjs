@@ -70,8 +70,13 @@ export function selectInventory(rows, policy='baseline') {
   const maximum={baseline:0,patch:1,minor:2}[policy] ?? 0;
   const selected=new Map();
   const observations=new Map(rows.flatMap(r=>r.observations.map(o=>[o.key,o])));
+  const optionsByObservation = new Map();
+  for(const row of rows) for(const key of new Set([...row.available,...row.candidates].map(o=>o.key))) {
+    if(!optionsByObservation.has(key))optionsByObservation.set(key,[]);
+    optionsByObservation.get(key).push(row);
+  }
   for(const observation of observations.values()) {
-    const options=rows.filter(r=>[...r.available,...r.candidates].some(o=>o.key===observation.key));
+    const options=optionsByObservation.get(observation.key)||[];
     // Prefer the least invasive tier; fall back only when that tier has no target.
     for(const provider of unique(options.flatMap(r=>r.providers))) {
       const allowed=options.filter(r=>r.providers.includes(provider)).map(r=>({row:r,tier:releaseTier(observation.identity,r.target)})).filter(x=>x.tier!==null && x.tier<=maximum);

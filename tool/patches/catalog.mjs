@@ -86,13 +86,27 @@ export function aliasResolver(patches) {
   }
   return id => root(String(id));
 }
-export function coverage(identity, advisoryIds, patches) {
-  const parsed = purl(identity), canonical = aliasResolver(patches);
+const artifactKey = target => {
+  const parsed=purl(target);
+  return parsed ? JSON.stringify([parsed.key,parsed.version,target.split('?')[1] || target.split('#')[1] || '']) : target;
+};
+export function coverageIndex(patches) {
+  const canonical = aliasResolver(patches), packages = new Map();
+  for(const patch of patches) for(const key of unique([patch.package,purl(patch.target)?.key])) {
+    if(!packages.has(key))packages.set(key,[]);
+    packages.get(key).push(patch);
+  }
+  const blocked = new Set();
+  for(const patch of patches) if(patch.status !== 'fixed' || ['withdrawn','held'].includes(patch.state)) {
+    for(const advisory of patch.advisories)blocked.add(`${artifactKey(patch.target)}|${canonical(advisory)}`);
+  }
+  return {canonical,packages,blocked};
+}
+export function coverage(identity, advisoryIds, patches, prepared = coverageIndex(patches)) {
+  const parsed = purl(identity), {canonical,packages,blocked} = prepared;
   const ids = unique(advisoryIds.map(canonical));
-  const relevant = patches.filter(p => p.package === parsed?.key || sameArtifact(p.target, identity));
-  const conflicts = patch => relevant.some(other => sameArtifact(other.target, patch.target) &&
-    other.advisories.some(a => patch.advisories.some(b => canonical(a) === canonical(b))) &&
-    (other.status !== 'fixed' || ['withdrawn', 'held'].includes(other.state)));
+  const relevant = (packages.get(parsed?.key)||[]).filter(p=>p.package===parsed?.key || sameArtifact(p.target,identity));
+  const conflicts = patch => patch.advisories.some(a=>blocked.has(`${artifactKey(patch.target)}|${canonical(a)}`));
   const released = relevant.filter(p => p.status === 'fixed' && p.state === 'released' && !conflicts(p));
   const adopted = released.filter(p => sameArtifact(p.target, identity));
   const options = released.filter(p => p.advisories.some(a => ids.includes(canonical(a))));
@@ -120,13 +134,14 @@ export function estateRows(dataset) {
 }
 export function analyze(dataset, feeds, filters = {}) {
   const patches = activePatches(feeds).filter(p => !filters.feed || p.feed_id === filters.feed);
+  const prepared = coverageIndex(patches);
   const projects = (dataset.consumer_projects || []).filter(p => !filters.project || p.id === filters.project);
   const matchesByIdentity = new Map();
   const rows = estateRows(dataset).filter(row => !filters.project || row.project === filters.project)
     .filter(row => !filters.search || `${row.identity} ${row.advisories.join(' ')}`.toLowerCase().includes(filters.search.toLowerCase()))
     .map(row => {
       const matchKey = JSON.stringify([row.identity, row.advisories]);
-      if (!matchesByIdentity.has(matchKey)) matchesByIdentity.set(matchKey, coverage(row.identity, row.advisories, patches));
+      if (!matchesByIdentity.has(matchKey)) matchesByIdentity.set(matchKey, coverage(row.identity, row.advisories, patches, prepared));
       const result = matchesByIdentity.get(matchKey);
       const status = !purl(row.identity) ? 'unknown' : result.adopted.length ? 'observed' : result.available.length ? 'available' : result.candidates.length ? 'candidate' : result.other.length ? 'unconfirmed' : 'gap';
       return { ...row, ...result, status };
