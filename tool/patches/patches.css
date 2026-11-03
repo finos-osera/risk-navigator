@@ -30,3 +30,13 @@
 #inventoryViews button[aria-pressed="true"] { background:var(--primary-soft); border-color:var(--good); font-weight:700; }
 #inventorySearch { width:min(100%,340px); margin:8px 0; }
 #inventoryViews[hidden], .patch-actions[hidden] { display:none; }
+#inventoryViews [hidden] { display:none; }
+.patch-market { padding:16px; }
+.patch-market-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; }
+.patch-market-card { display:flex; flex-direction:column; gap:10px; align-items:stretch; text-align:left; padding:18px; background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:12px; cursor:pointer; overflow-wrap:anywhere; min-width:0; }
+.patch-market-card:hover, .patch-market-card.selected { background:var(--primary-soft); border-color:var(--good); }
+.patch-market-card:focus-visible { outline:2px solid var(--good); outline-offset:2px; }
+.patch-market-card > strong { font-size:18px; }
+.patch-market-top { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.patch-coordinate { font-family:monospace; overflow-wrap:anywhere; }
+.patch-market-presence { border-top:1px solid var(--line); padding-top:10px; margin-top:auto; font-size:12px; }

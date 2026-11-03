@@ -1,4 +1,4 @@
-import { inventory, distance, selectInventory, latestCatalog } from './inventory.mjs';
+import { inventory, distance, selectInventory, latestCatalog, marketplace } from './inventory.mjs';
 import { normalizeFeed, analyze, activePatches, unique, coverage, libraryPurl, purl } from './catalog.mjs';
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const h = escapeHtml;
@@ -6,7 +6,8 @@ export const labels = { available: 'Available', observed: 'Patched artifact obse
 const storageKey = 'risk-nav-patch-feeds:v1';
 export const patchState = { dataset: null, feeds: [], filters: {}, lastResult: null, rows: [], loading: false, error: '', scope: null };
 let refreshView = () => {}, cache = new Map(), initialized = false;
-let inventoryView = 'estate';
+let inventoryView = 'all';
+let catalogScope = 'all';
 let releasePolicy = 'baseline';
 let inventoryCache = null;
 let redrawInventory = () => {};
@@ -99,7 +100,19 @@ function detail(lib) {
   return `<section class="patch-detail"><h3>Patch coverage</h3>${badge(lib)}<p>${r.covered.length} of ${(lib.cves||[]).length} listed findings have confirmed patch coverage.</p><p class="small">Published candidates require compatibility review. Observed artifacts are inventory evidence, not deployment verification.</p>${targets.map(target=>{const records=matches.filter(p=>p.target===target);return `<article class="patch-target"><strong>${h(target)}</strong><p>${h(unique(records.flatMap(p=>p.advisories)).join(', '))}</p><p class="small">${h(unique(records.map(p=>`${p.provider} · ${p.state} · ${p.status}`)).join('; '))}</p><details><summary>Source and release evidence</summary><pre>${h(JSON.stringify(records,null,2))}</pre></details></article>`;}).join('')||'<p>No visible matching evidence. Check source visibility or add an inventory.</p>'}<p><strong>Remaining findings:</strong> ${h(r.remaining.join(', ')||'None of the listed findings')}</p></section>`;
 }
 const ratio=(a,b)=>b?`${a} / ${b} (${Math.round(100*a/b)}%)`:'N/A';
+function catalogDetail(item) {
+  const identity=purl(item.target);
+  const visibleIds=new Set(patchState.feeds.filter(f=>f.visible!==false).map(f=>f.id));
+  const records=item.records.filter(r=>visibleIds.has(r.feed_id));
+  return `<section class="patch-detail"><span class="patch-badge">Published patch · ${h(item.line)} line</span><h3>${h(identity.name)}</h3><p>${h(item.providers.join(', '))}</p><h4>Latest published version in this minor line</h4><p class="patch-coordinate">${h(identity.version)}</p><p class="small">${h(item.target)}</p>
+  <h4>Published fixes (${item.advisories.length} advisory IDs)</h4><p>${h(item.advisories.join(', '))}</p>
+  <h4>In your estate</h4><p>${item.estateMatches.length?`Package found · versions ${h(item.estateVersions.join(', '))}`:'Package not found in the selected inventory scope.'}</p>${item.exactUse?'<p>Exact published artifact found in inventory.</p>':item.sameLineVersions.length?`<p>Same minor line: ${h(item.sameLineVersions.join(', '))}. Review applicability before adoption.</p>`:item.estateMatches.length?'<p>Your package is on a different minor line. This listing is not an upgrade recommendation.</p>':''}
+  <p class="small">Package presence is separate from patch applicability. Missing observations in a partial inventory do not prove absence from production.</p>
+  <details><summary>Release-set artifacts (${item.companions.length})</summary><ul>${item.companions.map(c=>`<li>${h(c)}</li>`).join('')}</ul></details>
+  <details><summary>Published source evidence</summary><pre>${h(JSON.stringify(records,null,2))}</pre></details></section>`;
+}
 function inventoryDetail(item) {
+  if(item.catalogEntry)return catalogDetail(item);
   const identity = purl(item.target);
   const projectNames = new Map((patchState.scope?.consumer_projects || []).map(p => [p.id, p.name || p.id]));
   const observed = new Set(item.adopted.map(r => r.key));
@@ -143,25 +156,42 @@ function renderMode(libs,scope,selected,onSelect) {
   if(!inventoryCache.selected.has(releasePolicy))inventoryCache.selected.set(releasePolicy,selectInventory(all,releasePolicy));
   const estate = inventoryCache.selected.get(releasePolicy);
   patchState.inventory = estate;
-  const choices = {estate:'Estate patches',available:'Ready to adopt',candidates:'Needs review',adopted:'Adopted',all:'Latest published patches'};
+  const choices = {all:'Browse patches',estate:'Estate opportunities',available:'Ready to adopt',candidates:'Needs review',adopted:'Adopted'};
   if(!q('#inventoryViews')) {
-    const controls=document.createElement('div');controls.id='inventoryViews';controls.innerHTML=`<div class="patch-actions" role="group" aria-label="Patch inventory views">${Object.entries(choices).map(([key,label])=>`<button data-inventory-view="${key}">${label}</button>`).join('')}</div><label>Upgrade scope <select id="releasePolicy"><option value="baseline">Current baseline only</option><option value="patch">Allow later patches in same minor</option><option value="minor">Allow newer minor as fallback</option></select></label><p class="small">Latest target only. Prefer the current baseline (1.2.4 → 1.2.4.x); broader moves are fallbacks when no closer target exists. No downgrades or major upgrades.</p><label>Find a patch <input id="inventorySearch" type="search" placeholder="Package, version, CVE or provider"></label>`;
+    const controls=document.createElement('div');controls.id='inventoryViews';controls.innerHTML=`<div class="patch-actions" role="group" aria-label="Patch inventory views">${Object.entries(choices).map(([key,label])=>`<button data-inventory-view="${key}">${label}</button>`).join('')}</div><label id="upgradeScopeControl">Upgrade scope <select id="releasePolicy"><option value="baseline">Current baseline only</option><option value="patch">Allow later patches in same minor</option><option value="minor">Allow newer minor as fallback</option></select></label><p id="upgradeScopeHelp" class="small">Latest target only. Prefer the current baseline (1.2.4 → 1.2.4.x); broader moves are fallbacks when no closer target exists. No downgrades or major upgrades.</p><label id="catalogScopeControl">Estate relevance <select id="catalogScope"><option value="all">Show everything</option><option value="present">Package in my estate</option><option value="absent">Package outside my estate</option><option value="line">Same minor line in my estate</option><option value="adopted">Exact patch in my estate</option></select></label><label>Find a patch <input id="inventorySearch" type="search" placeholder="Package, version, CVE or provider"></label>`;
     q('#patchMetrics').before(controls);
     controls.querySelectorAll('[data-inventory-view]').forEach(button=>button.onclick=()=>{inventoryView=button.dataset.inventoryView;redrawInventory();});
+    q('#catalogScope').onchange=event=>{catalogScope=event.target.value;redrawInventory();};
     q('#releasePolicy').onchange=event=>{releasePolicy=event.target.value;redrawInventory();};
     q('#inventorySearch').oninput=event=>{inventorySearch=event.target.value;redrawInventory();};
   }
   q('#inventoryViews').hidden=false;
+  const browsing=inventoryView==='all';
+  q('#upgradeScopeControl').hidden=browsing;q('#upgradeScopeHelp').hidden=browsing;q('#catalogScopeControl').hidden=!browsing;
   for(const button of q('#inventoryViews').querySelectorAll('button'))button.setAttribute('aria-pressed',String(button.dataset.inventoryView===inventoryView));
   q('#patchMetrics').hidden=false;q('#patchScope').hidden=false;
   q('#patchMetrics').innerHTML=`<div class="patch-metrics"><div><strong>${estate.filter(r=>r.available.length).length}</strong><br>Targets ready to adopt</div><div><strong>${estate.filter(r=>r.candidates.length).length}</strong><br>Targets needing review</div><div><strong>${estate.filter(r=>r.adopted.length).length}</strong><br>Targets observed in estate</div></div>`;
   q('#patchScope').textContent=`Inventory ${scope.meta?.extracted_at||'date unknown'}. ${scope.meta?.inventory_complete===true?'Source declares complete inventory.':'Partial inventory: observed adoption is a lower bound.'} Totals include enabled hidden sources; rows show targets with visible evidence. Counts are patch targets, not unique CVEs or applications. A target can be adopted and still have remaining opportunities. Latest published patches includes targets outside the estate; estate observations follow the main filters.`;
-  const catalog = latestCatalog(all).map(row=>estate.find(e=>e.target===row.target)||{...row,observations:[],adopted:[],available:[],candidates:[],blocked:[],versions:[],efforts:[],projects:[]});
-  const rows=(inventoryView==='all'?catalog:inventoryView==='estate'?estate:estate.filter(row=>row[inventoryView].length)).filter(row=>row.records.some(r=>visibleIds.has(r.feed_id))).filter(row=>`${row.target} ${row.advisories.join(' ')} ${row.providers.join(' ')}`.toLowerCase().includes(inventorySearch.toLowerCase()));
+  if(browsing) {
+    if(!inventoryCache.catalog)inventoryCache.catalog=marketplace(all,patchState.scope);
+    const catalog=inventoryCache.catalog.filter(row=>row.records.some(r=>visibleIds.has(r.feed_id)));
+    const relevant=catalog.filter(row=>catalogScope==='all'||(catalogScope==='present'?row.estateMatches.length:catalogScope==='absent'?!row.estateMatches.length:catalogScope==='line'?row.sameLineVersions.length:row.exactUse));
+    const rows=relevant.filter(row=>`${row.target} ${row.advisories.join(' ')} ${row.providers.join(' ')}`.toLowerCase().includes(inventorySearch.toLowerCase()));
+    patchState.rows=rows;
+    q('#patchMetrics').innerHTML=`<div class="patch-metrics"><div><strong>${unique(catalog.map(row=>purl(row.target)?.key)).length}</strong><br>Published packages</div><div><strong>${catalog.length}</strong><br>Latest package / minor-line listings</div><div><strong>${catalog.filter(row=>row.estateMatches.length).length}</strong><br>Listings for packages in your estate</div></div>`;
+    q('#patchScope').textContent=`Browse the latest published patch per package, provider and minor line. Historical builds are omitted. Estate relevance uses package identity, not upgrade eligibility. Inventory ${scope.meta?.extracted_at||'date unknown'}${scope.meta?.inventory_complete===true?'': ' · partial inventory; absence is unconfirmed'}. Search and relevance narrow listings; summary counts cover the full visible catalog.`;
+    document.getElementById('mainTable').hidden=true;
+    const grid=document.getElementById('dashboardView');grid.hidden=false;
+    grid.innerHTML=`<section class="patch-market"><h3>Published patch catalog</h3><p class="small">Explore maintained version lines and their published fixes. Select a package for release evidence and estate context.</p><div class="patch-market-grid">${rows.map((row,i)=>`<button class="patch-market-card ${row.id===selected?'selected':''}" data-market-row="${i}" aria-label="Inspect ${h(row.target)}"><span class="patch-market-top"><span>${h(row.providers.join(', '))}</span><span class="patch-badge">${h(row.line)} line</span></span><strong>${h(purl(row.target).name.split('/').pop())}</strong><span class="small">${h(purl(row.target).name)}</span><span class="patch-coordinate">${h(purl(row.target).version)}</span><span>${row.advisories.length} published advisory IDs</span><span class="patch-market-presence">${row.exactUse?'Exact patch in estate':row.sameLineVersions.length?'Same minor line in estate':row.estateMatches.length?'Package in estate · different line':'Outside selected inventory'}</span></button>`).join('')||'<p>No published patches match these filters.</p>'}</div></section>`;
+    grid.querySelectorAll('[data-market-row]').forEach(button=>button.onclick=()=>{const row=rows[Number(button.dataset.marketRow)];selected=row.id;grid.querySelectorAll('[data-market-row]').forEach(b=>b.classList.toggle('selected',b===button));onSelect(row);});
+    document.getElementById('rowCount').textContent=`${rows.length} published listings`;
+    return rows.find(row=>row.id===selected)||rows[0]||null;
+  }
+  const rows=(inventoryView==='estate'?estate:estate.filter(row=>row[inventoryView].length)).filter(row=>row.records.some(r=>visibleIds.has(r.feed_id))).filter(row=>`${row.target} ${row.advisories.join(' ')} ${row.providers.join(' ')}`.toLowerCase().includes(inventorySearch.toLowerCase()));
   patchState.rows=rows;
   const table=document.getElementById('mainTable');table.hidden=false;document.getElementById('dashboardView').hidden=true;
   document.getElementById('tableHead').innerHTML=['Patch target / provider','Current → target','Adoption (instances)','Adoption effort','Published fixes'].map(t=>`<th>${t}</th>`).join('');
-  const body=document.getElementById('tableBody');body.innerHTML=rows.map((row,i)=>`<tr tabindex="0" aria-label="Inspect ${h(row.target)}" data-patch-row="${i}" class="${row.id===selected?'sel':''}"><td><strong>${h(purl(row.target)?.name)}</strong><br>${h(row.providers.join(', '))}</td><td>${h(row.versions.join(', ')||'Not observed')} → <strong>${h(purl(row.target)?.version)}</strong></td><td>${row.adopted.length+row.available.length ? `${row.adopted.length} / ${row.adopted.length+row.available.length} observed` : 'N/A · applicability unconfirmed'}<br>${row.available.length} ready · ${row.candidates.length} review${row.blocked.length?` · ${row.blocked.length} blocked`:''}</td><td>${h(row.efforts.join(' · ')||'Needs assessment')}<br><span class="small">${row.projects.length} applications</span></td><td>${row.advisories.length} advisory IDs</td></tr>`).join('')||'<tr><td colspan="5">No patches in this view. Try a broader upgrade scope, Needs review, or Latest published patches.</td></tr>';
+  const body=document.getElementById('tableBody');body.innerHTML=rows.map((row,i)=>`<tr tabindex="0" aria-label="Inspect ${h(row.target)}" data-patch-row="${i}" class="${row.id===selected?'sel':''}"><td><strong>${h(purl(row.target)?.name)}</strong><br>${h(row.providers.join(', '))}</td><td>${h(row.versions.join(', ')||'Unknown version')} → <strong>${h(purl(row.target)?.version)}</strong></td><td>${row.adopted.length+row.available.length ? `${row.adopted.length} / ${row.adopted.length+row.available.length} observed` : 'N/A · applicability unconfirmed'}<br>${row.available.length} ready · ${row.candidates.length} review${row.blocked.length?` · ${row.blocked.length} blocked`:''}</td><td>${h(row.efforts.join(' · ')||'Needs assessment')}<br><span class="small">${row.projects.length} applications</span></td><td>${row.advisories.length} advisory IDs</td></tr>`).join('')||'<tr><td colspan="5">No patches in this view. Try a broader upgrade scope, Needs review, or Latest published patches.</td></tr>';
   body.querySelectorAll('[data-patch-row]').forEach(tr=>{tr.onclick=()=>{selected=rows[Number(tr.dataset.patchRow)].id;body.querySelectorAll("[data-patch-row]").forEach(row=>row.classList.toggle("sel",row===tr));onSelect(rows[Number(tr.dataset.patchRow)]);};tr.onkeydown=event=>{if(['Enter',' '].includes(event.key)){event.preventDefault();tr.click();}};});
   document.getElementById('rowCount').textContent=`${rows.length} patch targets`;
   return rows.find(row=>row.id===selected)||rows[0]||null;

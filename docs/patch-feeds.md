@@ -1,3 +1,13 @@
+# Browsing published patches
+
+Patch inventory opens **Browse patches**, a catalog of release cards inspired by OSERA’s package/maintained-line browsing. Each card shows the package, provider, minor line, latest published version, fixed advisory count and estate presence. One latest target per package/provider/minor line is shown; historical builds are omitted. Catalog detail shows published CVEs, release-set members and source evidence.
+
+**Estate relevance** filters by Show everything, Package in my estate, Package outside my estate, Same minor line in my estate, or Exact patch in my estate. Presence matches package identity independently of CVEs and upgrade eligibility. The selected estate scope and its inventory limitations still apply. An absent match in partial inventory is not proof of absence from production.
+
+Catalog browsing does not show upgrade arrows, adoption denominators, effort estimates or an upgrade-scope control. Package presence on a different line is context, not a downgrade or upgrade recommendation. Summary cards describe the whole visible catalog; search and relevance filters narrow displayed cards.
+
+**Estate opportunities**, Ready to adopt, Needs review and Adopted retain the planning workflow below, including latest-only baseline selection and optional broader fallbacks.
+
 # Patch inventory and observed estate coverage
 
 Select **Patch inventory** beside Libraries. Browse Estate patches, Ready to adopt, Needs review, Adopted, or Latest published patches. Each row represents one exact target artifact, combining overlapping feed assertions. A target may appear in both Ready to adopt and Adopted during partial rollout. Search by package, version, advisory or provider. Libraries retains compact coverage badges.

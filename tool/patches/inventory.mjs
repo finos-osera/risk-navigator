@@ -1,4 +1,4 @@
-import { activePatches, analyze, purl, unique, sameArtifact } from './catalog.mjs';
+import { activePatches, analyze, purl, unique, sameArtifact, libraryPurl } from './catalog.mjs';
 
 // Distance describes version shape, never proof of compatibility.
 export function distance(source, target) {
@@ -112,4 +112,24 @@ export function latestCatalog(rows) {
     }
   }
   return [...new Map([...groups.values()].map(row=>[row.target,row])).values()];
+}
+
+// Catalog relevance is package presence, independent of CVEs and upgrade policy.
+export function marketplace(rows, dataset) {
+  const packages = new Map();
+  for(const lib of dataset.libraries || []) {
+    const identity=libraryPurl(lib), parsed=purl(identity);
+    if(!parsed)continue;
+    if(!packages.has(parsed.key))packages.set(parsed.key,[]);
+    packages.get(parsed.key).push({identity,lib});
+  }
+  return latestCatalog(rows).map(row=>{
+    const identity=purl(row.target), line=releaseParts(identity.version)?.numbers.slice(0,2).join('.');
+    const matches=packages.get(identity.key)||[];
+    const sameLine=matches.filter(m=>releaseParts(purl(m.identity).version)?.numbers.slice(0,2).join('.')===line);
+    return {...row,catalogEntry:true,line,estateMatches:matches,
+      estateVersions:unique(matches.map(m=>purl(m.identity).version)),
+      sameLineVersions:unique(sameLine.map(m=>purl(m.identity).version)),
+      exactUse:matches.some(m=>sameArtifact(m.identity,row.target))};
+  }).sort((a,b)=>purl(a.target).name.localeCompare(purl(b.target).name)||compareReleases(purl(b.target).version,purl(a.target).version));
 }

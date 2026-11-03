@@ -48,3 +48,20 @@ test('OSERA revision and extra numeric segments are compared numerically',()=>{
  assert.equal(releaseTier('pkg:maven/org.example/core@1.2.4','pkg:maven/org.example/core@1.20.4-osera-1'),2);
  assert.equal(latestCatalog(choices('1.33',['1.33.1-osera-1','1.33.1-osera-10'])).length,1);
 });
+
+import { marketplace } from '../tool/patches/inventory.mjs';
+test('marketplace presence does not require CVE overlap or upgrade eligibility',()=>{
+ const rows=choices('1.33',['1.26.1-osera-1','1.33.1-osera-1','1.33.1-osera-2']);
+ const catalog=marketplace(rows,{libraries:[{purl:'pkg:maven/org.example/core@1.33',cves:[]}]});
+ assert.equal(catalog.length,2);
+ assert.ok(catalog.every(r=>r.estateMatches.length===1));
+ assert.equal(catalog.find(r=>r.line==='1.26').sameLineVersions.length,0);
+ assert.deepEqual(catalog.find(r=>r.line==='1.33').sameLineVersions,['1.33']);
+ assert.equal(catalog.find(r=>r.line==='1.33').target.split('@')[1],'1.33.1-osera-2');
+ const outside=marketplace(rows,{libraries:[]});assert.ok(outside.every(r=>!r.estateMatches.length));
+});
+test('marketplace exact patch use requires exact artifact identity',()=>{
+ const rows=choices('1.33',['1.33.1-osera-2']);
+ assert.equal(marketplace(rows,{libraries:[{purl:rows[0].target} ]})[0].exactUse,true);
+ assert.equal(marketplace(rows,{libraries:[{purl:rows[0].target+'?classifier=sources'} ]})[0].exactUse,false);
+});
