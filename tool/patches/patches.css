@@ -40,3 +40,18 @@
 .patch-market-top { display:flex; justify-content:space-between; align-items:center; gap:8px; }
 .patch-coordinate { font-family:monospace; overflow-wrap:anywhere; }
 .patch-market-presence { border-top:1px solid var(--line); padding-top:10px; margin-top:auto; font-size:12px; }
+.patch-advisories { display:grid; gap:8px; margin:12px 0; }
+.patch-advisory { padding:12px; border:1px solid var(--line); border-radius:9px; background:var(--panel); }
+.patch-advisory > .small { display:block; margin-top:6px; }
+.patch-advisory a { color:var(--ink); text-decoration:underline; }
+.patch-advisory-signals { display:inline-flex; gap:5px; margin-left:6px; }
+.patch-estate { background:var(--primary-soft); border:1px solid var(--line); padding:14px; margin:18px 0; border-radius:12px; }
+.patch-estate h4 { margin:0; }
+.patch-estate-stats { display:flex; gap:24px; margin:16px 0; }
+.patch-estate-stats strong { display:block; font-size:24px; }
+.patch-estate-stats span { font-size:12px; }
+.patch-consumers { border-top:1px solid var(--line); padding:12px 0; }
+.patch-consumers summary { cursor:pointer; }
+.patch-consumers ul { list-style:none; padding:0; }
+.patch-consumers li { display:flex; justify-content:space-between; gap:10px; padding:8px 0; overflow-wrap:anywhere; }
+.patch-consumers li > span:first-child { min-width:0; }

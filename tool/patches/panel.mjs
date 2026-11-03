@@ -100,14 +100,36 @@ function detail(lib) {
   return `<section class="patch-detail"><h3>Patch coverage</h3>${badge(lib)}<p>${r.covered.length} of ${(lib.cves||[]).length} listed findings have confirmed patch coverage.</p><p class="small">Published candidates require compatibility review. Observed artifacts are inventory evidence, not deployment verification.</p>${targets.map(target=>{const records=matches.filter(p=>p.target===target);return `<article class="patch-target"><strong>${h(target)}</strong><p>${h(unique(records.flatMap(p=>p.advisories)).join(', '))}</p><p class="small">${h(unique(records.map(p=>`${p.provider} · ${p.state} · ${p.status}`)).join('; '))}</p><details><summary>Source and release evidence</summary><pre>${h(JSON.stringify(records,null,2))}</pre></details></article>`;}).join('')||'<p>No visible matching evidence. Check source visibility or add an inventory.</p>'}<p><strong>Remaining findings:</strong> ${h(r.remaining.join(', ')||'None of the listed findings')}</p></section>`;
 }
 const ratio=(a,b)=>b?`${a} / ${b} (${Math.round(100*a/b)}%)`:'N/A';
+function advisoryCards(ids) {
+  const known=new Map();
+  for(const lib of patchState.scope?.libraries || [])for(const cve of lib.cves || [])known.set(cve.cve_id,cve);
+  return `<div class="patch-advisories">${ids.map(id=>{
+    const cve=known.get(id);
+    const external=/^CVE-\d{4}-\d+$/.test(id)?`https://nvd.nist.gov/vuln/detail/${encodeURIComponent(id)}`:/^GHSA-[a-z0-9-]+$/i.test(id)?`https://github.com/advisories/${encodeURIComponent(id)}`:null;
+    const action=cve?`<button class="cve-link" data-open-cve="${h(id)}" title="Open estate CVE details">${h(id)} ↗</button>`:external?`<a href="${h(external)}" target="_blank" rel="noreferrer" title="Open public advisory in a new tab">${h(id)} ↗</a>`:`<strong>${h(id)}</strong>`;
+    return `<div class="patch-advisory">${action}<span class="patch-advisory-signals">${cve?.cvss!=null?`<span class="patch-badge">CVSS ${h(cve.cvss)}</span>`:''}${cve?.kev?'<span class="patch-badge patch-unconfirmed">KEV</span>':''}</span><span class="small">${cve?'Estate details available':external?'Public advisory · no local details':'Feed assertion · no local details'}</span>${cve?.summary?`<p class="small">${h(cve.summary.slice(0,180))}</p>`:''}</div>`;
+  }).join('')}</div>`;
+}
+function estateCard(item) {
+  const projects=new Map((patchState.scope?.consumer_projects||[]).map(p=>[p.id,p]));
+  const ids=unique(item.estateMatches.flatMap(m=>m.lib.consumer_project_ids||[]));
+  const status=item.exactUse?'Exact patch found':item.sameLineVersions.length?'Same minor line':item.estateMatches.length?'Different minor line':'Outside selected inventory';
+  return `<section class="patch-estate"><div class="patch-market-top"><h4>In your estate</h4><span class="patch-badge ${item.exactUse?'patch-observed':item.sameLineVersions.length?'patch-candidate':''}">${status}</span></div><div class="patch-estate-stats"><div><strong>${ids.length}</strong><span>applications</span></div><div><strong>${item.estateVersions.length}</strong><span>versions found</span></div></div>${item.estateMatches.length?item.estateMatches.map(({identity,lib})=>{
+    const consumers=unique(lib.consumer_project_ids||[]);
+    const direct=new Set(lib.direct_consumer_project_ids||[]);
+    return `<details class="patch-consumers"><summary><span class="patch-coordinate">${h(purl(identity)?.version)}</span> <span class="small">· ${consumers.length} applications</span></summary><p><button class="ghost" data-open-library="${h(lib.id)}" title="Inspect this library and its dependency evidence">Inspect library details ↗</button></p><ul>${consumers.map(id=>{
+      const project=projects.get(id),label=project?.project_ref||project?.proj||id;
+      return `<li><span>${h(label)}</span><span class="patch-badge">${direct.has(id)?'Direct':'Transitive'}</span></li>`;
+    }).join('')||'<li>No consumer application evidence in this scope.</li>'}</ul></details>`;
+  }).join(''):'<p>No package observation in the selected scope.</p>'}<p class="small">Expand a version to see who uses it. Package presence does not prove patch applicability or deployment. Partial inventories may omit consumers.</p></section>`;
+}
 function catalogDetail(item) {
   const identity=purl(item.target);
   const visibleIds=new Set(patchState.feeds.filter(f=>f.visible!==false).map(f=>f.id));
   const records=item.records.filter(r=>visibleIds.has(r.feed_id));
   return `<section class="patch-detail"><span class="patch-badge">Published patch · ${h(item.line)} line</span><h3>${h(identity.name)}</h3><p>${h(item.providers.join(', '))}</p><h4>Latest published version in this minor line</h4><p class="patch-coordinate">${h(identity.version)}</p><p class="small">${h(item.target)}</p>
-  <h4>Published fixes (${item.advisories.length} advisory IDs)</h4><p>${h(item.advisories.join(', '))}</p>
-  <h4>In your estate</h4><p>${item.estateMatches.length?`Package found · versions ${h(item.estateVersions.join(', '))}`:'Package not found in the selected inventory scope.'}</p>${item.exactUse?'<p>Exact published artifact found in inventory.</p>':item.sameLineVersions.length?`<p>Same minor line: ${h(item.sameLineVersions.join(', '))}. Review applicability before adoption.</p>`:item.estateMatches.length?'<p>Your package is on a different minor line. This listing is not an upgrade recommendation.</p>':''}
-  <p class="small">Package presence is separate from patch applicability. Missing observations in a partial inventory do not prove absence from production.</p>
+  <h4>Published fixes (${item.advisories.length})</h4>${advisoryCards(item.advisories)}
+  ${estateCard(item)}
   <details><summary>Release-set artifacts (${item.companions.length})</summary><ul>${item.companions.map(c=>`<li>${h(c)}</li>`).join('')}</ul></details>
   <details><summary>Published source evidence</summary><pre>${h(JSON.stringify(records,null,2))}</pre></details></section>`;
 }
@@ -133,7 +155,7 @@ function inventoryDetail(item) {
     <h4>Adoption effort</h4><p>${h(item.efforts.join(' · ') || 'Outside the scoped estate · needs assessment')}</p>
     <p>${item.projects.length} affected applications · ${item.observations.filter(r=>!r.direct).length} transitive instances (assess parent or dependency-management changes).</p>
     <details><summary>Release-set artifacts (${item.companions.length})</summary><p class="small">Review these together; the feed does not establish that every artifact must change.</p><ul>${item.companions.map(c=>`<li>${h(c)}</li>`).join('')}</ul></details>
-    <h4>Published fixes</h4><p>${h(item.advisories.join(', '))}</p>
+    <h4>Published fixes</h4>${advisoryCards(item.advisories)}
     <details><summary>Estate adoption and remaining findings</summary>${item.observations.length ? `<ul class="list">${item.observations.map(row=>`<li><strong>${h(projectNames.get(row.project)||row.project)}</strong> · ${h(purl(row.identity)?.version)} → ${h(identity?.version)}<br>${observed.has(row.key)?'Adopted (observed)':eligible.has(row.key)?'Ready to adopt':candidates.has(row.key)?'Needs applicability review':'Conflicting or blocked evidence'} · ${row.direct?'Direct':'Transitive'}<br><span class="small">${h(distance(row.identity,item.target))}<br>${observed.has(row.key)?'Remaining':eligible.has(row.key)?'Remaining if adopted':'Current findings'}: ${h(observed.has(row.key)||eligible.has(row.key)?residual(row):row.advisories.join(', ')||'None listed')}</span></li>`).join('')}</ul>`:'<p>No matching observations in this estate scope.</p>'}</details>
     <h4>Latest releases · published patch targets</h4><p class="small">Latest suggested target per observed version and provider under the selected upgrade scope. Previously adopted versions remain in the adoption view, not in these suggestions. Same major/minor highlights a review opportunity; it does not establish applicability. Feed timestamps describe publication evidence, not version ordering.</p>
     ${related.map(other=>`<div class="patch-target"><strong>${h(purl(other.target)?.version)}</strong> · ${h(other.providers.join(', '))}<br>${h(unique(item.observations.map(row=>distance(row.identity,other.target))).join(' · ')||'No estate version to compare')}<br><span class="small">${other.advisories.length} published advisory assertions · ${other.available.length} ready · ${other.adopted.length} observed</span></div>`).join('')}
