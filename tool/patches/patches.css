@@ -42,8 +42,12 @@
 .patch-market-presence { border-top:1px solid var(--line); padding-top:10px; margin-top:auto; font-size:12px; }
 .patch-advisories { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; margin:12px 0; }
 .patch-advisory { display:inline; white-space:nowrap; }
-.patch-advisory a { color:var(--ink); text-decoration:underline; }
-.patch-advisory .cve-link { padding:0; }
+.patch-advisory a, .patch-advisory button.cve-link {
+  font:inherit; font-weight:600; line-height:1.5; color:var(--link);
+  text-decoration:underline; text-decoration-color:var(--link); padding:0; margin:0; border:0; border-radius:0;
+  background:transparent; cursor:pointer;
+}
+.patch-advisory a:hover, .patch-advisory button.cve-link:hover { text-decoration-thickness:2px; }
 .patch-estate { background:var(--primary-soft); border:1px solid var(--line); padding:14px; margin:18px 0; border-radius:12px; }
 .patch-estate h4 { margin:0; }
 .patch-estate-stats { display:flex; gap:24px; margin:16px 0; }
