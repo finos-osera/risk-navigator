@@ -3272,6 +3272,7 @@ function openLibraryDetailsModal(lib) {
       <summary>Other versions (${Math.max(0, allRows.length - consumedRows.length)})</summary>
       ${renderVersionRowsTable(otherRows)}
     </details>
+    ${window.riskPatches ? window.riskPatches.libraryVersions(lib) : ""}
     <h4>CVE details</h4>
     <ul class="list">
       ${(lib.cves || []).slice(0, 50).map(c => `<li>${renderCveButton(c.cve_id)} <span class="chip">CVSS ${fmt(c.cvss,1)}</span> <span class="chip">EPSS ${fmt(c.epss,3)}</span> ${c.kev ? `<span class='badge kev-fire'>🔥 KEV</span>` : ""} ${cveSummaryText(c) ? `- ${escapeHtml(cveSummaryText(c))}` : ""}</li>`).join("")}

@@ -54,3 +54,6 @@
 .patch-consumers ul { list-style:none; padding:0; }
 .patch-consumers li { display:flex; justify-content:space-between; gap:10px; padding:8px 0; overflow-wrap:anywhere; }
 .patch-consumers li > span:first-child { min-width:0; }
+.patch-library-versions { border:1px solid var(--line); border-radius:10px; padding:14px; margin:16px 0; background:var(--primary-soft); }
+.patch-library-versions h4 { margin:0 0 8px; }
+.patch-library-versions pre { white-space:pre-wrap; overflow:auto; max-height:220px; }
