@@ -1387,7 +1387,7 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
 const MODES = [
   { id: "dashboard", label: "Dashboard" },
   { id: "libraries", label: "Libraries" },
-  { id: "patch-coverage", label: "Patch coverage" },
+  { id: "patch-coverage", label: "Patch inventory" },
   { id: "patch-requests", label: "Patch requests" },
   { id: "top-fixes", label: "Top fixes" },
   { id: "backpatch-priority", label: "Backpatch Priority Calculator" },
@@ -2050,6 +2050,7 @@ function versionPolicyDisclaimer() {
 }
 
 function versionStatusBadge(row) {
+  if (row.osera) return `<span class="badge osera-version-badge">OSERA PATCH</span>`;
   if (row.is_safe) {
     const hasCves = Number(row.cve_count || 0) > 0;
     return `<span class="badge dir">${hasCves ? "BELOW THRESHOLD" : "NO KNOWN CVES"}</span>`;
@@ -3049,7 +3050,7 @@ function buildVersionExplorerRows(lib) {
       transitive: Math.max(Number(existing.transitive || 0), Number(pl.transitive_consumer_count || 0))
     });
   });
-  return rows.map((v, idx) => {
+  const upstreamRows = rows.map((v, idx) => {
     const rel = String(v.release || "");
     const consumed = consumedByRelease.get(rel);
     const dateRaw = parseReleaseDateAny(v);
@@ -3068,18 +3069,33 @@ function buildVersionExplorerRows(lib) {
       consumed_transitive: consumed ? Number(consumed.transitive || 0) : 0
     };
   });
+  const published = window.riskPatches?.versionRows(lib) || [];
+  for(const patch of published) {
+    const consumed=consumedByRelease.get(patch.release);
+    if(consumed)Object.assign(patch,{consumed:true,consumed_projects:consumed.projects,consumed_direct:consumed.direct,consumed_transitive:consumed.transitive});
+  }
+  const publishedVersions=new Set(published.map(row=>row.release));
+  const combined=upstreamRows.filter(row=>!publishedVersions.has(row.release));
+  // Preserve upstream chronological ordering (including prereleases).
+  for(const patch of published.sort((a,b)=>compareVersionStrings(a.release,b.release))) {
+    const position=combined.findIndex(row=>compareVersionStrings(row.release,patch.release)>0);
+    if(position<0)combined.push(patch);else combined.splice(position,0,patch);
+  }
+  return combined;
+
 }
 
 function selectLatestByLine(rows, mode) {
   const byLine = new Map();
   rows.forEach(row => {
+    if(row.osera)return;
     const mm = parseMajorMinor(row.release);
     if (!mm) return;
     const key = mode === "latest-major" ? `${mm.major}` : `${mm.major}.${mm.minor}`;
     byLine.set(key, row);
   });
   const latestRows = new Set([...byLine.values()].map(r => r.release));
-  return rows.filter(row => latestRows.has(row.release) || row.consumed);
+  return rows.filter(row => row.osera || latestRows.has(row.release) || row.consumed);
 }
 
 function collapseVersionRows(rows) {
@@ -3110,6 +3126,11 @@ function collapseVersionRows(rows) {
   };
 
   rows.forEach(row => {
+    if (row.osera) {
+      flushRun();
+      out.push({...row,type:"single",release_label:row.release});
+      return;
+    }
     if (row.consumed) {
       flushRun();
       out.push({ ...row, type: "single", release_label: row.release, notes: "Consumed by projects" });
@@ -3133,14 +3154,14 @@ function collapseVersionRows(rows) {
 
 function renderVersionRowsTable(rows) {
   const body = (rows || []).map(r => `
-    <tr>
-      <td>${r.release_label || r.release || "-"}</td>
+    <tr class="${r.osera ? "osera-version-row" : ""}">
+      <td>${escapeHtml(r.release_label || r.release || "-")}</td>
       <td>${r.age || "-"}</td>
-      <td>${fmt(r.max_cvss,1)}</td>
-      <td>${Number(r.cve_count || 0)}</td>
+      <td>${r.osera ? "Unknown" : fmt(r.max_cvss,1)}</td>
+      <td>${r.osera ? "Unknown" : Number(r.cve_count || 0)}</td>
       <td>${versionStatusBadge(r)}</td>
       <td>${r.consumed ? `<span class='badge dir'>${Number(r.consumed_projects || 0)} projects (${Number(r.consumed_direct || 0)} DIR / ${Number(r.consumed_transitive || 0)} TRA)</span>` : "-"}</td>
-      <td>${r.notes || ""}</td>
+      <td>${r.osera ? `${escapeHtml(r.notes)}<br>${r.fixed_advisories.length} published fixes: ${r.fixed_advisories.map(id=>`<a href="${id.startsWith("GHSA-") ? "https://github.com/advisories/" : "https://nvd.nist.gov/vuln/detail/"}${encodeURIComponent(id)}" target="_blank" rel="noreferrer">${escapeHtml(id)}</a>`).join(" ")}` : r.notes || ""}</td>
     </tr>
   `).join("");
   return `
@@ -3154,8 +3175,8 @@ function renderVersionRowsTable(rows) {
 function renderInlineVersionChain(lib, title = "Version chain") {
   const allRows = buildVersionExplorerRows(lib);
   const current = String(lib.release || "");
-  const consumedOrCurrent = allRows.filter(r => r.consumed || r.release === current);
-  const otherRowsRaw = allRows.filter(r => !r.consumed && r.release !== current);
+  const consumedOrCurrent = allRows.filter(r => r.osera || r.consumed || r.release === current);
+  const otherRowsRaw = allRows.filter(r => !r.osera && !r.consumed && r.release !== current);
   const otherRows = collapseVersionRows(otherRowsRaw);
   return `
     <div class="h-row" style="margin:8px 0 4px 0;">
@@ -3166,7 +3187,7 @@ function renderInlineVersionChain(lib, title = "Version chain") {
     ${versionPolicyDisclaimer()}
     <div class="small">Consumed/current versions are expanded. Non-consumed versions are collapsed where adjacent policy status matches.</div>
     <details class="vc-block" open>
-      <summary>Consumed/current versions (${consumedOrCurrent.length})</summary>
+      <summary>Current, consumed and OSERA versions (${consumedOrCurrent.length})</summary>
       ${renderVersionRowsTable(consumedOrCurrent)}
     </details>
     <details class="vc-block">
@@ -3192,16 +3213,16 @@ function renderVersionExplorer() {
   if (!state.versionExplorer.showSafe) {
     rows = rows.filter(r => !r.is_safe || r.consumed);
   }
-  const displayed = state.versionExplorer.collapseRuns ? collapseVersionRows(rows) : rows.map(r => ({ ...r, type: "single", release_label: r.release, notes: r.consumed ? "Consumed by projects" : "" }));
+  const displayed = state.versionExplorer.collapseRuns ? collapseVersionRows(rows) : rows.map(r => ({ ...r, type: "single", release_label: r.release, notes: r.osera ? r.notes : r.consumed ? "Consumed by projects" : "" }));
 
   els.versionModalTitle.innerHTML = `Version Explorer: ${renderLibraryDisplayName(lib, false)}`;
-  const vulnCount = allRows.filter(r => !r.is_safe).length;
+  const vulnCount = allRows.filter(r => !r.osera && !r.is_safe).length;
   const safeCount = allRows.filter(r => r.is_safe).length;
   const consumedCount = allRows.filter(r => r.consumed).length;
   els.versionSummary.innerHTML = `
     Current: <code>${lib.release}</code> | Remediation: <strong>${assessment.remediation_type || "NONE"}</strong>
     | Threshold path: <strong>${thresholdTarget.distance ? thresholdTarget.distance.toLowerCase() : "unknown"}</strong>
-    | Versions: ${allRows.length} total (${vulnCount} above threshold / ${safeCount} below threshold) | Consumed releases: ${consumedCount}
+    | Versions: ${allRows.length} total (${vulnCount} above threshold / ${safeCount} below threshold / ${allRows.filter(r=>r.osera).length} OSERA assessment unknown) | Consumed releases: ${consumedCount}
     ${versionPolicyDisclaimer()}
   `;
 
@@ -3209,13 +3230,13 @@ function renderVersionExplorer() {
     const status = versionStatusBadge(r);
     const consumed = r.consumed ? `<span class="badge tra">yes</span>` : "-";
     const projects = r.consumed ? `${r.consumed_projects} (${r.consumed_direct}/${r.consumed_transitive})` : "-";
-    const notes = r.notes || "";
-    return `<tr>
-      <td>${r.release_label || r.release || "-"}</td>
+    const notes = r.osera ? `${escapeHtml(r.notes)} · ${r.fixed_advisories.length} published fixes (remaining CVEs unknown)` : r.notes || "";
+    return `<tr class="${r.osera ? "osera-version-row" : ""}">
+      <td>${escapeHtml(r.release_label || r.release || "-")}</td>
       <td>${status}</td>
       <td>${r.age || "-"}</td>
-      <td>${r.cve_count ?? "-"}</td>
-      <td>${fmt(r.max_cvss,1)}</td>
+      <td>${r.osera ? "Unknown" : r.cve_count ?? "-"}</td>
+      <td>${r.osera ? "Unknown" : fmt(r.max_cvss,1)}</td>
       <td>${consumed}</td>
       <td>${projects}</td>
       <td>${notes}</td>
@@ -3243,8 +3264,8 @@ function openLibraryDetailsModal(lib) {
   const assessment = buildBackpatchAssessment(lib);
   const allRows = buildVersionExplorerRows(lib);
   const current = String(lib.release || "");
-  const consumedRows = allRows.filter(r => r.consumed || r.release === current);
-  const otherRows = collapseVersionRows(allRows.filter(r => !r.consumed && r.release !== current));
+  const consumedRows = allRows.filter(r => r.osera || r.consumed || r.release === current);
+  const otherRows = collapseVersionRows(allRows.filter(r => !r.osera && !r.consumed && r.release !== current));
   const projectsById = new Map((state.dataset.consumer_projects || []).map(p => [p.id, p]));
   const impacted = (lib.consumer_project_ids || []).map(id => projectsById.get(id)).filter(Boolean);
 
@@ -3267,13 +3288,14 @@ function openLibraryDetailsModal(lib) {
       <button data-open-version="${lib.id}" class="ghost">Open full version explorer</button>
     </div>
     <details class="vc-block" open>
-      <summary>Consumed/current versions (${consumedRows.length})</summary>
+      <summary>Current, consumed and OSERA versions (${consumedRows.length})</summary>
       ${renderVersionRowsTable(consumedRows)}
     </details>
     <details class="vc-block">
       <summary>Other versions (${Math.max(0, allRows.length - consumedRows.length)})</summary>
       ${renderVersionRowsTable(otherRows)}
     </details>
+    ${window.riskPatches ? window.riskPatches.libraryVersions(lib) : ""}
     <h4>CVE details</h4>
     <ul class="list">
       ${(lib.cves || []).slice(0, 50).map(c => `<li>${renderCveButton(c.cve_id)} <span class="chip">CVSS ${fmt(c.cvss,1)}</span> <span class="chip">EPSS ${fmt(c.epss,3)}</span> ${c.kev ? `<span class='badge kev-fire'>🔥 KEV</span>` : ""} ${cveSummaryText(c) ? `- ${escapeHtml(cveSummaryText(c))}` : ""}</li>`).join("")}
@@ -5326,6 +5348,8 @@ function openProjectRemediationForProject(projectId) {
 function renderDetail(item) {
   if (!item) { els.detail.innerHTML = `<div class="small">Select a row to inspect details.</div>`; return; }
 
+  if (state.mode === "patch-coverage" && window.riskPatches) { els.detail.innerHTML = window.riskPatches.inventoryDetail(item); return; }
+
   if (["libraries", "patch-coverage"].includes(state.mode)) {
     const lib = item;
     const projects = (state.dataset.consumer_projects || []).filter(p => lib.consumer_project_ids.includes(p.id));
@@ -6281,7 +6305,7 @@ function renderMode(filteredLibraries) {
   if (state.mode === "patch-requests" && window.riskRequests) { window.riskRequests.renderMode(); return; }
   if (state.mode === "patch-coverage" && window.riskPatches) {
     const scope = patchScopeDataset(filteredLibraries);
-    const selected = window.riskPatches.renderMode(scope.libraries, scope, state.selected, lib => { state.selected = lib.id; render(); });
+    const selected = window.riskPatches.renderMode(scope.libraries, scope, state.selected, lib => { state.selected = lib?.id || null; renderDetail(lib); });
     renderDetail(selected);
     return;
   }
