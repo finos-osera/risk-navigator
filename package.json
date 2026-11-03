@@ -30,7 +30,7 @@
     "build:all:finos-org:full-osv": "npm run refresh:finos",
     "build:all:finos-sbom-demo": "npm run ingest:vulns && npm run fetch:external && npm run extract:finos-sbom-demo && npm run build:dataset:finos-sbom-demo && npm run validate:dataset:finos-sbom-demo",
     "build:all:finos-deep-sbom-demo": "npm run ingest:vulns && npm run fetch:external && npm run generate:finos-deep-sbom-demo && npm run extract:finos-deep-sbom-demo && npm run build:dataset:finos-deep-sbom-demo && npm run validate:dataset:finos-deep-sbom-demo",
-    "dev": "vite --open /tools/risk-navigator.html",
+    "dev": "vite --open /tool/risk-navigator.html",
     "dev:oss-risk": "vite --open /oss-risk/browser.html",
     "collect:oss-risk": "python3 oss-risk/collectors/collect_oss_risk.py",
     "collect:oss-risk:no-osv": "python3 oss-risk/collectors/collect_oss_risk.py --no-osv",
@@ -43,6 +43,6 @@
     "refresh:finos": "python3 scripts/refresh_finos.py"
   },
   "devDependencies": {
-    "vite": "^7.1.0"
+    "vite": "^8.3.4"
   }
 }
