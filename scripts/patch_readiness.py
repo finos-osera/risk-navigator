@@ -9,7 +9,10 @@ Implements the three-stage readiness model for Issue #25:
 
 from __future__ import annotations
 
+import argparse
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Protocol, Sequence, Set
 
 
@@ -90,6 +93,7 @@ def evaluate_patch_readiness(
     checks_raw = source_raw.get("checks") or []
     normalized_checks: List[Dict[str, Any]] = []
     seen_adopted_checks: Dict[str, str] = {}
+    mandatory_set: Set[str] = {str(m).strip() for m in mandatory_checks if str(m).strip()}
 
     for chk in checks_raw:
         if not isinstance(chk, dict):
@@ -98,14 +102,16 @@ def evaluate_patch_readiness(
         status = str(chk.get("status") or "not-tested").strip().lower()
         if status not in VALID_CHECK_STATUSES:
             status = "not-tested"
+        is_mandatory_policy_check = check_id in mandatory_set
         tier = str(chk.get("tier") or ("proposal" if check_id.startswith("CP-") else "adopted")).strip().lower()
-        is_proposal = tier == "proposal" or check_id.startswith("CP-")
+        is_proposal = False if is_mandatory_policy_check else (tier == "proposal" or check_id.startswith("CP-"))
+        effective_blocking = True if is_mandatory_policy_check else bool(chk.get("blocking", not is_proposal))
         entry = {
             "id": check_id,
             "version": chk.get("version") or source_raw.get("pack_version") or "0.1.0",
             "status": status,
             "tier": "proposal" if is_proposal else "adopted",
-            "blocking": bool(chk.get("blocking", not is_proposal)),
+            "blocking": effective_blocking,
             "expected": chk.get("expected"),
             "observed": chk.get("observed"),
             "freshness": chk.get("freshness") or source_raw.get("evaluated_at"),
@@ -124,17 +130,23 @@ def evaluate_patch_readiness(
             continue
 
         seen_adopted_checks[check_id] = status
-        if status == "fail" and entry["blocking"]:
+        if status == "fail" and effective_blocking:
             blockers.append({
                 "stage": "source_fitness",
                 "code": f"CHECK_FAILED:{check_id}",
                 "message": entry["reason"] or f"Adopted check {check_id} failed.",
             })
-        elif status == "not-tested" and entry["blocking"]:
+        elif status == "not-tested" and effective_blocking:
             blockers.append({
                 "stage": "source_fitness",
                 "code": f"CHECK_NOT_TESTED:{check_id}",
                 "message": entry["reason"] or f"Mandatory adopted check {check_id} was not tested.",
+            })
+        elif is_mandatory_policy_check and status != "pass":
+            blockers.append({
+                "stage": "source_fitness",
+                "code": f"MANDATORY_CHECK_NON_PASS:{check_id}",
+                "message": entry["reason"] or f"Mandatory adopted check {check_id} must pass (observed {status}).",
             })
         elif status == "warn":
             adopted_warnings.append({
@@ -227,10 +239,13 @@ def evaluate_patch_readiness(
             })
 
         # Evaluate artifact chains scoped to the proposed artifact/companion closure
+        present_chain_ids: Set[str] = set()
         for chain in (promotion_raw.get("artifact_chains") or []):
             if not isinstance(chain, dict):
                 continue
             art_id = str(chain.get("artifact_id") or "").strip()
+            if art_id:
+                present_chain_ids.add(art_id)
             chain_status = str(chain.get("status") or "unknown").strip().lower()
             in_closure = (not closure_ids) or (art_id in closure_ids) or bool(chain.get("required_for_plan"))
             if chain_status != "verified":
@@ -246,6 +261,15 @@ def evaluate_patch_readiness(
                         "status": chain_status,
                         "message": str(chain.get("reason") or f"Unrelated artifact {art_id} is {chain_status} (outside proposed closure)."),
                     })
+
+        # Every required closure artifact must have explicit chain coverage in artifact_chains
+        for req_art_id in sorted(closure_ids):
+            if req_art_id not in present_chain_ids:
+                blockers.append({
+                    "stage": "artifact_promotion",
+                    "code": f"MISSING_REQUIRED_CHAIN:{req_art_id}",
+                    "message": f"Required closure artifact {req_art_id} is missing from artifact_promotion.artifact_chains.",
+                })
 
         if not signature_verified:
             blockers.append({
@@ -286,6 +310,29 @@ def evaluate_patch_readiness(
                 "code": "MEMBER_DIGEST_BINDING_MISMATCH",
                 "message": "Member validation decision is not bound to the promoted artifact_digest.",
             })
+        expected_evidence_digest = (
+            promotion_trace.get("evidence_file_digest")
+            or source_trace.get("evidence_file_digest")
+        )
+        bound_evidence_digest = str(member_trace.get("bound_evidence_digest") or "").strip()
+        if not bound_evidence_digest:
+            blockers.append({
+                "stage": "member_validation",
+                "code": "MISSING_MEMBER_EVIDENCE_BINDING",
+                "message": "Member validation decision must record a non-empty bound_evidence_digest.",
+            })
+        elif (
+            (expected_evidence_digest and bound_evidence_digest != expected_evidence_digest)
+            or (
+                source_trace.get("evidence_file_digest")
+                and bound_evidence_digest != source_trace["evidence_file_digest"]
+            )
+        ):
+            blockers.append({
+                "stage": "member_validation",
+                "code": "MEMBER_EVIDENCE_BINDING_MISMATCH",
+                "message": "Member validation bound_evidence_digest does not match the evaluated evidence_file_digest.",
+            })
         if decision != "approved":
             blockers.append({
                 "stage": "member_validation",
@@ -308,8 +355,11 @@ def evaluate_patch_readiness(
         overall_status = "incomplete"
 
     return {
+        "candidate_id": candidate.get("id"),
+        "artifact_id": primary_artifact_id or None,
         "overall_status": overall_status,
         "eligible_for_deployment": overall_status == "ready",
+        "verifier_mode": "simulated_gate_fixture_evidence",
         "stages": {
             "source_fitness": {
                 "status": source_status,
@@ -331,3 +381,75 @@ def evaluate_patch_readiness(
         "proposal_warnings": proposal_warnings,
         "unrelated_artifact_notices": unrelated_notices,
     }
+
+
+def evaluate_patch_readiness_bundle(
+    bundle: Dict[str, Any],
+    verifier: Optional[AttestationVerifier] = None,
+    mandatory_checks: Sequence[str] = DEFAULT_ADOPTED_MANDATORY_CHECKS,
+) -> Dict[str, Any]:
+    """Evaluate all patch candidates in a fixture bundle."""
+    candidates = bundle.get("candidates") if isinstance(bundle, dict) else []
+    evaluated: List[Dict[str, Any]] = []
+    by_id: Dict[str, Dict[str, Any]] = {}
+    for cand in candidates or []:
+        if not isinstance(cand, dict):
+            continue
+        res = evaluate_patch_readiness(cand, verifier=verifier, mandatory_checks=mandatory_checks)
+        evaluated.append(res)
+        cid = str(cand.get("id") or "").strip()
+        if cid:
+            by_id[cid] = res
+    return {
+        "schema_version": bundle.get("schema_version", "0.1") if isinstance(bundle, dict) else "0.1",
+        "verifier_mode": "simulated_gate_fixture_evidence",
+        "candidates": evaluated,
+        "by_id": by_id,
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Evaluate OSERA patch readiness candidates (#25).")
+    parser.add_argument(
+        "--fixture",
+        type=Path,
+        default=Path("data/fixtures/patch-readiness-sample.json"),
+        help="Path to patch readiness candidate fixture JSON.",
+    )
+    parser.add_argument(
+        "--candidate-id",
+        type=str,
+        default="ready-with-unrelated-broken-artifact",
+        help="Default candidate ID to attach as primary patch_readiness when writing to a dataset.",
+    )
+    parser.add_argument(
+        "--write-dataset",
+        type=Path,
+        default=None,
+        help="Optional dataset JSON path (e.g. data/finos-sample-platform.json) to attach patch_readiness on the matching library.",
+    )
+    parser.add_argument(
+        "--library-id",
+        type=str,
+        default="maven:org.springframework:spring-web:5.3.39",
+        help="Target library ID in --write-dataset to populate with patch_readiness and patch_readiness_scenarios.",
+    )
+    args = parser.parse_args()
+    bundle_raw = json.loads(args.fixture.read_text(encoding="utf-8"))
+    bundle_eval = evaluate_patch_readiness_bundle(bundle_raw)
+    if args.write_dataset:
+        dataset = json.loads(args.write_dataset.read_text(encoding="utf-8"))
+        primary = bundle_eval["by_id"].get(args.candidate_id) or (
+            bundle_eval["candidates"][0] if bundle_eval["candidates"] else None
+        )
+        for lib in dataset.get("libraries") or []:
+            if isinstance(lib, dict) and lib.get("id") == args.library_id:
+                lib["patch_readiness"] = primary
+                lib["patch_readiness_scenarios"] = bundle_eval["by_id"]
+        args.write_dataset.write_text(json.dumps(dataset, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(bundle_eval, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
