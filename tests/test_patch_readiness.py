@@ -1,5 +1,7 @@
 import copy
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 from patch_readiness import (
@@ -221,6 +223,46 @@ def test_write_dataset_fails_clearly_when_library_id_matches_no_library(tmp_path
         assert "maven:org.springframework:spring-web:5.3.39" in str(exc_info)
         assert "was not found in dataset libraries" in str(exc_info)
     assert temp_dataset_path.read_text(encoding="utf-8") == original_text
+
+
+def test_write_dataset_rejects_ambiguous_or_unknown_selection(tmp_path):
+    for case in ("duplicate_library", "unknown_candidate"):
+        dataset = json.loads(SAMPLE_DATASET_PATH.read_text(encoding="utf-8"))
+        extra_args = []
+        if case == "duplicate_library":
+            target = next(lib for lib in dataset["libraries"] if lib["id"] == DEFAULT_DATASET_LIBRARY_ID)
+            dataset["libraries"].append(copy.deepcopy(target))
+            expected_error = "ambiguous"
+            rejected_id = DEFAULT_DATASET_LIBRARY_ID
+        else:
+            rejected_id = "does-not-exist"
+            extra_args = ["--candidate-id", rejected_id]
+            expected_error = "candidate"
+
+        path = tmp_path / f"dataset-{case}.json"
+        path.write_text(json.dumps(dataset, indent=2) + "\n", encoding="utf-8")
+        before = path.read_bytes()
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT_DIR / "scripts" / "patch_readiness.py"),
+                "--fixture",
+                str(FIXTURE_PATH),
+                "--write-dataset",
+                str(path),
+                *extra_args,
+            ],
+            cwd=ROOT_DIR,
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode != 0, f"Invalid selection ({case}) must fail, not silently write a dataset"
+        assert expected_error in result.stderr.lower()
+        assert rejected_id in result.stderr
+        assert path.read_bytes() == before, f"Rejected selection ({case}) must leave the file unchanged"
+
 
 
 

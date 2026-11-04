@@ -416,28 +416,37 @@ def attach_patch_readiness_to_dataset(
     library_id: str = DEFAULT_DATASET_LIBRARY_ID,
     candidate_id: str = DEFAULT_CANDIDATE_ID,
 ) -> int:
-    """Attach evaluated patch_readiness and scenario map to matching library records in dataset.
+    """Attach evaluated patch_readiness and scenario map to the single matching library record in dataset.
 
-    Raises ValueError when no library in dataset matches library_id or candidate_id is missing.
+    Raises ValueError when candidate_id is unknown, when no library in dataset matches library_id,
+    or when library_id matches multiple dataset entries (ambiguous target).
     """
     by_id = bundle_eval.get("by_id") if isinstance(bundle_eval, dict) else {}
-    candidates = bundle_eval.get("candidates") if isinstance(bundle_eval, dict) else []
-    primary = (by_id or {}).get(candidate_id) or (candidates[0] if candidates else None)
+    primary = (by_id or {}).get(candidate_id)
     if primary is None:
-        raise ValueError(f"Candidate ID {candidate_id!r} was not found in evaluated readiness bundle.")
+        raise ValueError(
+            f"Unknown candidate ID {candidate_id!r}: not found in evaluated readiness bundle."
+        )
 
-    matched = 0
-    for lib in (dataset.get("libraries") or []) if isinstance(dataset, dict) else []:
-        if isinstance(lib, dict) and lib.get("id") == library_id:
-            lib["patch_readiness"] = primary
-            lib["patch_readiness_scenarios"] = by_id
-            matched += 1
-
-    if matched == 0:
+    libraries = (dataset.get("libraries") or []) if isinstance(dataset, dict) else []
+    matching_libs = [
+        lib
+        for lib in libraries
+        if isinstance(lib, dict) and lib.get("id") == library_id
+    ]
+    if not matching_libs:
         raise ValueError(
             f"Target library ID {library_id!r} was not found in dataset libraries."
         )
-    return matched
+    if len(matching_libs) > 1:
+        raise ValueError(
+            f"Ambiguous target library ID {library_id!r}: matched {len(matching_libs)} dataset library entries; expected exactly 1."
+        )
+
+    target_lib = matching_libs[0]
+    target_lib["patch_readiness"] = primary
+    target_lib["patch_readiness_scenarios"] = by_id
+    return 1
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
