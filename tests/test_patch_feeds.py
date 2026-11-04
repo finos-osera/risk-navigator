@@ -287,3 +287,97 @@ def test_cross_feed_conflicts_and_disabled_feeds_are_isolated() -> None:
     ]
     assert all(r["instance_state"] == "unknown_evidence" for r in lz4_recs)
 
+
+def test_complementary_feed_digest_reconciliation_is_order_independent() -> None:
+    raw = _load_fixture()
+    feeds = copy.deepcopy(raw["feeds"])
+    next(
+        o
+        for o in feeds[0]["config"]["catalog_overlays"]
+        if "lz4-java@" in o["replacement_purl"]
+    ).pop("artifact_digest")
+
+    estate = copy.deepcopy(raw["estate_snapshot"])
+    app = next(
+        a for a in estate["applications"] if a["application_id"] == "app-risk-engine"
+    )
+    component = next(c for c in app["components"] if "lz4-java@" in c["purl"])
+    component["purl"] = "pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1-osera-00001"
+    component["artifact_digest"] = "sha256:BAD"
+
+    states = []
+    for ordered_feeds in (feeds, list(reversed(feeds))):
+        result = evaluate_estate_patch_adoption(estate, ordered_feeds)
+        record = next(
+            r
+            for r in result["instance_records"]
+            if r["application_id"] == "app-risk-engine"
+            and r["library"] == "at.yawk.lz4:lz4-java"
+        )
+        states.append(record["instance_state"])
+        assert any(
+            b["blocked_reason"] == "artifact_digest_mismatch"
+            for b in record["blocked_candidates"]
+        )
+
+    assert states == ["applicable_unadopted", "applicable_unadopted"]
+
+
+def test_conflicting_inventory_row_digests_are_order_independent() -> None:
+    raw = _load_fixture()
+    states = []
+    for bad_first in (False, True):
+        estate = copy.deepcopy(raw["estate_snapshot"])
+        components = estate["applications"][0]["components"]
+        bad = copy.deepcopy(
+            next(c for c in components if "spring-boot-autoconfigure@" in c["purl"])
+        )
+        bad["artifact_digest"] = "sha256:BAD"
+        if bad_first:
+            components.insert(0, bad)
+        else:
+            components.append(bad)
+        result = evaluate_estate_patch_adoption(estate, raw["feeds"])
+        record = next(
+            r
+            for r in result["instance_records"]
+            if r["library"] == "org.springframework.boot:spring-boot-autoconfigure"
+        )
+        states.append(record["instance_state"])
+        blocked_reasons = {b["blocked_reason"] for b in record["blocked_candidates"]}
+        assert "conflicting_inventory_artifact_digests" in blocked_reasons
+        assert "artifact_digest_mismatch" in blocked_reasons
+
+    assert states == ["applicable_unadopted", "applicable_unadopted"]
+
+
+def test_maintenance_line_fallback_does_not_offer_older_patch_to_newer_cve_free_version() -> None:
+    raw = _load_fixture()
+    estate = copy.deepcopy(raw["estate_snapshot"])
+    estate["applications"].append(
+        {
+            "application_id": "app-modern-lz4",
+            "name": "Modern LZ4 Consumer",
+            "project_group": "Platform",
+            "observed_at": "2026-10-28T17:45:00Z",
+            "components": [
+                {
+                    "purl": "pkg:maven/at.yawk.lz4/lz4-java@1.8.99",
+                    "dependency_scope": "direct",
+                    "cves": [],
+                    "kev_cves": [],
+                }
+            ],
+        }
+    )
+    result = evaluate_estate_patch_adoption(estate, raw["feeds"])
+    rec = next(
+        r
+        for r in result["instance_records"]
+        if r["application_id"] == "app-modern-lz4"
+    )
+    assert rec["instance_state"] == "no_known_patch"
+    assert rec["eligible"] is False
+    assert rec["applicable_patches"] == []
+
+

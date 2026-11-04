@@ -581,70 +581,111 @@ def load_patch_feeds(feeds_bundle: list[dict[str, Any]]) -> dict[str, Any]:
 
         for patch in normalized["patches"]:
             purl = patch["replacement_purl"]
+            merged_by_purl.setdefault(purl, []).append(copy.deepcopy(patch))
+
+    reconciled_patches: dict[str, dict[str, Any]] = {}
+    for purl, raw_records in merged_by_purl.items():
+        ordered_records = sorted(
+            raw_records,
+            key=lambda r: (
+                0 if str(r.get("provider_kind") or "") == "osera" else 1,
+                str(r.get("feed_id") or ""),
+                str(r.get("patch_id") or ""),
+            ),
+        )
+        merged = copy.deepcopy(ordered_records[0])
+        merged["provenance"] = []
+        merged["conflicting_evidence"] = []
+        merged["fixed_advisories"] = []
+        merged["aliases"] = []
+        merged["applicable_versions"] = []
+        merged["residual_advisories"] = []
+        merged["evidence_links"] = []
+        merged["required_companions"] = []
+
+        distinct_digests: dict[str, list[str]] = {}
+        distinct_states: dict[str, list[str]] = {}
+
+        for rec in ordered_records:
             provenance_entry = {
-                "feed_id": patch["feed_id"],
-                "provider": patch["provider"],
-                "provider_kind": patch["provider_kind"],
-                "supplier": patch["supplier"],
-                "patch_id": patch["patch_id"],
-                "snapshot_version": patch["snapshot_version"],
-                "source_url": patch["source_url"],
-                "release_state": patch["release_state"],
-                "artifact_digest": patch.get("artifact_digest"),
-                "published_at": patch.get("published_at"),
+                "feed_id": rec["feed_id"],
+                "provider": rec["provider"],
+                "provider_kind": rec["provider_kind"],
+                "supplier": rec["supplier"],
+                "patch_id": rec["patch_id"],
+                "snapshot_version": rec["snapshot_version"],
+                "source_url": rec["source_url"],
+                "release_state": rec["release_state"],
+                "artifact_digest": rec.get("artifact_digest"),
+                "published_at": rec.get("published_at"),
             }
-            if purl not in merged_by_purl:
-                merged = copy.deepcopy(patch)
-                merged["provenance"] = [provenance_entry]
-                merged["conflicting_evidence"] = []
-                merged_by_purl[purl] = merged
-            else:
-                existing = merged_by_purl[purl]
-                if provenance_entry not in existing["provenance"]:
-                    existing["provenance"].append(provenance_entry)
-                for adv in patch["fixed_advisories"]:
-                    if adv not in existing["fixed_advisories"]:
-                        existing["fixed_advisories"].append(adv)
-                for alias in patch["aliases"]:
-                    if alias not in existing["aliases"]:
-                        existing["aliases"].append(alias)
-                for ver in patch["applicable_versions"]:
-                    if ver not in existing["applicable_versions"]:
-                        existing["applicable_versions"].append(ver)
-                for link in patch["evidence_links"]:
-                    if link not in existing["evidence_links"]:
-                        existing["evidence_links"].append(link)
-                for comp in patch["required_companions"]:
-                    if comp not in existing["required_companions"]:
-                        existing["required_companions"].append(comp)
+            if provenance_entry not in merged["provenance"]:
+                merged["provenance"].append(provenance_entry)
 
-                # Detect cross-feed disagreements on release_state or artifact_digest
-                if (
-                    existing.get("artifact_digest")
-                    and patch.get("artifact_digest")
-                    and existing["artifact_digest"] != patch["artifact_digest"]
-                ):
-                    conflict = {
-                        "replacement_purl": purl,
-                        "reason": "Cross-feed artifact_digest disagreement",
-                        "feeds": [existing["feed_id"], patch["feed_id"]],
-                        "digests": [existing["artifact_digest"], patch["artifact_digest"]],
-                    }
-                    existing["conflicting_evidence"].append(conflict)
-                    feed_conflicts.append(conflict)
+            for adv in rec.get("fixed_advisories") or []:
+                if adv not in merged["fixed_advisories"]:
+                    merged["fixed_advisories"].append(adv)
+            for alias in rec.get("aliases") or []:
+                if alias not in merged["aliases"]:
+                    merged["aliases"].append(alias)
+            for ver in rec.get("applicable_versions") or []:
+                if ver not in merged["applicable_versions"]:
+                    merged["applicable_versions"].append(ver)
+            for res_adv in rec.get("residual_advisories") or []:
+                if res_adv not in merged["residual_advisories"]:
+                    merged["residual_advisories"].append(res_adv)
+            for link in rec.get("evidence_links") or []:
+                if link not in merged["evidence_links"]:
+                    merged["evidence_links"].append(link)
+            for comp in rec.get("required_companions") or []:
+                if comp not in merged["required_companions"]:
+                    merged["required_companions"].append(comp)
 
-                if existing["release_state"] != patch["release_state"]:
-                    conflict = {
-                        "replacement_purl": purl,
-                        "reason": "Cross-feed release_state disagreement",
-                        "feeds": [existing["feed_id"], patch["feed_id"]],
-                        "states": [existing["release_state"], patch["release_state"]],
-                    }
-                    existing["conflicting_evidence"].append(conflict)
-                    feed_conflicts.append(conflict)
-                    if patch["withdrawn"] or existing["withdrawn"]:
-                        existing["withdrawn"] = True
-                        existing["release_state"] = "withdrawn"
+            digest_val = str(rec.get("artifact_digest") or "").strip()
+            if digest_val:
+                distinct_digests.setdefault(digest_val, [])
+                if rec["feed_id"] not in distinct_digests[digest_val]:
+                    distinct_digests[digest_val].append(rec["feed_id"])
+
+            state_val = str(rec.get("release_state") or "released").strip().lower()
+            distinct_states.setdefault(state_val, [])
+            if rec["feed_id"] not in distinct_states[state_val]:
+                distinct_states[state_val].append(rec["feed_id"])
+
+        # Order-independent artifact_digest reconciliation across feeds:
+        # - If one feed omits artifact_digest and another supplies it, preserve the non-null digest.
+        # - If active feeds supply conflicting non-null digests, record a deterministic conflict.
+        if len(distinct_digests) == 1:
+            merged["artifact_digest"] = next(iter(distinct_digests.keys()))
+        elif len(distinct_digests) > 1:
+            merged["artifact_digest"] = None
+            conflict_feeds = sorted({fid for fids in distinct_digests.values() for fid in fids})
+            conflict = {
+                "replacement_purl": purl,
+                "reason": "Cross-feed artifact_digest disagreement",
+                "feeds": conflict_feeds,
+                "digests": sorted(distinct_digests.keys()),
+            }
+            merged["conflicting_evidence"].append(conflict)
+            feed_conflicts.append(conflict)
+        else:
+            merged["artifact_digest"] = None
+
+        if len(distinct_states) > 1:
+            conflict_feeds = sorted({fid for fids in distinct_states.values() for fid in fids})
+            conflict = {
+                "replacement_purl": purl,
+                "reason": "Cross-feed release_state disagreement",
+                "feeds": conflict_feeds,
+                "states": sorted(distinct_states.keys()),
+            }
+            merged["conflicting_evidence"].append(conflict)
+            feed_conflicts.append(conflict)
+            if any(r.get("withdrawn") or r.get("release_state") == "withdrawn" for r in ordered_records):
+                merged["withdrawn"] = True
+                merged["release_state"] = "withdrawn"
+
+        reconciled_patches[purl] = merged
 
     # Also detect VEX status disagreements across feeds for the same (purl, vulnerability)
     vex_by_pair: dict[tuple[str, str], set[str]] = {}
@@ -660,12 +701,12 @@ def load_patch_feeds(feeds_bundle: list[dict[str, Any]]) -> dict[str, Any]:
                 "statuses": sorted(statuses),
             }
             feed_conflicts.append(conflict)
-            if purl in merged_by_purl:
-                merged_by_purl[purl]["conflicting_evidence"].append(conflict)
+            if purl in reconciled_patches:
+                reconciled_patches[purl]["conflicting_evidence"].append(conflict)
 
     return {
         "feeds": feed_summaries,
-        "patches": list(merged_by_purl.values()),
+        "patches": list(reconciled_patches.values()),
         "vex_statements": all_vex_statements,
         "ambiguous_records": all_ambiguous_records,
         "feed_conflicts": feed_conflicts,
@@ -684,6 +725,19 @@ def _is_usable_released_patch(patch: dict[str, Any]) -> tuple[bool, str | None]:
     return True, None
 
 
+def _parse_numeric_version_prefix(version: str) -> tuple[int, ...] | None:
+    raw = str(version or "").strip()
+    if not raw:
+        return None
+    osera = OSERA_VERSION_RE.match(raw)
+    if osera:
+        raw = osera.group("base")
+    nums = re.findall(r"\d+", raw.split("-")[0])
+    if not nums:
+        return None
+    return tuple(int(n) for n in nums)
+
+
 def _matches_applicable_scope(
     patch: dict[str, Any],
     ecosystem_type: str,
@@ -695,18 +749,25 @@ def _matches_applicable_scope(
         return False
     if observed_version == patch["replacement_version"]:
         return True
-    if observed_version in (patch.get("applicable_versions") or []):
+    applicable_versions = patch.get("applicable_versions") or []
+    if observed_version in applicable_versions:
         return True
     obs_osera = extract_osera_maintenance_line(observed_version)
-    if obs_osera and obs_osera["base_version"] in (patch.get("applicable_versions") or []):
+    if obs_osera and obs_osera["base_version"] in applicable_versions:
         return True
     obs_line = _derive_minor_line(observed_version)
     if obs_line and obs_line == patch.get("maintenance_line"):
+        # Never offer a maintenance-line fallback to an observation that has no CVEs
         if not observed_cves:
-            return True
+            return False
         patch_advs = {a.upper() for a in (patch.get("fixed_advisories") or []) + (patch.get("aliases") or [])}
-        if any(c.upper() in patch_advs for c in observed_cves):
-            return True
+        if not any(c.upper() in patch_advs for c in observed_cves):
+            return False
+        obs_ver_tuple = _parse_numeric_version_prefix(observed_version)
+        patch_base_tuple = _parse_numeric_version_prefix(patch["replacement_version"])
+        if obs_ver_tuple is not None and patch_base_tuple is not None and obs_ver_tuple > patch_base_tuple:
+            return False
+        return True
     return False
 
 
@@ -731,8 +792,9 @@ def evaluate_estate_patch_adoption(
     all_app_ids: set[str] = set()
     app_meta_by_id: dict[str, dict[str, Any]] = {}
 
-    # Deduplicate component observations per (app_id, purl_or_raw_id, artifact_digest)
-    # while tracking direct/transitive scopes so overlapping dependency paths are never double-counted.
+    # Reconcile component observations per (app_id, purl_or_raw_id) order-independently
+    # while tracking direct/transitive scopes and all observed artifact digests so
+    # conflicting or missing digests on a duplicate row are never masked by row ordering.
     obs_by_app_and_coord: dict[tuple[str, str], dict[str, Any]] = {}
 
     for app in raw_apps:
@@ -758,6 +820,7 @@ def evaluate_estate_patch_adoption(
             dep_scope = str(comp.get("dependency_scope") or ("direct" if comp.get("direct") else "transitive")).lower()
             cves = [str(c).strip() for c in (comp.get("cves") or []) if str(c).strip()]
             kev_cves = [str(c).strip() for c in (comp.get("kev_cves") or []) if str(c).strip()]
+            raw_digest = str(comp.get("artifact_digest") or "").strip() or None
             if key not in obs_by_app_and_coord:
                 obs_by_app_and_coord[key] = {
                     "instance_id": f"{app_id}::{coord_key}",
@@ -765,7 +828,10 @@ def evaluate_estate_patch_adoption(
                     "project_group": app_meta_by_id[app_id]["project_group"],
                     "raw_purl": raw_purl,
                     "parsed": parsed,
-                    "artifact_digest": comp.get("artifact_digest"),
+                    "artifact_digest": raw_digest,
+                    "observed_digests": {raw_digest} if raw_digest else set(),
+                    "missing_digest_rows": 0 if raw_digest else 1,
+                    "observation_rows": 1,
                     "dependency_scopes": {dep_scope},
                     "cves": list(dict.fromkeys(cves)),
                     "kev_cves": list(dict.fromkeys(kev_cves)),
@@ -774,6 +840,7 @@ def evaluate_estate_patch_adoption(
                 }
             else:
                 existing = obs_by_app_and_coord[key]
+                existing["observation_rows"] += 1
                 existing["dependency_scopes"].add(dep_scope)
                 for c in cves:
                     if c not in existing["cves"]:
@@ -781,8 +848,15 @@ def evaluate_estate_patch_adoption(
                 for k in kev_cves:
                     if k not in existing["kev_cves"]:
                         existing["kev_cves"].append(k)
-                if comp.get("artifact_digest") and not existing.get("artifact_digest"):
-                    existing["artifact_digest"] = comp.get("artifact_digest")
+                if raw_digest:
+                    existing["observed_digests"].add(raw_digest)
+                else:
+                    existing["missing_digest_rows"] += 1
+                # Deterministic canonical digest: only populated if unambiguous across all observed rows
+                if len(existing["observed_digests"]) == 1 and existing["missing_digest_rows"] == 0:
+                    existing["artifact_digest"] = next(iter(existing["observed_digests"]))
+                else:
+                    existing["artifact_digest"] = None
 
     instance_records: list[dict[str, Any]] = []
     package_line_groups: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
@@ -887,11 +961,38 @@ def evaluate_estate_patch_adoption(
         # Check if this instance is already running one of the usable released patches
         matched_patch: dict[str, Any] | None = None
         digest_mismatch = False
+        observed_digests = sorted(obs.get("observed_digests") or set())
+        missing_digest_rows = int(obs.get("missing_digest_rows") or 0)
+        has_inventory_digest_conflict = len(observed_digests) > 1 or (
+            len(observed_digests) == 1 and missing_digest_rows > 0
+        )
         for patch in usable_patches:
             if ver == patch["replacement_version"] and parsed["purl"] == patch["replacement_purl"]:
                 expected_digest = patch.get("artifact_digest")
                 observed_digest = obs.get("artifact_digest")
-                if expected_digest and observed_digest and expected_digest != observed_digest:
+                if has_inventory_digest_conflict:
+                    digest_mismatch = True
+                    blocked_candidates.append(
+                        {
+                            "patch_id": patch["patch_id"],
+                            "replacement_purl": patch["replacement_purl"],
+                            "provider": patch["provider"],
+                            "provider_kind": patch["provider_kind"],
+                            "blocked_reason": "conflicting_inventory_artifact_digests",
+                            "observed_digests": observed_digests,
+                        }
+                    )
+                    if expected_digest and any(d != expected_digest for d in observed_digests):
+                        blocked_candidates.append(
+                            {
+                                "patch_id": patch["patch_id"],
+                                "replacement_purl": patch["replacement_purl"],
+                                "provider": patch["provider"],
+                                "provider_kind": patch["provider_kind"],
+                                "blocked_reason": "artifact_digest_mismatch",
+                            }
+                        )
+                elif expected_digest and observed_digest and expected_digest != observed_digest:
                     digest_mismatch = True
                     blocked_candidates.append(
                         {
@@ -1356,9 +1457,27 @@ def main() -> int:
         default=Path("data/fixtures/patch-feeds-estate-sample.json"),
         help="Path to combined patch feeds + estate snapshot fixture JSON.",
     )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional path to write full evaluation JSON.",
+    )
+    parser.add_argument(
+        "--write-dashboard",
+        type=Path,
+        default=None,
+        help="Optional dashboard dataset JSON path (e.g. data/finos-sample-platform.json) to populate patch_feed_adoption.",
+    )
     args = parser.parse_args()
     raw = json.loads(args.fixture.read_text(encoding="utf-8"))
     result = evaluate_estate_patch_adoption(raw["estate_snapshot"], raw["feeds"])
+    if args.output:
+        args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    if args.write_dashboard:
+        dashboard_payload = json.loads(args.write_dashboard.read_text(encoding="utf-8"))
+        dashboard_payload["patch_feed_adoption"] = result
+        args.write_dashboard.write_text(json.dumps(dashboard_payload, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result["metrics"], indent=2))
     return 0
 
