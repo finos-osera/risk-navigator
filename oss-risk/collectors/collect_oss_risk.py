@@ -8,13 +8,14 @@ import hashlib
 import json
 import math
 import os
+import re
 import statistics
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, unquote, urlparse
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -27,7 +28,9 @@ DEPSDEV_API = "https://api.deps.dev/v3"
 DEPSDEV_ALPHA_API = "https://api.deps.dev/v3alpha"
 OSV_API = "https://api.osv.dev/v1/query"
 CISA_KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+OSERA_OPENVEX_URL = "https://feed.finos.org/openvex.json"
 NPM_DOWNLOADS_URL = "https://api.npmjs.org/downloads/point/last-month"
+OSERA_VERSION_RE = re.compile(r"^(?P<base>.+)-osera-(?P<seq>\d+)$")
 
 DIMENSION_WEIGHTS = {
     "project_vitality": 0.25,
@@ -143,6 +146,7 @@ class HttpClient:
         self.refresh = refresh
         self.timeout = timeout
         self.github_token = self._github_token()
+        self._session_cache: Dict[str, Tuple[Any, Dict[str, Any]]] = {}
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     def _github_token(self) -> str:
@@ -161,12 +165,30 @@ class HttpClient:
             return ""
         return result.stdout.strip()
 
-    def json(self, url: str, method: str = "GET", body: Optional[Dict[str, Any]] = None) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def json(self, url: str, method: str = "GET", body: Optional[Dict[str, Any]] = None) -> Tuple[Any, Dict[str, Any]]:
         payload = json.dumps(body, sort_keys=True).encode("utf-8") if body is not None else b""
         cache_key = hashlib.sha256(method.encode("utf-8") + b"\0" + url.encode("utf-8") + b"\0" + payload).hexdigest()
+        if cache_key in self._session_cache:
+            cached_data, cached_meta = self._session_cache[cache_key]
+            return cached_data, dict(cached_meta)
+
         cache_path = self.cache_dir / f"{cache_key}.json"
+        meta_path = self.cache_dir / f"{cache_key}.meta.json"
         if cache_path.exists() and not self.refresh:
-            return json.loads(cache_path.read_text(encoding="utf-8")), {"cache": "hit", "url": url}
+            data = json.loads(cache_path.read_text(encoding="utf-8"))
+            retrieved_at = None
+            if meta_path.exists():
+                try:
+                    meta_obj = json.loads(meta_path.read_text(encoding="utf-8"))
+                    retrieved_at = meta_obj.get("retrieved_at")
+                except (OSError, json.JSONDecodeError):
+                    retrieved_at = None
+            if not retrieved_at:
+                mtime = datetime.fromtimestamp(cache_path.stat().st_mtime, tz=timezone.utc).replace(microsecond=0)
+                retrieved_at = mtime.isoformat().replace("+00:00", "Z")
+            meta = {"cache": "hit", "url": url, "retrieved_at": retrieved_at}
+            self._session_cache[cache_key] = (data, meta)
+            return data, dict(meta)
 
         headers = {
             "Accept": "application/json",
@@ -178,21 +200,34 @@ class HttpClient:
             headers["Content-Type"] = "application/json"
 
         req = Request(url, data=payload if body is not None else None, headers=headers, method=method)
-        try:
-            with urlopen(req, timeout=self.timeout) as resp:
-                raw = resp.read()
-                data = json.loads(raw.decode("utf-8"))
-                cache_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-                return data, {"cache": "miss", "url": url, "status": resp.status}
-        except HTTPError as exc:
-            error = {
-                "error": f"HTTP {exc.code}",
-                "url": url,
-                "body": exc.read().decode("utf-8", errors="replace")[:500],
-            }
-            return {}, error
-        except (URLError, TimeoutError, json.JSONDecodeError) as exc:
-            return {}, {"error": str(exc), "url": url}
+        last_exc: Optional[Exception] = None
+        for attempt in range(2):
+            try:
+                with urlopen(req, timeout=self.timeout) as resp:
+                    raw = resp.read()
+                    data = json.loads(raw.decode("utf-8"))
+                    retrieved_at = now_iso()
+                    cache_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+                    meta_path.write_text(
+                        json.dumps({"url": url, "method": method, "retrieved_at": retrieved_at, "status": resp.status}, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
+                    meta = {"cache": "miss", "url": url, "status": resp.status, "retrieved_at": retrieved_at}
+                    self._session_cache[cache_key] = (data, meta)
+                    return data, dict(meta)
+            except HTTPError as exc:
+                error = {
+                    "error": f"HTTP {exc.code}",
+                    "url": url,
+                    "body": exc.read().decode("utf-8", errors="replace")[:500],
+                    "retrieved_at": now_iso(),
+                }
+                return {}, error
+            except Exception as exc:
+                last_exc = exc
+                if attempt == 0:
+                    continue
+        return {}, {"error": str(last_exc), "url": url, "retrieved_at": now_iso()}
 
 
 def read_records(path: Path) -> List[Dict[str, Any]]:
@@ -282,10 +317,11 @@ def collect_github(client: HttpClient, repository_url: str, observed: datetime) 
     median_pr_merge_days = round(statistics.median(merge_latencies), 2) if merge_latencies else None
     pr_merge_ratio = round(merged_prs / closed_prs, 3) if closed_prs else None
 
+    observed_iso = repo_meta.get("retrieved_at") or observed.isoformat().replace("+00:00", "Z")
     return {
         "source": "github-api",
         "url": f"https://api.github.com/repos/{path}",
-        "observed_at": observed.isoformat().replace("+00:00", "Z"),
+        "observed_at": observed_iso,
         "confidence": 0.9 if repo else 0.3,
         "stars": repo.get("stargazers_count"),
         "forks": repo.get("forks_count"),
@@ -340,7 +376,7 @@ def collect_scorecard(client: HttpClient, repository_url: str, observed: datetim
     return {
         "source": "openssf-scorecard-api",
         "url": f"{SCORECARD_API}/{project}",
-        "observed_at": observed.isoformat().replace("+00:00", "Z"),
+        "observed_at": meta.get("retrieved_at") or observed.isoformat().replace("+00:00", "Z"),
         "confidence": 0.95 if data.get("score") is not None else 0.2,
         "score": data.get("score"),
         "scorecard_version": ((data.get("scorecard") or {}).get("version")),
@@ -389,7 +425,7 @@ def collect_depsdev(client: HttpClient, ecosystem: str, package: str, observed: 
     return {
         "source": "deps.dev-api",
         "url": f"{DEPSDEV_API}/systems/{system}/packages/{encoded_package}",
-        "observed_at": observed.isoformat().replace("+00:00", "Z"),
+        "observed_at": meta.get("retrieved_at") or observed.isoformat().replace("+00:00", "Z"),
         "confidence": 0.9 if version_count else 0.25,
         "system": system,
         "version_count": version_count,
@@ -412,7 +448,7 @@ def collect_npm_downloads(client: HttpClient, ecosystem: str, package: str, obse
     return {
         "source": "npm-downloads-api",
         "url": f"{NPM_DOWNLOADS_URL}/{package}",
-        "observed_at": observed.isoformat().replace("+00:00", "Z"),
+        "observed_at": meta.get("retrieved_at") or observed.isoformat().replace("+00:00", "Z"),
         "confidence": 0.85 if data.get("downloads") is not None else 0.2,
         "monthly_downloads": data.get("downloads"),
         "start": data.get("start"),
@@ -449,7 +485,7 @@ def collect_osv(client: HttpClient, ecosystem: str, package: str, observed: date
     return {
         "source": "osv-query-api",
         "url": OSV_API,
-        "observed_at": observed.isoformat().replace("+00:00", "Z"),
+        "observed_at": meta.get("retrieved_at") or observed.isoformat().replace("+00:00", "Z"),
         "confidence": 0.9 if isinstance(vulns, list) else 0.2,
         "query": body,
         "vulnerability_count": len(vuln_rows),
@@ -480,12 +516,259 @@ def collect_cisa_kev(client: HttpClient, cves: Iterable[str], observed: datetime
     return {
         "source": "cisa-kev-json",
         "url": CISA_KEV_URL,
-        "observed_at": observed.isoformat().replace("+00:00", "Z"),
+        "observed_at": meta.get("retrieved_at") or observed.isoformat().replace("+00:00", "Z"),
+        "catalog_version": data.get("catalogVersion") if isinstance(data, dict) else None,
+        "catalog_date_released": data.get("dateReleased") if isinstance(data, dict) else None,
         "confidence": 0.95 if data.get("vulnerabilities") else 0.2,
         "catalog_count": len(data.get("vulnerabilities", [])) if isinstance(data, dict) else 0,
         "matched_count": len(rows),
         "matched_cves": [row["cveID"] for row in rows],
         "matches": rows,
+        "api": meta,
+    }
+
+
+def parse_openvex_purl(purl: Any) -> Optional[Dict[str, Any]]:
+    """Parse a Package URL (PURL) from an OpenVEX product entry into exact (ecosystem, package, version)."""
+    if not isinstance(purl, str) or not purl.strip():
+        return None
+    raw = purl.strip()
+    if not raw.startswith("pkg:"):
+        return None
+    body = raw[4:].split("?")[0].split("#")[0]
+    slash_idx = body.find("/")
+    if slash_idx <= 0:
+        return None
+    eco = body[:slash_idx].strip().lower()
+    coord_and_ver = body[slash_idx + 1 :]
+    at_idx = coord_and_ver.rfind("@")
+    if at_idx <= 0:
+        return None
+    coord_raw = unquote(coord_and_ver[:at_idx]).strip("/")
+    version = unquote(coord_and_ver[at_idx + 1 :]).strip()
+    if not coord_raw or not version:
+        return None
+    if eco == "maven":
+        package = coord_raw.replace("/", ":")
+    else:
+        package = coord_raw
+    osera_match = OSERA_VERSION_RE.match(version)
+    base_version = osera_match.group("base") if osera_match else version
+    osera_seq = int(osera_match.group("seq")) if osera_match else None
+    return {
+        "purl": f"pkg:{eco}/{coord_and_ver[:at_idx]}@{version}",
+        "ecosystem": eco,
+        "package": package,
+        "version": version,
+        "base_version": base_version,
+        "osera_sequence": osera_seq,
+    }
+
+
+def collect_osera_openvex(
+    client: HttpClient,
+    ecosystem: str,
+    package: str,
+    observed: datetime,
+    versions_in_use: Optional[Iterable[Any]] = None,
+    feed_url: str = OSERA_OPENVEX_URL,
+) -> Dict[str, Any]:
+    """Collect authoritative published OSERA patch versions and fixed advisories from the OSERA OpenVEX feed."""
+    eco_norm = (ecosystem or "").strip().lower()
+    pkg_norm = (package or "").strip()
+    observed_default = observed.isoformat().replace("+00:00", "Z")
+    if not eco_norm or not pkg_norm or eco_norm == "system":
+        return {
+            "source": "not-applicable",
+            "url": feed_url,
+            "retrieved_at": observed_default,
+            "observed_at": observed_default,
+            "coverage_status": "not_applicable",
+            "published_patch_count": 0,
+            "fixed_advisory_count": 0,
+            "fixed_cve_count": 0,
+            "published_versions": [],
+            "fixed_advisories": [],
+            "fixed_cves": [],
+            "patches": [],
+            "installed_version_claims": [],
+            "note": f"OSERA OpenVEX PURL matching is not applicable for {eco_norm or 'unknown'}/{pkg_norm}.",
+        }
+
+    data, meta = client.json(feed_url)
+    retrieved_at = meta.get("retrieved_at") or observed_default
+    if not isinstance(data, dict) or not isinstance(data.get("statements"), list):
+        return {
+            "source": "osera-openvex-feed",
+            "url": feed_url,
+            "retrieved_at": retrieved_at,
+            "observed_at": retrieved_at,
+            "coverage_status": "unavailable",
+            "confidence": 0.0,
+            "error": meta.get("error") or "Invalid or unavailable OSERA OpenVEX document",
+            "published_patch_count": 0,
+            "fixed_advisory_count": 0,
+            "fixed_cve_count": 0,
+            "published_versions": [],
+            "fixed_advisories": [],
+            "fixed_cves": [],
+            "patches": [],
+            "published_patches": [],
+            "installed_version_claims": [],
+            "api": meta,
+        }
+
+    feed_id = data.get("@id") or feed_url
+    feed_version = data.get("version")
+    feed_last_updated = data.get("last_updated") or data.get("updated") or data.get("timestamp")
+
+    # Deduplicate statements by exact (purl, vuln_id, status, supplier)
+    seen_statement_keys: set[Tuple[str, str, str, str]] = set()
+    patches_by_purl: Dict[str, Dict[str, Any]] = {}
+    statements_by_version: Dict[str, List[Dict[str, Any]]] = {}
+    raw_statement_count = 0
+    matched_statement_count = 0
+
+    for stmt in data.get("statements") or []:
+        if not isinstance(stmt, dict):
+            continue
+        vuln_obj = stmt.get("vulnerability")
+        if not isinstance(vuln_obj, dict):
+            continue
+        vuln_id = str(vuln_obj.get("name") or vuln_obj.get("@id") or "").strip()
+        status = str(stmt.get("status") or "").strip().lower()
+        products = stmt.get("products")
+        if not vuln_id or not status or not isinstance(products, list):
+            continue
+        aliases = [str(a).strip() for a in (vuln_obj.get("aliases") or []) if isinstance(a, str) and str(a).strip()]
+        supplier = str(stmt.get("supplier") or "OSERA").strip()
+        stmt_ts = str(stmt.get("timestamp") or feed_last_updated or "").strip()
+
+        for prod in products:
+            raw_purl = prod.get("@id") if isinstance(prod, dict) else prod
+            parsed = parse_openvex_purl(raw_purl)
+            if not parsed:
+                continue
+            if parsed["ecosystem"] != eco_norm or parsed["package"] != pkg_norm:
+                continue
+
+            raw_statement_count += 1
+            dedup_key = (parsed["purl"], vuln_id, status, supplier)
+            if dedup_key in seen_statement_keys:
+                if status == "fixed" and parsed["purl"] in patches_by_purl:
+                    existing_entry = patches_by_purl[parsed["purl"]]
+                    if stmt_ts and (not existing_entry["timestamp"] or stmt_ts > existing_entry["timestamp"]):
+                        existing_entry["timestamp"] = stmt_ts
+                continue
+            seen_statement_keys.add(dedup_key)
+            matched_statement_count += 1
+
+            cves_for_stmt = sorted(
+                {
+                    *( [vuln_id] if vuln_id.upper().startswith("CVE-") else [] ),
+                    *( [a for a in aliases if a.upper().startswith("CVE-")] ),
+                }
+            )
+            stmt_record = {
+                "purl": parsed["purl"],
+                "version": parsed["version"],
+                "base_version": parsed["base_version"],
+                "osera_sequence": parsed["osera_sequence"],
+                "vulnerability": vuln_id,
+                "aliases": sorted(set(aliases)),
+                "cves": cves_for_stmt,
+                "status": status,
+                "supplier": supplier,
+                "timestamp": stmt_ts,
+            }
+            statements_by_version.setdefault(parsed["version"], []).append(stmt_record)
+
+            if status == "fixed":
+                purl_key = parsed["purl"]
+                if purl_key not in patches_by_purl:
+                    patches_by_purl[purl_key] = {
+                        "purl": parsed["purl"],
+                        "version": parsed["version"],
+                        "base_version": parsed["base_version"],
+                        "osera_sequence": parsed["osera_sequence"],
+                        "supplier": supplier,
+                        "status": "fixed",
+                        "timestamp": stmt_ts,
+                        "fixed_advisories": [],
+                        "aliases": [],
+                        "fixed_cves": [],
+                    }
+                entry = patches_by_purl[purl_key]
+                if stmt_ts and (not entry["timestamp"] or stmt_ts > entry["timestamp"]):
+                    entry["timestamp"] = stmt_ts
+                if vuln_id not in entry["fixed_advisories"]:
+                    entry["fixed_advisories"].append(vuln_id)
+                for al in aliases:
+                    if al not in entry["aliases"]:
+                        entry["aliases"].append(al)
+                for cve in cves_for_stmt:
+                    if cve not in entry["fixed_cves"]:
+                        entry["fixed_cves"].append(cve)
+
+    patches = sorted(
+        patches_by_purl.values(),
+        key=lambda p: (str(p.get("base_version") or ""), int(p.get("osera_sequence") or 0), str(p.get("version") or "")),
+        reverse=True,
+    )
+    for p in patches:
+        p["fixed_advisories"].sort()
+        p["aliases"].sort()
+        p["fixed_cves"].sort()
+
+    all_fixed_advisories = sorted({adv for p in patches for adv in p["fixed_advisories"]})
+    all_fixed_cves = sorted({cve for p in patches for cve in p["fixed_cves"]})
+    published_versions = [p["version"] for p in patches]
+
+    # Evaluate exact version-specific claims for any deployed/installed versions in use
+    installed_claims: List[Dict[str, Any]] = []
+    for raw_ver in versions_in_use or []:
+        ver_str = str(raw_ver.get("version") if isinstance(raw_ver, dict) else raw_ver or "").strip()
+        if not ver_str:
+            continue
+        exact_stmts = statements_by_version.get(ver_str, [])
+        fixed_for_ver = sorted({s["vulnerability"] for s in exact_stmts if s["status"] == "fixed"})
+        installed_claims.append({
+            "version": ver_str,
+            "exact_purl": f"pkg:{eco_norm}/{pkg_norm.replace(':', '/') if eco_norm == 'maven' else pkg_norm}@{ver_str}",
+            "matched_in_feed": bool(exact_stmts),
+            "statement_count": len(exact_stmts),
+            "fixed_advisories": fixed_for_ver,
+            "statuses": sorted({s["status"] for s in exact_stmts}),
+        })
+
+    return {
+        "source": "osera-openvex-feed",
+        "url": feed_url,
+        "feed_id": feed_id,
+        "feed_version": feed_version,
+        "feed_last_updated": feed_last_updated,
+        "retrieved_at": retrieved_at,
+        "observed_at": retrieved_at,
+        "confidence": 0.95,
+        "coverage_status": "covered" if patches else "no_published_osera_fix",
+        "published_patch_count": len(patches),
+        "published_versions": published_versions,
+        "latest_published_version": published_versions[0] if published_versions else None,
+        "fixed_advisory_count": len(all_fixed_advisories),
+        "fixed_advisories": all_fixed_advisories,
+        "fixed_cve_count": len(all_fixed_cves),
+        "fixed_cves": all_fixed_cves,
+        "raw_statement_count": raw_statement_count,
+        "deduplicated_statement_count": matched_statement_count,
+        "statement_count": matched_statement_count,
+        "patches": patches,
+        "published_patches": patches,
+        "installed_version_claims": installed_claims,
+        "scope_note": (
+            "Authoritative OSERA OpenVEX published patch versions and fixed advisories. "
+            "Absence from this feed means no published OSERA fix was found, not zero vulnerabilities. "
+            "Version-specific OpenVEX statements apply only to the exact PURL version and remain distinct from package-wide OSV advisories."
+        ),
         "api": meta,
     }
 
@@ -638,6 +921,13 @@ def collect_record(client: HttpClient, record: Dict[str, Any], observed: datetim
     npm = collect_npm_downloads(client, project.get("ecosystem", ""), project.get("package", ""), observed)
     osv = collect_osv(client, project.get("ecosystem", ""), project.get("package", ""), observed) if include_osv else {}
     kev = collect_cisa_kev(client, osv.get("cves") or [], observed) if include_osv else {}
+    osera_openvex = collect_osera_openvex(
+        client,
+        project.get("ecosystem", ""),
+        project.get("package", ""),
+        observed,
+        versions_in_use=enterprise.get("versions_in_use") or [],
+    )
     registry_confidence = max(depsdev.get("confidence", 0), npm.get("confidence", 0) if npm else 0)
     registry_source = "combined-registry-evidence"
     if depsdev.get("source") == "not-applicable" and not npm:
@@ -663,6 +953,20 @@ def collect_record(client: HttpClient, record: Dict[str, Any], observed: datetim
     scores["undermaintenance_pressure"] = undermaintenance_pressure(github, depsdev, npm, enterprise)
 
     evidence = dict(record.get("evidence", {}))
+    if isinstance(evidence.get("finos_osera_backpatch"), dict):
+        bp = dict(evidence["finos_osera_backpatch"])
+        bp["published_osera_patch_available"] = bool(osera_openvex.get("published_patch_count", 0) > 0)
+        bp["published_osera_patch_count"] = int(osera_openvex.get("published_patch_count", 0))
+        bp["published_osera_versions"] = list(osera_openvex.get("published_versions") or [])
+        bp["osera_feed_version"] = osera_openvex.get("feed_version")
+        bp["osera_feed_last_updated"] = osera_openvex.get("feed_last_updated")
+        bp["availability_authority"] = OSERA_OPENVEX_URL
+        bp["note"] = (
+            "GitHub backpatch repository discovery provides repository metadata only; "
+            "published OSERA patch availability is determined authoritatively from https://feed.finos.org/openvex.json."
+        )
+        evidence["finos_osera_backpatch"] = bp
+
     evidence.update({
         "openssf_scorecard": scorecard,
         "openssf_criticality": {
@@ -672,7 +976,7 @@ def collect_record(client: HttpClient, record: Dict[str, Any], observed: datetim
         },
         "chaoss_derived": {
             "source": "github-api-derived",
-            "observed_at": observed.isoformat().replace("+00:00", "Z"),
+            "observed_at": github.get("observed_at") or observed.isoformat().replace("+00:00", "Z"),
             "confidence": github.get("confidence", 0) * 0.85,
             "active_contributors_365d": github.get("active_contributors_365d"),
             "active_contributors_180d": github.get("active_contributors_180d"),
@@ -693,10 +997,11 @@ def collect_record(client: HttpClient, record: Dict[str, Any], observed: datetim
         },
         "osv": osv or {"source": "disabled", "confidence": 0.0},
         "cisa_kev": kev or {"source": "disabled", "confidence": 0.0},
+        "osera_openvex": osera_openvex,
         "github": github,
         "package_registry": {
             "source": registry_source,
-            "observed_at": observed.isoformat().replace("+00:00", "Z"),
+            "observed_at": depsdev.get("observed_at") or npm.get("observed_at") or observed.isoformat().replace("+00:00", "Z"),
             "confidence": registry_confidence,
             **{k: v for k, v in depsdev.items() if k not in {"source", "observed_at", "confidence"}},
             **({"npm_monthly_downloads": npm.get("monthly_downloads"), "npm_download_window": f"{npm.get('start')}..{npm.get('end')}"} if npm else {}),
