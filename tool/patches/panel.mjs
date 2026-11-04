@@ -22,7 +22,7 @@ const host = document.getElementById('patchCoverage');
 host.innerHTML = `<div class="patch-heading"><div><strong>Patch coverage</strong><span id="patchFeedStatus" class="small" role="status"></span></div><div class="patch-actions"><button id="loadOsera">Refresh OSERA</button><button id="managePatchSources" aria-expanded="false">Manage sources</button></div></div>
 <div id="patchSourcesSummary" class="small"></div>
 <div id="patchSourcesManager" hidden><h3>Patch sources</h3><p class="small">Enabled sources contribute to matching and totals. Visible sources appear in badges and evidence. Hidden sources still count.</p><div id="patchSources"></div>
-<div class="patch-actions"><label>Import supplemental inventory <input id="patchFile" type="file" accept=".json,application/json"></label><label>Feed URL <input id="patchUrl" type="url" placeholder="https://…/catalog.json"></label><button id="loadPatchUrl">Add URL</button></div>
+<div class="patch-actions"><label>Import patch catalog <input id="patchFile" type="file" accept=".json,application/json"></label><label>Feed URL <input id="patchUrl" type="url" placeholder="https://…/catalog.json"></label><button id="loadPatchUrl">Add URL</button></div>
 <label><input id="autoOsera" type="checkbox"> Refresh OSERA automatically at startup</label><p class="small">Uploads stay in this browser. URL feeds receive a download request, never your estate inventory.</p></div>
 <p id="patchMessage" role="status" aria-live="polite"></p>
 <div class="patch-actions"><label>Show <select id="patchStatusFilter"><option value="">All libraries</option><option value="opportunity">Has patch opportunity</option>${Object.entries(labels).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label><span class="small">Uses the main library filters and selected estate.</span></div>
@@ -96,9 +96,13 @@ function badge(lib) {
 }
 function matchesFilter(lib) {const status=patchState.filters.status;return !status||(status==='opportunity'?['available','candidate'].includes(resultFor(lib).status):status===resultFor(lib).status);}
 function detail(lib) {
-  const r=resultFor(lib),matches=visibleMatches(r),targets=unique(matches.map(p=>p.target));
-  return `<section class="patch-detail"><h3>Patch coverage</h3>${badge(lib)}<p>${r.covered.length} of ${(lib.cves||[]).length} listed findings have confirmed patch coverage.</p><p class="small">Published candidates require compatibility review. Observed artifacts are inventory evidence, not deployment verification.</p>${targets.map(target=>{const records=matches.filter(p=>p.target===target);return `<article class="patch-target"><strong>${h(target)}</strong><p>${h(unique(records.flatMap(p=>p.advisories)).join(', '))}</p><p class="small">${h(unique(records.map(p=>`${p.provider} · ${p.state} · ${p.status}`)).join('; '))}</p><details><summary>Source and release evidence</summary><pre>${h(JSON.stringify(records,null,2))}</pre></details></article>`;}).join('')||'<p>No visible matching evidence. Check source visibility or add an inventory.</p>'}<p><strong>Remaining findings:</strong> ${h(r.remaining.join(', ')||'None of the listed findings')}</p></section>`;
+  const r=resultFor(lib),matches=visibleMatches(r);
+  return `<section class="patch-detail"><h3>Patch coverage</h3>${badge(lib)}<p>${r.covered.length} of ${(lib.cves||[]).length} listed findings have confirmed patch coverage.</p>
+    ${libraryVersions(lib)}
+    <p><strong>Remaining findings:</strong> ${h(r.remaining.join(', ')||'None of the listed findings')}</p>
+    <details><summary>All source evidence (${unique(matches.map(p=>p.target)).length} target versions)</summary><p class="small">Includes historical and other-line records. Published candidates do not establish compatibility.</p><pre>${h(JSON.stringify(matches,null,2))}</pre></details></section>`;
 }
+
 const ratio=(a,b)=>b?`${a} / ${b} (${Math.round(100*a/b)}%)`:'N/A';
 function advisoryCards(ids) {
   const known=new Map();
@@ -113,16 +117,16 @@ function advisoryCards(ids) {
   }).join('')}</div>`;
 }
 function requestAction(lib) {
-  return (lib.cves||[]).length ? `<button class="ghost" data-request-library="${h(lib.id)}" title="Review coverage before requesting a new patch">Review / request coverage for ${h(lib.release)}</button>` : '';
+  return (lib.cves||[]).length ? `<button class="ghost" data-request-library="${h(lib.id)}" title="Review coverage before requesting a new patch">Draft request for ${h(lib.release)}</button>` : '';
 }
 function estateCard(item) {
   const projects=new Map((patchState.scope?.consumer_projects||[]).map(p=>[p.id,p]));
   const ids=unique(item.estateMatches.flatMap(m=>m.lib.consumer_project_ids||[]));
-  const status=item.exactUse?'Exact patch found':item.sameLineVersions.length?'Same minor line':item.estateMatches.length?'Different minor line':'Outside selected inventory';
+  const status=item.exactUse?'Exact patch found':item.sameLineVersions.length?'Same minor line':item.estateMatches.length?'Different minor line':'Not observed in selected inventory';
   return `<section class="patch-estate"><div class="patch-market-top"><h4>In your estate</h4><span class="patch-badge ${item.exactUse?'patch-observed':item.sameLineVersions.length?'patch-candidate':''}">${status}</span></div><div class="patch-estate-stats"><div><strong>${ids.length}</strong><span>applications</span></div><div><strong>${item.estateVersions.length}</strong><span>versions found</span></div></div>${item.estateMatches.length?item.estateMatches.map(({identity,lib})=>{
     const consumers=unique(lib.consumer_project_ids||[]);
     const direct=new Set(lib.direct_consumer_project_ids||[]);
-    return `<details class="patch-consumers"><summary><span class="patch-coordinate">${h(purl(identity)?.version)}</span> <span class="small">· ${consumers.length} applications</span></summary><p><button class="ghost" data-open-library="${h(lib.id)}" title="Inspect this library and its dependency evidence">Inspect library details ↗</button> ${requestAction(lib)}</p><ul>${consumers.map(id=>{
+    return `<details class="patch-consumers"><summary><span class="patch-coordinate">${h(purl(identity)?.version)}</span> <span class="small">· ${consumers.length} applications</span></summary><p>${lib.inventory_only?'':`<button class="ghost" data-open-library="${h(lib.id)}" title="Inspect this library and its dependency evidence">Inspect library details ↗</button>`} ${requestAction(lib)}</p><ul>${consumers.map(id=>{
       const project=projects.get(id),label=project?.project_ref||project?.proj||id;
       return `<li><span>${h(label)}</span><span class="patch-badge">${direct.has(id)?'Direct':'Transitive'}</span></li>`;
     }).join('')||'<li>No consumer application evidence in this scope.</li>'}</ul></details>`;
@@ -197,7 +201,7 @@ function inventoryDetail(item) {
 function renderMode(libs,scope,selected,onSelect) {
   redrawInventory=()=>{const item=renderMode(libs,scope,selected,onSelect);onSelect(item);};
   patchState.scope={...scope,libraries:libs};
-  const scopeKey=JSON.stringify(libs.map(lib=>[lib.id,lib.consumer_project_ids,lib.direct_consumer_project_ids]));
+  const scopeKey=JSON.stringify([scope.consumer_projects.map(p=>p.id),scope.inventory_scope,libs.map(lib=>[lib.id,lib.consumer_project_ids,lib.direct_consumer_project_ids])]);
   if(!inventoryCache || inventoryCache.key!==scopeKey)inventoryCache={key:scopeKey,all:inventory(patchState.scope,patchState.feeds),selected:new Map()};
   const all = inventoryCache.all;
   patchState.inventory = all;
@@ -237,7 +241,7 @@ function renderMode(libs,scope,selected,onSelect) {
     q('#patchScope').textContent=`Browse the latest published patch per package, provider and minor line. Historical builds are omitted. Estate relevance uses package identity, not upgrade eligibility. Inventory ${scope.meta?.extracted_at||'date unknown'}${scope.meta?.inventory_complete===true?'': ' · partial inventory; absence is unconfirmed'}. Search and relevance narrow listings; summary counts cover the full visible catalog.`;
     document.getElementById('mainTable').hidden=true;
     const grid=document.getElementById('dashboardView');grid.hidden=false;
-    grid.innerHTML=`<section class="patch-market"><h3>Published patch catalog</h3><p class="small">Explore maintained version lines and their published fixes. Select a package for release evidence and estate context.</p><div class="patch-market-grid">${rows.map((row,i)=>`<button class="patch-market-card ${row.id===selected?'selected':''}" data-market-row="${i}" aria-label="Inspect ${h(row.target)}"><span class="patch-market-top"><span>${h(row.providers.join(', '))}</span><span class="patch-badge">${h(row.line)} line</span></span><strong>${h(purl(row.target).name.split('/').pop())}</strong><span class="small">${h(purl(row.target).name)}</span><span class="patch-coordinate">${h(purl(row.target).version)}</span><span>${row.advisories.length} published advisory IDs</span><span class="patch-market-presence">${row.exactUse?'Exact patch in estate':row.sameLineVersions.length?'Same minor line in estate':row.estateMatches.length?'Package in estate · different line':'Outside selected inventory'}</span></button>`).join('')||'<p>No published patches match these filters.</p>'}</div></section>`;
+    grid.innerHTML=`<section class="patch-market"><h3>Published patch catalog</h3><p class="small">Explore maintained version lines and their published fixes. Select a package for release evidence and estate context.</p><div class="patch-market-grid">${rows.map((row,i)=>`<button class="patch-market-card ${row.id===selected?'selected':''}" data-market-row="${i}" aria-label="Inspect ${h(row.target)}"><span class="patch-market-top"><span>${h(row.providers.join(', '))}</span><span class="patch-badge">${h(row.line)} line</span></span><strong>${h(purl(row.target).name.split('/').pop())}</strong><span class="small">${h(purl(row.target).name)}</span><span class="patch-coordinate">${h(purl(row.target).version)}</span><span>${row.advisories.length} published advisory IDs</span><span class="patch-market-presence">${row.exactUse?'Exact patch in estate':row.sameLineVersions.length?'Same minor line in estate':row.estateMatches.length?'Package in estate · different line':'Not observed in selected inventory'}</span></button>`).join('')||'<p>No published patches match these filters.</p>'}</div></section>`;
     grid.querySelectorAll('[data-market-row]').forEach(button=>button.onclick=()=>{const row=rows[Number(button.dataset.marketRow)];selected=row.id;grid.querySelectorAll('[data-market-row]').forEach(b=>b.classList.toggle('selected',b===button));onSelect(row);});
     document.getElementById('rowCount').textContent=`${rows.length} published listings`;
     return rows.find(row=>row.id===selected)||rows[0]||null;

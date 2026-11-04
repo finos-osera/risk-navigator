@@ -24,6 +24,18 @@ export function sameArtifact(a, b) {
     (a.split('?')[1] || a.split('#')[1] || '') === (b.split('?')[1] || b.split('#')[1] || '');
 }
 export function normalizeFeed(doc, source = 'Imported feed', releaseSets = null) {
+  // Accept the provider catalog contract used by the Python evaluator (#69).
+  if (doc?.document?.schema_version === 'osera-patch-catalog/v1' || doc?.schema_version === 'osera-patch-catalog/v1') {
+    const config = doc.config || {}, raw = doc.document || doc;
+    doc = { schema_version: 1, id: config.feed_id || raw.feed_id || source,
+      provider: config.provider || raw.provider || 'Member', generated_at: raw.as_of || raw.updated || raw.timestamp,
+      version: config.snapshot_version || raw.snapshot_version || raw.version || 1,
+      patches: (raw.patches || []).map((p, i) => ({ ...p, id: p.patch_id || `patch-${i}`,
+        target: p.replacement_purl, source_versions: p.applicable_versions || [], advisories: p.fixed_advisories || [],
+        aliases: (p.fixed_advisories || []).length === 1 ? [[...p.fixed_advisories, ...(p.aliases || [])]] : [],
+        state: p.withdrawn ? 'withdrawn' : ['supported_line','backlog_closed','draft','candidate'].includes(p.release_state) ? 'planned' : p.release_state || 'released', evidence: p.evidence_links || source,
+        companions: p.required_companions || [] })) };
+  }
   const errors = [], patches = [];
   if (!doc || typeof doc !== 'object') throw new Error('Feed must be a JSON object.');
   if (doc.schema_version === 1 && Array.isArray(doc.patches)) {
@@ -35,7 +47,7 @@ export function normalizeFeed(doc, source = 'Imported feed', releaseSets = null)
           (item.source_package && !purl(`${item.source_package}@placeholder`))) {
         errors.push(`Patch ${index + 1}: invalid id, target, source versions, advisories or release state.`); continue;
       }
-      patches.push({ ...item, provider: String(doc.provider), source,
+      patches.push({ ...item, provider: String(item.provider || doc.provider), source,
         package: item.source_package ? purl(`${item.source_package}@placeholder`).key : purl(item.target).key,
         aliases: Array.isArray(item.aliases) ? item.aliases.filter(x => strings(x) && x.length) : [],
         status: 'fixed', evidence: item.evidence || source });
@@ -96,7 +108,15 @@ export function coverageIndex(patches) {
     if(!packages.has(key))packages.set(key,[]);
     packages.get(key).push(patch);
   }
-  const blocked = new Set();
+  const blocked = new Set(), digests = new Map();
+  for (const patch of patches) if (patch.artifact_digest) {
+    const key = artifactKey(patch.target);
+    if (!digests.has(key)) digests.set(key, new Set());
+    digests.get(key).add(patch.artifact_digest);
+  }
+  for (const patch of patches) if (digests.get(artifactKey(patch.target))?.size > 1) {
+    for (const advisory of patch.advisories) blocked.add(`${artifactKey(patch.target)}|${canonical(advisory)}`);
+  }
   for(const patch of patches) if(patch.status !== 'fixed' || ['withdrawn','held'].includes(patch.state)) {
     for(const advisory of patch.advisories)blocked.add(`${artifactKey(patch.target)}|${canonical(advisory)}`);
   }
@@ -117,10 +137,38 @@ export function coverage(identity, advisoryIds, patches, prepared = coverageInde
     remaining: advisoryIds.filter(id => !covered.includes(canonical(id))),
     covered: advisoryIds.filter(id => covered.includes(canonical(id))) };
 }
+// Expand #48's compact inventory without requiring that PR or mutating findings.
+export function inventoryLibraries(dataset) {
+  const libraries = new Map((dataset.libraries || []).map(lib => [lib.id || libraryPurl(lib), {...lib,
+    consumer_project_ids: [...(lib.consumer_project_ids || [])],
+    direct_consumer_project_ids: [...(lib.direct_consumer_project_ids || [])]}]));
+  const inventory = dataset.dependency_inventory;
+  if (inventory?.schema_version !== 1) return [...libraries.values()];
+  const columns = inventory.edge_columns || [];
+  const allowed = new Set((dataset.consumer_projects || []).map(p => p.id));
+  for (const edge of inventory.edges || []) {
+    const project = inventory.projects[edge[columns.indexOf('project')]];
+    const id = inventory.libraries[edge[columns.indexOf('library')]];
+    if (!id || !allowed.has(project)) continue;
+    const direct = !!edge[columns.indexOf('direct')];
+    if (dataset.inventory_scope?.directOnly && !direct || dataset.inventory_scope?.transitiveOnly && direct) continue;
+    if (!libraries.has(id)) {
+      const [namespace, meta, proj, release] = id.split('|');
+      if (!namespace || !proj || !release || /[${}]/.test(release) || release === 'unspecified') continue;
+      libraries.set(id, {id, namespace, meta, proj, release, cves: [], inventory_only: true,
+        consumer_project_ids: [], direct_consumer_project_ids: []});
+    }
+    const lib = libraries.get(id);
+    lib.consumer_project_ids.push(project);
+    if (direct) lib.direct_consumer_project_ids.push(project);
+  }
+  return [...libraries.values()].map(lib => ({...lib,
+    consumer_project_ids: unique(lib.consumer_project_ids), direct_consumer_project_ids: unique(lib.direct_consumer_project_ids)}));
+}
 export function estateRows(dataset) {
   // One component instance is a project + exact package identity, not an edge/path count.
   const instances = new Map();
-  for (const lib of dataset.libraries || []) {
+  for (const lib of inventoryLibraries(dataset)) {
     const identity = libraryPurl(lib);
     for (const project of unique(lib.consumer_project_ids || [])) {
       const key = `${project}|${identity || lib.id}`;

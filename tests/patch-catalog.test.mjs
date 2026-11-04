@@ -68,3 +68,17 @@ test('hidden sources still count, disabled sources do not, and independent inven
   one.enabled=false;assert.equal(analyze(estate,[one,two]).eligible,0);
   two.enabled=true;assert.deepEqual(activePatches([one,two]).map(p=>p.feed_id),['supplemental']);
 });
+
+test('imports the provider catalog contract from main without losing provenance or digest conflicts', () => {
+  const bundle=JSON.parse(readFileSync(new URL('../data/fixtures/patch-feeds-estate-sample.json',import.meta.url)));
+  const feed=normalizeFeed(bundle.feeds[1]);
+  assert.equal(feed.errors.length,0);
+  assert.equal(feed.id,bundle.feeds[1].config.feed_id);
+  const patch=feed.patches[0];
+  assert.equal(patch.provider,'OSERA');
+  assert.ok(patch.artifact_digest);
+  assert.ok(patch.evidence.length);
+  const conflict={...feed,id:'conflicting',patches:[{...patch,artifact_digest:'sha256:different'}]};
+  const lib={namespace:'maven',meta:'at.yawk.lz4',proj:'lz4-java',release:'1.8.1.1-osera-00001',consumer_project_ids:['a'],cves:[]};
+  assert.equal(analyze({libraries:[lib]},[feed,conflict]).observed,0);
+});

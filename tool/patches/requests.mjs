@@ -81,3 +81,20 @@ export function exportRequests(items, dataset, feeds, work = []) {
 export function requestSummary(bundle) {
   return ['OSERA patch coverage request', ...bundle.requests.map(r => `${r.package} — ${r.scope.value} (${r.scope.precision})\nAdvisories: ${r.advisories.join(', ')}\nAcceptable fixes: ${r.acceptable_remediation.join(', ')}${r.rationale ? '\nRationale: '+r.rationale : ''}${r.incompatibility ? '\nExisting fix incompatibility: '+r.incompatibility : ''}`)].join('\n\n');
 }
+
+// Bridge evaluated demand from #69 only when its snapshot belongs to this dataset.
+export function requestsFromAdoption(dataset) {
+  const adoption = dataset.patch_feed_adoption;
+  if (!adoption || adoption.snapshot_id !== dataset.meta?.scope_name) {
+    throw new Error('This evaluation belongs to a separate demonstration snapshot, not the selected dataset.');
+  }
+  let items = [];
+  for (const record of adoption.instance_records || []) {
+    if (!record.eligible || record.instance_state !== 'no_known_patch' || !record.cves?.length) continue;
+    const identity = purl(record.purl);
+    if (!identity) continue;
+    items = addRequest(items, {identity:record.purl, precision:'exact', line:identity.version,
+      advisories:record.cves, remediation:['backpatch']});
+  }
+  return items;
+}

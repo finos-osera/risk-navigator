@@ -65,3 +65,19 @@ test('marketplace exact patch use requires exact artifact identity',()=>{
  assert.equal(marketplace(rows,{libraries:[{purl:rows[0].target} ]})[0].exactUse,true);
  assert.equal(marketplace(rows,{libraries:[{purl:rows[0].target+'?classifier=sources'} ]})[0].exactUse,false);
 });
+
+test('compact inventory includes non-vulnerable observations and respects project scope', () => {
+  const target='pkg:maven/org.example/core@1.2.3-osera-00001';
+  const dataset={libraries:[],consumer_projects:[{id:'app'}],dependency_inventory:{schema_version:1,
+    libraries:['maven|org.example|core|1.2.3-osera-00001'],projects:['app','outside'],
+    edge_columns:['project','library','direct','qualifier','parent'],edges:[[0,0,1,'runtime',null],[0,0,1,'runtime',null],[1,0,0,'runtime',null]]}};
+  const feed=normalizeFeed({schema_version:1,id:'compact',provider:'Member',generated_at:'2026-11-04',patches:[{id:'fix',target,source_versions:[],advisories:['CVE-2026-12345'],state:'released'}]});
+  const rows=inventory(dataset,[feed]);
+  assert.equal(rows[0].adopted.length,1);
+  assert.deepEqual(rows[0].projects,['app']);
+  const catalog=marketplace(rows,dataset);
+  assert.equal(catalog[0].exactUse,true);
+  assert.deepEqual(catalog[0].estateMatches[0].lib.consumer_project_ids,['app']);
+  assert.equal(marketplace(rows,{...dataset,consumer_projects:[]})[0].estateMatches.length,0);
+  assert.equal(inventory({...dataset,inventory_scope:{transitiveOnly:true}},[feed])[0].adopted.length,0);
+});

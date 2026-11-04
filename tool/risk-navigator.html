@@ -1175,7 +1175,7 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
     <select id="datasetSelect"></select>
     <button id="helpBtn" class="ghost">About</button>
     <button id="themeBtn" class="ghost icon-btn" aria-label="Switch to dark theme" title="Switch to dark theme"><span id="themeIcon" aria-hidden="true">☾</span></button>
-    <button id="cartBtn" class="primary">Cart (0)</button>
+    <button id="cartBtn" class="primary">Upgrade recipes (0)</button>
   </div>
 </header>
 
@@ -1290,7 +1290,7 @@ button.cve-link:hover { text-decoration-thickness: 2px; }
 
 <div id="cartPane" class="cart-pane">
   <div class="cart-head">
-    <strong>OpenRewrite Cart</strong>
+    <strong>Upgrade recipes</strong>
     <button id="closeCart">Close</button>
   </div>
   <div class="cart-body" id="cartBody"></div>
@@ -1388,7 +1388,7 @@ const MODES = [
   { id: "dashboard", label: "Dashboard" },
   { id: "libraries", label: "Libraries" },
   { id: "patch-coverage", label: "Patch inventory" },
-  { id: "patch-requests", label: "Patch requests" },
+  { id: "patch-requests", label: "Request drafts" },
   { id: "top-fixes", label: "Top fixes" },
   { id: "backpatch-priority", label: "Backpatch Priority Calculator" },
   { id: "backpatch-landscape", label: "Backpatch landscape" },
@@ -1546,7 +1546,7 @@ below-threshold candidate, not necessarily a version with zero known CVEs.
 ## 3. OpenRewrite Cart
 
 - The cart currently targets **Maven direct dependencies**.
-- Add items from library details with **Add Maven lib to cart**.
+- Add items from library details with **Add to upgrade recipes**.
 - Use **Generate OpenRewrite YAML** to create recipes.
 - Use **Impact prompt** to generate an analysis prompt for model-assisted migration planning.
 - More OpenRewrite docs: [docs.openrewrite.org](https://docs.openrewrite.org)
@@ -3819,7 +3819,7 @@ function generateBackpatchResearchPrompt(lib, assessment) {
 }
 
 function renderCart() {
-  els.cartBtn.textContent = `Cart (${state.cart.length})`;
+  els.cartBtn.textContent = `Upgrade recipes (${state.cart.length})`;
   els.cartBody.innerHTML = "";
   const intro = document.createElement("div");
   intro.className = "notice";
@@ -5199,7 +5199,8 @@ function renderPatchFeedAdoptionDashboard(dataset) {
 
   return `
     <section class="dashboard-section" id="patch-feed-adoption-section">
-      <h3>Estate Patch Availability &amp; Observed Adoption (SBOM / Build Observation)</h3>
+      <h3>Patch adoption · saved evaluation</h3>
+      <p class="small">This saved SBOM/build evaluation uses its recorded feeds and observation rules. Patch inventory uses the currently enabled browser sources; refreshing them does not recompute this snapshot.</p>
       <div class="dashboard-note" style="margin-bottom:8px;">
         Scope <code>${escapeHtml(adoptionScopeId)}</code> · Snapshot <code>${escapeHtml(adoption.snapshot_date || "-")}</code> · Observation basis: <code>${escapeHtml(m.observation_basis || "sbom_build_observation_not_verified_runtime")}</code> (not verified runtime deployment). VEX <code>not_affected</code> / <code>under_investigation</code> and unreleased / withdrawn entries do not count as available patches.
         ${isSeparateFixtureScope ? `<br><strong>Demonstration fixture notice:</strong> This section renders the self-contained 4-application fixture evaluation (<code>data/fixtures/patch-feeds-estate-sample.json</code>, scope <code>${escapeHtml(adoptionScopeId)}</code>) and is independent of the surrounding <code>${escapeHtml(datasetScopeName)}</code> sample dataset.` : ""}
@@ -5246,7 +5247,8 @@ function renderPatchFeedAdoptionDashboard(dataset) {
               ${["observed_patched", "partially_adopted", "applicable_unadopted", "no_known_patch", "unknown_evidence"].map(st => `<option value="${st}" ${activeAdoptionState === st ? "selected" : ""}>${st}</option>`).join("")}
             </select>
           </label>
-          <button type="button" class="btn" data-export-uncovered-demand="1">Export Uncovered Demand (${uncovered.length})</button>
+          <button type="button" class="btn" data-draft-uncovered-demand="1" ${isSeparateFixtureScope?'disabled title="Demonstration evidence belongs to a different snapshot"':''}>Draft requests for coverage gaps</button>
+          <button type="button" class="btn" data-export-uncovered-demand="1">View snapshot demand (${uncovered.length})</button>
         </div>
       </div>
       ${feedRows ? `<div class="libs-table-wrap" style="margin-bottom:10px;"><table class="libs-table"><thead><tr><th>Feed / Provider</th><th>Adapter</th><th>Snapshot</th><th>Last Refresh</th><th>State</th><th>Records</th><th>Validation</th></tr></thead><tbody>${feedRows}</tbody></table></div>` : ""}
@@ -5517,7 +5519,7 @@ function renderDetail(item) {
     els.detail.innerHTML = `
       <h3 style="margin:0;">${lib.meta}:${lib.proj}</h3>
       <div class="rich-line"><span class="tone">${lib.namespace}</span>${renderLibraryRef(lib.meta, lib.proj, lib.release, lib.namespace)}</div>
-      <div class="h-row" style="margin:8px 0;"><button id="requestOseraPatch">Request missing coverage</button></div>
+      <div class="h-row" style="margin:8px 0;"><button id="requestOseraPatch">Draft patch request</button></div>
       ${state.mode === "patch-coverage" && window.riskPatches ? window.riskPatches.detail(lib) : ""}
       ${kevSummary}
       <div class="impact">
@@ -5537,7 +5539,7 @@ function renderDetail(item) {
         <div class="k">Frameworks</div><div>${renderFrameworkJumpButtons(lib)}</div>
       </div>
       <div class="h-row" style="margin:8px 0;">
-        ${lib.namespace === "maven" ? `<button id="addCart" class="primary">Add Maven lib to cart</button>` : `<span class="small">Cart is available only for Maven dependencies.</span>`}
+        ${lib.namespace === "maven" ? `<button id="addCart" class="primary">Add to upgrade recipes</button>` : `<span class="small">Cart is available only for Maven dependencies.</span>`}
         <button id="simLib">Simulate backport patch</button>
       </div>
       ${state.mode !== "patch-coverage" && window.riskPatches ? window.riskPatches.detail(lib) : ""}
@@ -6833,15 +6835,18 @@ function patchScopeDataset(libs) {
     return true;
   });
   const ids = new Set(projects.map(p => p.id));
-  return {...state.dataset, consumer_projects: projects, libraries: libs.map(lib => ({...lib,
+  return {...state.dataset, inventory_scope: {directOnly:f.directOnly,transitiveOnly:f.transitiveOnly}, consumer_projects: projects, libraries: libs.map(lib => ({...lib,
     consumer_project_ids: (lib.consumer_project_ids || []).filter(id => ids.has(id) && (!f.directOnly || (lib.direct_consumer_project_ids || []).includes(id)) && (!f.transitiveOnly || !(lib.direct_consumer_project_ids || []).includes(id))),
     direct_consumer_project_ids: (lib.direct_consumer_project_ids || []).filter(id => ids.has(id))
   }))};
 }
 window.addEventListener("risk-nav:patch-ready", () => { if (state.dataset) render(); });
 window.addEventListener("risk-nav:open-patches", () => { setMode("patch-coverage", null); render(); });
+window.addEventListener("risk-nav:open-libraries", () => { setMode("libraries", null); render(); });
 window.addEventListener("risk-nav:open-requests", () => { setMode("patch-requests", null); render(); });
 function render() {
+  els.filterShell.hidden = state.mode === 'patch-requests';
+  els.tranchePills.hidden = state.mode === 'patch-requests';
   if (window.riskRequests) window.riskRequests.setView(state.mode);
   if (window.riskPatches) window.riskPatches.setView(state.mode, () => { if (state.dataset) render(); });
   buildModeBar();
@@ -6968,6 +6973,10 @@ function bindEvents() {
     els.dashboardView.addEventListener("click", e => {
       const t = e.target;
       if (!(t instanceof Element)) return;
+      if (t.closest('[data-draft-uncovered-demand]')) {
+        window.dispatchEvent(new CustomEvent('risk-nav:request-uncovered'));
+        return;
+      }
       const exportBtn = t.closest("[data-export-uncovered-demand]");
       if (exportBtn) {
         const cart = (state.dataset && state.dataset.patch_feed_adoption && state.dataset.patch_feed_adoption.uncovered_demand_cart) || [];

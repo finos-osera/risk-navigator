@@ -1,4 +1,4 @@
-import { activePatches, analyze, purl, unique, sameArtifact, libraryPurl } from './catalog.mjs';
+import { activePatches, analyze, purl, unique, sameArtifact, libraryPurl, inventoryLibraries } from './catalog.mjs';
 
 // Distance describes version shape, never proof of compatibility.
 export function distance(source, target) {
@@ -117,7 +117,7 @@ export function latestCatalog(rows) {
 // Catalog relevance is package presence, independent of CVEs and upgrade policy.
 export function marketplace(rows, dataset) {
   const packages = new Map();
-  for(const lib of dataset.libraries || []) {
+  for(const lib of inventoryLibraries(dataset)) {
     const identity=libraryPurl(lib), parsed=purl(identity);
     if(!parsed)continue;
     if(!packages.has(parsed.key))packages.set(parsed.key,[]);

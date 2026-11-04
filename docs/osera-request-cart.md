@@ -1,8 +1,12 @@
-# OSERA patch request cart
+# Patch request drafts
 
-The OSERA cart is independent of the Maven OpenRewrite cart. Choose **Request missing coverage** in the library details pane from Libraries, or **Review / request coverage** beside an installed version in Patch inventory. This opens the **Patch requests** mode, which also supports manual entry. The cart is no longer embedded in the removed bottom coverage drawer. Its requests belong to the selected dataset and are independent of display filters.
+Choose **Request drafts** or **Draft patch request** in a library's details. The workflow is **select a library → review existing fixes → explain missing coverage → download a draft**. Package identity, installed version and CVEs are prefilled when starting from a library. The editor puts the rationale and existing-fix explanation first; package URL, scope precision, version and advisory identifiers are under Advanced. Manual entry is available explicitly.
 
-Requests are stored locally per dataset scope. Repeated adds merge advisory coverage for the same package and line; different versions/line precision stay distinct. Direct/transitive impacts are local observations with shared applications deduplicated. Those application counts can overlap and are not proof of deployment or predicted risk-score reduction.
+Drafts are stored in this browser, separately for each dataset. Library filters and upgrade-class chips are hidden because they do not filter drafts. **Upgrade recipes** is the separate OpenRewrite workflow. No action in Request drafts submits to OSERA.
+
+Review the readable draft before choosing **Download request draft**. JSON is an optional technical export. Share the downloaded file through your agreed request channel; no intake service is connected. Unsaved editor changes must be saved before download review, and changing the form invalidates the preview.
+
+The saved patch-adoption evaluation from #69 can populate this same workflow through **Draft requests for coverage gaps** when its snapshot ID matches the dataset scope. The bundled four-application demonstration belongs to a separate snapshot, so its request action is disabled and its demand remains inspectable as snapshot evidence. Browser feed refresh does not recompute a saved evaluation.
 
 ## Existing patches and work
 
@@ -31,7 +35,7 @@ The cart highlights the latest published target for the current baseline and, wh
 
 ## Review and export
 
-Select **Review export** to inspect the exact JSON and human-readable summary before downloading. The proposed local v1 contract is:
+Select **Review draft for download** to inspect the readable summary and optional exact JSON before downloading. The proposed local v1 contract is:
 
 ```json
 {

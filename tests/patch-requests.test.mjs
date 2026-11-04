@@ -51,3 +51,14 @@ test('hidden enabled sources still prevent duplicate requests; disabling reopens
   source.enabled=false;
   assert.equal(exportRequests([item],dataset,[source]).requests.length,1);
 });
+
+test('evaluated coverage gaps become deduplicated drafts only within the matching snapshot', async()=>{
+  const {requestsFromAdoption}=await import('../tool/patches/requests.mjs');
+  const record={eligible:true,instance_state:'no_known_patch',purl:item.identity,cves:[cve]};
+  const data={meta:{scope_name:'estate'},patch_feed_adoption:{snapshot_id:'estate',instance_records:[record,record,{...record,instance_state:'observed_patched'}]}};
+  const drafts=requestsFromAdoption(data);
+  assert.equal(drafts.length,1);
+  assert.deepEqual(drafts[0].advisories,[cve]);
+  assert.throws(()=>requestsFromAdoption({...data,meta:{scope_name:'different'}}),/separate demonstration/);
+  assert.ok(!JSON.stringify(exportRequests(drafts,dataset,[])).includes('AffectedApplications'));
+});
