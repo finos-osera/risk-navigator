@@ -39,11 +39,15 @@ the aggregate grid.
 
 - OpenSSF Scorecard details, including a direct Scorecard viewer link and the
   lowest scoring checks.
-- A unified Vulnerability Intelligence card combining OSV package vulnerability
-  summaries with CISA Known Exploited Vulnerabilities (KEV) enrichment derived
-  from OSV CVE aliases.
+- A unified Vulnerability Intelligence card combining OSV package-wide
+  vulnerability summaries, CISA Known Exploited Vulnerabilities (KEV) enrichment
+  derived from OSV CVE aliases, and version-specific published OSERA patch
+  statements from the authoritative OSERA OpenVEX feed
+  (`https://feed.finos.org/openvex.json`).
 - Repository, package registry, and CHAOSS-derived project-health evidence.
-- FINOS OSERA backpatch fork provenance and upstream repository links.
+- FINOS OSERA backpatch fork provenance and upstream repository links,
+  explicitly distinguishing fork repository existence from published OpenVEX
+  patch availability.
 - Enterprise exposure overlaid from selected Risk Navigator datasets.
 
 The enterprise overlay is not random fixture data. The browser reads the same
@@ -142,13 +146,21 @@ example, OpenSSL can be queried as `Debian/openssl`, `Ubuntu/openssl`,
 `AlmaLinux/openssl`, or `Rocky Linux/openssl`; generic `system/openssl` or
 `rpm/openssl` is intentionally rendered as not applicable.
 
-OSV and CISA KEV are presented together in a single `Vulnerability Intelligence`
-card with `OSV` and `CISA KEV` tabs. CISA KEV matching uses CVE aliases returned
+OSV, CISA KEV, and the OSERA OpenVEX feed (`https://feed.finos.org/openvex.json`)
+are presented together in a single `Vulnerability Intelligence` card with `OSV`,
+`CISA KEV`, and `OSERA OpenVEX` tabs. CISA KEV matching uses CVE aliases returned
 by OSV: when KEV matches exist, the card highlights with an alert border and
 opens the `CISA KEV` tab by default; when OSV is not applicable or returns no
 CVE aliases, KEV shows a disabled or no-match state without consuming a separate
-source-card slot. A KEV match is a known-exploitation signal; deployed-version
-impact still depends on the actual versions in the enterprise inventory.
+source-card slot. The `OSERA OpenVEX` tab displays version-specific published
+OSERA patch statements (`status: "fixed"`), deduplicating repeated historical
+statements by `(purl, vuln_id, status, supplier)` and recording feed provenance
+(`feed_version`, `feed_last_updated`, and retrieval timestamp). Presence of a
+`finos-osera/backpatch-*` repository is kept distinct from whether a published
+OSERA fix exists in the OpenVEX feed, and absence from the OpenVEX feed does not
+mean zero vulnerabilities. A KEV match is a known-exploitation signal;
+deployed-version impact still depends on the actual versions in the enterprise
+inventory.
 
 ## Updating The Data
 

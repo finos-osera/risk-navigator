@@ -926,6 +926,7 @@ a:hover {
 .vuln-tabs {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 3px;
   border: 1px solid var(--line);
@@ -1679,7 +1680,7 @@ a:hover {
       </p>
       <div class="pipeline-flow" aria-label="OSS risk data flow">
         <div class="pipeline-node"><strong>Library scope</strong><span>FINOS OSERA backpatch repos, package coordinates, upstream repositories.</span></div>
-        <div class="pipeline-node"><strong>Collectors</strong><span>GitHub API, OpenSSF Scorecard, deps.dev, npm, OSV, CISA KEV.</span></div>
+        <div class="pipeline-node"><strong>Collectors</strong><span>GitHub API, OpenSSF Scorecard, deps.dev, npm, OSV, CISA KEV, OSERA OpenVEX.</span></div>
         <div class="pipeline-node"><strong>Score model</strong><span>Normalize evidence into vitality dimensions and source confidence.</span></div>
         <div class="pipeline-node"><strong>Browser overlay</strong><span>Join Risk Navigator collections for internal exposure and prioritization.</span></div>
       </div>
@@ -1687,8 +1688,8 @@ a:hover {
         <li>OpenSSF Scorecard supplies security posture checks and direct links to the Scorecard viewer.</li>
         <li>GitHub API metadata supplies activity, releases, contributors, issue, and pull request signals.</li>
         <li>deps.dev and npm downloads supply package registry health where the ecosystem supports it.</li>
-        <li>OSV supplies package vulnerability records; CISA KEV matches are derived from OSV CVE aliases and surfaced together in the unified Vulnerability Intelligence card.</li>
-        <li>FINOS OSERA backpatch metadata links each focused library to its OSERA fork and upstream repository.</li>
+        <li>OSV supplies package-wide vulnerability records; CISA KEV matches are derived from OSV CVE aliases, and OSERA OpenVEX supplies version-specific published patch statements (<code>status: "fixed"</code>) in the unified Vulnerability Intelligence card.</li>
+        <li>FINOS OSERA backpatch metadata links each focused library to its OSERA fork and upstream repository while distinguishing fork existence from published OpenVEX patch availability.</li>
         <li>Risk Navigator collections provide enterprise exposure by matching package coordinates from the selected dataset.</li>
       </ul>
 
@@ -1829,6 +1830,10 @@ a:hover {
           <span class="source-icon-link"><img class="source-icon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=cisa.gov" alt=""><span class="source-icon-fallback" hidden>KEV</span></span>
           <span><span class="source-card-title">CISA KEV</span><span class="source-card-meta">Known exploited vulnerability matches derived from OSV CVE aliases.</span></span>
         </a>
+        <a class="source-card-link" href="https://feed.finos.org/openvex.json" target="_blank" rel="noreferrer">
+          <span class="source-icon-link"><img class="source-icon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=finos.org" alt=""><span class="source-icon-fallback" hidden>VEX</span></span>
+          <span><span class="source-card-title">OSERA OpenVEX feed</span><span class="source-card-meta">Authoritative version-specific published OSERA patch statements (<code>https://feed.finos.org/openvex.json</code>).</span></span>
+        </a>
         <a class="source-card-link" href="https://www.first.org/epss/" target="_blank" rel="noreferrer">
           <span class="source-icon-link"><img class="source-icon" src="https://www.google.com/s2/favicons?sz=32&amp;domain=first.org" alt=""><span class="source-icon-fallback" hidden>EP</span></span>
           <span><span class="source-card-title">FIRST EPSS</span><span class="source-card-meta">Exploit probability enrichment used where vulnerability-level scoring is attached.</span></span>
@@ -1906,6 +1911,7 @@ const SOURCE_LABELS = {
   chaoss_derived: "CHAOSS-derived health",
   osv: "Vulnerability Intelligence",
   cisa_kev: "CISA KEV",
+  osera_openvex: "OSERA OpenVEX feed",
   epss: "FIRST EPSS",
   github: "Repository metadata",
   package_registry: "Package registry",
@@ -1944,6 +1950,12 @@ const SOURCE_META = {
     url: "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
     domain: "cisa.gov",
     fallback: "KEV"
+  },
+  osera_openvex: {
+    label: "OSERA OpenVEX",
+    url: "https://feed.finos.org/openvex.json",
+    domain: "finos.org",
+    fallback: "VEX"
   },
   epss: {
     label: "FIRST EPSS",
@@ -2598,11 +2610,17 @@ function renderSourceLinks(key, source, record) {
     if (source.url) {
       links.push(`<a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">CISA KEV catalog</a>`);
     }
+  } else if (key === "osera_openvex") {
+    const openvexUrl = source.url || "https://feed.finos.org/openvex.json";
+    links.push(`<a href="${escapeHtml(openvexUrl)}" target="_blank" rel="noreferrer">OSERA OpenVEX feed</a>`);
   } else if (key === "osv") {
     const kevSource = record?.evidence?.cisa_kev || null;
+    const openvexSource = record?.evidence?.osera_openvex || null;
     const kevCatalogUrl = kevSource?.url || "https://www.cisa.gov/known-exploited-vulnerabilities-catalog";
+    const openvexUrl = openvexSource?.url || "https://feed.finos.org/openvex.json";
     links.push(`<a href="https://osv.dev/" target="_blank" rel="noreferrer">OSV</a>`);
     links.push(`<a href="${escapeHtml(kevCatalogUrl)}" target="_blank" rel="noreferrer">CISA KEV catalog</a>`);
+    links.push(`<a href="${escapeHtml(openvexUrl)}" target="_blank" rel="noreferrer">OSERA OpenVEX feed</a>`);
   } else if (source.url) {
     links.push(`<a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">Open source</a>`);
   }
@@ -2793,17 +2811,41 @@ function renderScorecardDetails(source) {
   `;
 }
 
-function renderBackpatchDetails(source) {
+function renderBackpatchDetails(source, record) {
   const repositoryState = source.is_archived ? "Archived" : "Active";
   const relationship = source.is_fork === true ? "GitHub fork" : source.is_fork === false ? "Standalone repo" : "Unknown";
   const upstreamName = source.upstream_repository
     ? source.upstream_repository.replace(/^https:\/\/github\.com\//, "")
     : "n/a";
+  const openvexSource = record?.evidence?.osera_openvex || null;
+  const hasOpenvexField = typeof source.published_osera_patch_available === "boolean" || Boolean(openvexSource);
+  const publishedAvailable = typeof source.published_osera_patch_available === "boolean"
+    ? source.published_osera_patch_available
+    : Boolean(openvexSource?.coverage_status === "covered" || openvexSource?.coverage_status === "published_patch_available" || Number(openvexSource?.published_patch_count || 0) > 0);
+  const publishedCount = Number(
+    source.published_osera_patch_count !== undefined
+      ? source.published_osera_patch_count
+      : (openvexSource?.published_patch_count || 0)
+  );
+  const openvexPatches = Array.isArray(openvexSource?.patches)
+    ? openvexSource.patches
+    : (Array.isArray(openvexSource?.published_patches) ? openvexSource.published_patches : []);
+  const publishedVersions = Array.isArray(source.published_osera_versions)
+    ? source.published_osera_versions
+    : (Array.isArray(openvexSource?.published_versions)
+      ? openvexSource.published_versions
+      : openvexPatches.map(item => item.version).filter(Boolean));
+  const openvexStatusLabel = !hasOpenvexField
+    ? "Not checked"
+    : (publishedAvailable
+      ? `${numberFormat(publishedCount)} published (${publishedVersions.join(", ") || "OpenVEX"})`
+      : "No published OSERA fix in OpenVEX feed");
   const rows = sourceRows([
     ["Backpatch repository", source.backpatch_repository || "n/a"],
     ["Backpatch name", source.backpatch_name || "n/a"],
     ["Library name", source.library_name || "n/a"],
     ["Coordinate source", source.coordinate_source || "n/a"],
+    ["OpenVEX patch feed status", openvexStatusLabel],
     ["Primary language", source.primary_language || "not reported"],
     ["Observed", formatDate(source.observed_at)]
   ]);
@@ -2814,7 +2856,7 @@ function renderBackpatchDetails(source) {
         ${sourceMetric("OSERA fork", source.backpatch_repository || "n/a", relationship, source.is_archived ? "risk" : "good")}
         ${sourceMetric("Upstream", upstreamName, "source repository")}
         ${sourceMetric("Repository state", repositoryState, relationship, source.is_archived ? "risk" : "good")}
-        ${sourceMetric("Coordinate", source.coordinate_source || "n/a", "package mapping source")}
+        ${sourceMetric("OpenVEX patches", hasOpenvexField ? numberFormat(publishedCount) : "n/a", publishedAvailable ? "published in OpenVEX" : "fork repo != published patch", publishedAvailable ? "good" : (hasOpenvexField ? "warn" : ""))}
       </div>
       ${description}
       <div class="source-panel">
@@ -2866,7 +2908,7 @@ function renderOsvTabPanel(source, record, unsupported) {
     </div>
   ` : "";
   return `
-    <div class="evidence-facts">${status}<span class="fact">${numberFormat(cveCount)} CVE alias(es)</span></div>
+    <div class="evidence-facts">${status}<span class="fact">${numberFormat(cveCount)} CVE alias(es)</span><span class="fact">scope: package-wide advisories</span></div>
     ${cveHtml}
     ${vulnHtml}
   `;
@@ -2929,9 +2971,98 @@ function renderKevDetails(source, osvUnsupported = false) {
   `;
 }
 
+function renderOpenvexTabPanel(source, record, osvUnsupported = false) {
+  if (!source || source.source === "not-applicable" || (osvUnsupported && !Number(source?.published_patch_count || 0))) {
+    return `
+      <div class="evidence-facts"><span class="status-pill muted">OpenVEX matching not applicable</span></div>
+      <div class="source-callout">OSERA OpenVEX matching requires a concrete package coordinate (${escapeHtml(record?.project?.ecosystem || "unknown")}/${escapeHtml(record?.project?.package || "package")}).</div>
+    `;
+  }
+  if (source.coverage_status === "unavailable" || source.error) {
+    return `
+      <div class="evidence-facts"><span class="status-pill warn">OpenVEX feed unavailable</span></div>
+      <div class="source-callout">OSERA OpenVEX feed could not be retrieved (${escapeHtml(source.error || "unavailable")}). Package-wide OSV and CISA KEV evidence remain shown independently.</div>
+    `;
+  }
+  const patchCount = Number(source.published_patch_count || 0);
+  const patches = Array.isArray(source.patches)
+    ? source.patches
+    : (Array.isArray(source.published_patches) ? source.published_patches : []);
+  const feedUrl = source.url || "https://feed.finos.org/openvex.json";
+  const feedVersion = source.feed_version !== undefined && source.feed_version !== null ? `v${source.feed_version}` : "";
+  const feedUpdated = source.feed_last_updated || source.feed_timestamp || "";
+  const retrievedAt = source.retrieved_at || source.observed_at || "";
+  const rawCount = Number(source.raw_statement_count ?? source.statement_count ?? 0);
+  const dedupCount = Number(source.deduplicated_statement_count ?? source.statement_count ?? 0);
+  const statusPill = patchCount > 0
+    ? `<span class="status-pill">${numberFormat(patchCount)} published OSERA patch version(s)</span>`
+    : `<span class="status-pill muted">No published OSERA fix in OpenVEX feed</span>`;
+  const provenanceFacts = [
+    statusPill,
+    `<span class="fact">scope: version-specific VEX statements</span>`,
+    feedVersion ? `<span class="fact">feed ${escapeHtml(feedVersion)}</span>` : "",
+    feedUpdated ? `<span class="fact">feed updated ${escapeHtml(formatDate(feedUpdated))}</span>` : "",
+    retrievedAt ? `<span class="fact">retrieved ${escapeHtml(formatDate(retrievedAt))}</span>` : "",
+    rawCount > 0 ? `<span class="fact">${numberFormat(dedupCount)} deduplicated / ${numberFormat(rawCount)} raw statement(s)</span>` : ""
+  ].filter(Boolean).join("");
+
+  const claims = Array.isArray(source.installed_version_claims) ? source.installed_version_claims : [];
+  const claimsHtml = claims.length ? `
+    <div class="source-panel">
+      <div class="source-panel-title">Installed version OpenVEX evaluation</div>
+      ${sourceRows(claims.map(claim => [
+        `Installed ${claim.version || claim.installed_version || "version"}`,
+        (claim.matched_in_feed || claim.status === "fixed_by_osera_patch")
+          ? `Fixed by OSERA (${(claim.fixed_cves || claim.fixed_advisories || []).join(", ") || "OpenVEX"})`
+          : `No published OSERA OpenVEX claim for this version`
+      ]))}
+    </div>
+  ` : "";
+
+  if (!patchCount || !patches.length) {
+    return `
+      <div class="evidence-facts">${provenanceFacts}</div>
+      <div class="source-callout">
+        No published OSERA fix was found in <a href="${escapeHtml(feedUrl)}" target="_blank" rel="noreferrer">feed.finos.org/openvex.json</a> for this package coordinate. Presence of a <code>finos-osera/backpatch-*</code> repository does not imply a published patch, and absence from the OpenVEX feed does not mean zero vulnerabilities.
+      </div>
+      ${claimsHtml}
+    `;
+  }
+
+  const patchRows = patches.map(patch => {
+    const versionLabel = patch.version || patch.purl || "OSERA patch";
+    const advisories = Array.isArray(patch.fixed_advisories) ? patch.fixed_advisories : [];
+    const cves = Array.isArray(patch.fixed_cves) ? patch.fixed_cves : [];
+    const fixedList = (cves.length ? cves : advisories).join(", ") || "status: fixed";
+    const meta = [
+      patch.purl || "",
+      patch.supplier ? `supplier: ${patch.supplier}` : "",
+      patch.timestamp ? `published ${formatDate(patch.timestamp)}` : ""
+    ].filter(Boolean).join(" · ");
+    return `
+      <div class="check-row">
+        <div class="check-score">${escapeHtml(versionLabel)}</div>
+        <div>
+          <div class="check-name">${escapeHtml(fixedList)}</div>
+          <div class="check-reason">${escapeHtml(meta)}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="evidence-facts">${provenanceFacts}</div>
+    <div class="vulnerability-scroll">
+      <div class="check-list">${patchRows}</div>
+    </div>
+    ${claimsHtml}
+  `;
+}
+
 function renderOsvDetails(source, record) {
   const osvSource = source || {};
   const kevSource = record.evidence?.cisa_kev || null;
+  const openvexSource = record.evidence?.osera_openvex || null;
   const unsupported = Boolean(osvSource.error || osvSource.source === "disabled" || osvSource.source === "not-applicable");
   const vulnCount = Number(osvSource.vulnerability_count || 0);
   const cveCount = Number(osvSource.cve_count || (Array.isArray(osvSource.cves) ? osvSource.cves.length : 0));
@@ -2939,10 +3070,19 @@ function renderOsvDetails(source, record) {
   const kevDisabled = Boolean(!kevSource || kevSource.source === "disabled" || kevSource.source === "not-applicable" || (unsupported && cveCount === 0 && kevMatched === 0));
   const kevTabDisabled = Boolean(unsupported && cveCount === 0 && kevMatched === 0);
 
+  const openvexPatchCount = Number(openvexSource?.published_patch_count || 0);
+  const openvexFixedCveCount = Number(openvexSource?.fixed_cve_count || openvexSource?.fixed_advisory_count || 0);
+  const openvexUnavailable = Boolean(openvexSource?.coverage_status === "unavailable" || openvexSource?.error);
+  const openvexTabDisabled = Boolean(unsupported && openvexPatchCount === 0);
+
   const recordKey = vulnerabilityRecordKey(record);
   const defaultTab = kevMatched > 0 ? "kev" : "osv";
   const storedTab = vulnTabState.get(recordKey);
-  const activeTab = kevTabDisabled ? "osv" : (storedTab === "kev" || storedTab === "osv" ? storedTab : defaultTab);
+  const activeTab = (storedTab === "kev" && !kevTabDisabled)
+    ? "kev"
+    : (storedTab === "openvex" && !openvexTabDisabled)
+      ? "openvex"
+      : (storedTab === "osv" ? "osv" : (kevTabDisabled ? "osv" : defaultTab));
 
   const osvMetricValue = unsupported ? "n/a" : numberFormat(vulnCount);
   const osvMetricNote = unsupported
@@ -2964,6 +3104,20 @@ function renderOsvDetails(source, record) {
       : (kevSource?.catalog_count ? `${numberFormat(kevSource.catalog_count)} catalog entries` : "no KEV matches"));
   const kevMetricTone = kevMatched > 0 ? "risk" : (kevDisabled ? "" : "good");
 
+  const openvexMetricValue = openvexTabDisabled
+    ? "n/a"
+    : (openvexUnavailable ? "unavailable" : numberFormat(openvexPatchCount));
+  const openvexMetricNote = openvexTabDisabled
+    ? "coordinate not applicable"
+    : (openvexUnavailable
+      ? "feed unavailable"
+      : (openvexPatchCount > 0
+        ? `${numberFormat(openvexFixedCveCount)} advisory fix(es)`
+        : "no published OSERA fix"));
+  const openvexMetricTone = openvexUnavailable
+    ? "warn"
+    : (openvexPatchCount > 0 ? "good" : "");
+
   const confidenceValue = unsupported ? "Not applicable" : percentConfidence(osvSource.confidence);
   const confidenceNote = unsupported
     ? `${record.project?.ecosystem || "unknown"}/${record.project?.package || "package"}`
@@ -2976,10 +3130,13 @@ function renderOsvDetails(source, record) {
 
   const osvTabCount = unsupported ? "n/a" : numberFormat(vulnCount);
   const kevTabCount = kevTabDisabled ? "disabled" : numberFormat(kevMatched);
+  const openvexTabCount = openvexTabDisabled ? "disabled" : (openvexUnavailable ? "n/a" : numberFormat(openvexPatchCount));
   const osvTabId = `vulnTabOsv-${escapeHtml(recordKey)}`;
   const kevTabId = `vulnTabKev-${escapeHtml(recordKey)}`;
+  const openvexTabId = `vulnTabOpenvex-${escapeHtml(recordKey)}`;
   const osvPanelId = `vulnPanelOsv-${escapeHtml(recordKey)}`;
   const kevPanelId = `vulnPanelKev-${escapeHtml(recordKey)}`;
+  const openvexPanelId = `vulnPanelOpenvex-${escapeHtml(recordKey)}`;
 
   return `
     <div class="source-summary" data-vuln-card="${escapeHtml(recordKey)}">
@@ -2987,6 +3144,7 @@ function renderOsvDetails(source, record) {
         ${sourceMetric("OSV records", osvMetricValue, osvMetricNote, osvMetricTone)}
         ${sourceMetric("CVE aliases", cveMetricValue, cveMetricNote, cveMetricTone)}
         ${sourceMetric("CISA KEV matches", kevMetricValue, kevMetricNote, kevMetricTone)}
+        ${sourceMetric("OSERA OpenVEX", openvexMetricValue, openvexMetricNote, openvexMetricTone)}
         ${sourceMetric("Collector confidence", confidenceValue, confidenceNote, confidenceTone)}
       </div>
       <div class="vuln-tabs" role="tablist" aria-label="Vulnerability intelligence views">
@@ -3016,6 +3174,20 @@ function renderOsvDetails(source, record) {
           <span>CISA KEV</span>
           <span class="vuln-tab-count">${escapeHtml(kevTabCount)}</span>
         </button>
+        <button
+          class="vuln-tab"
+          id="${openvexTabId}"
+          type="button"
+          role="tab"
+          data-vuln-tab="openvex"
+          data-vuln-record="${escapeHtml(recordKey)}"
+          aria-selected="${activeTab === "openvex" ? "true" : "false"}"
+          aria-controls="${openvexPanelId}"
+          aria-disabled="${openvexTabDisabled ? "true" : "false"}"
+          ${openvexTabDisabled ? 'disabled title="OSERA OpenVEX matching requires a supported package coordinate"' : ""}>
+          <span>OSERA OpenVEX</span>
+          <span class="vuln-tab-count">${escapeHtml(openvexTabCount)}</span>
+        </button>
       </div>
       <div
         class="vuln-tab-panel"
@@ -3034,6 +3206,15 @@ function renderOsvDetails(source, record) {
         aria-labelledby="${kevTabId}"
         ${activeTab === "kev" ? "" : "hidden"}>
         ${renderKevDetails(kevSource, unsupported)}
+      </div>
+      <div
+        class="vuln-tab-panel"
+        id="${openvexPanelId}"
+        role="tabpanel"
+        data-vuln-panel="openvex"
+        aria-labelledby="${openvexTabId}"
+        ${activeTab === "openvex" ? "" : "hidden"}>
+        ${renderOpenvexTabPanel(openvexSource, record, unsupported)}
       </div>
     </div>
   `;
@@ -3149,9 +3330,10 @@ function renderCustomSourceDetails(key, source, record) {
   if (key === "github") return renderGitHubDetails(source);
   if (key === "package_registry") return renderPackageRegistryDetails(source, record);
   if (key === "openssf_scorecard") return renderScorecardDetails(source);
-  if (key === "finos_osera_backpatch") return renderBackpatchDetails(source);
+  if (key === "finos_osera_backpatch") return renderBackpatchDetails(source, record);
   if (key === "osv") return renderOsvDetails(source, record);
   if (key === "cisa_kev") return renderKevDetails(source);
+  if (key === "osera_openvex") return renderOpenvexTabPanel(source, record);
   if (key === "chaoss_derived") return renderChaossDetails(source);
   return renderGenericUnavailable(source);
 }
@@ -3176,7 +3358,7 @@ function sourceCardClass(key, source, record) {
 }
 
 function shouldRenderSource(key, source) {
-  if (key === "cisa_kev") {
+  if (key === "cisa_kev" || key === "osera_openvex") {
     return false;
   }
   if (key !== "openssf_criticality") return true;
@@ -3386,16 +3568,17 @@ function renderSources(record) {
   }
   return `<div class="source-list">` + sources.map(([key, source]) => {
     const links = renderSourceLinks(key, source, record);
-    const facts = ["github", "package_registry", "openssf_scorecard", "finos_osera_backpatch", "osv", "cisa_kev", "chaoss_derived"].includes(key) ? "" : sourceFacts(source);
+    const facts = ["github", "package_registry", "openssf_scorecard", "finos_osera_backpatch", "osv", "cisa_kev", "osera_openvex", "chaoss_derived"].includes(key) ? "" : sourceFacts(source);
     const customDetails = renderCustomSourceDetails(key, source, record);
-    const badges = key === "osv"
-      ? `<span class="source-badges">${renderSourceBadge("osv")}${renderSourceBadge("cisa_kev")}</span>`
-      : renderSourceBadge(key);
     const kevSource = key === "osv" ? record.evidence?.cisa_kev : null;
+    const openvexSource = key === "osv" ? record.evidence?.osera_openvex : null;
+    const badges = key === "osv"
+      ? `<span class="source-badges">${renderSourceBadge("osv")}${renderSourceBadge("cisa_kev")}${renderSourceBadge("osera_openvex")}</span>`
+      : renderSourceBadge(key);
     const sourceKindLabel = key === "osv"
-      ? `${source.source || "osv"}${kevSource?.source ? ` + ${kevSource.source}` : " + cisa-kev"}`
+      ? `${source.source || "osv"}${kevSource?.source ? ` + ${kevSource.source}` : " + cisa-kev"}${openvexSource?.source ? ` + ${openvexSource.source}` : ""}`
       : (source.source || "source");
-    const observedAt = source.observed_at || kevSource?.observed_at || "";
+    const observedAt = source.observed_at || kevSource?.observed_at || openvexSource?.observed_at || "";
     return `
       <div class="${sourceCardClass(key, source, record)}">
         <div class="source-top">
