@@ -2181,5 +2181,805 @@
       "consumer_project_count_affected": 8,
       "cve_count_total": 1
     }
-  ]
+  ],
+  "patch_feed_adoption": {
+    "snapshot_id": "finos-estate-2026-11",
+    "snapshot_date": "2026-10-28T18:00:00Z",
+    "feeds": [
+      {
+        "feed_id": "osera-openvex",
+        "adapter": "osera_openvex",
+        "provider": "OSERA",
+        "provider_kind": "osera",
+        "source_url": "https://feed.finos.org/openvex.json",
+        "snapshot_version": "120",
+        "last_refresh": "2026-10-28T15:37:58Z",
+        "enabled": true,
+        "patch_count": 4,
+        "vex_statement_count": 6,
+        "validation_errors": [],
+        "validation_warnings": [
+          "Ambiguous product in statement[5]: Unsupported or non-PURL product identifier: https://example.org/non-purl-artifact"
+        ],
+        "ambiguous_record_count": 1
+      },
+      {
+        "feed_id": "member-catalog-v1",
+        "adapter": "provider_catalog",
+        "provider": "MemberCurated",
+        "provider_kind": "member",
+        "source_url": "https://internal.example.org/feeds/patch-catalog-v1.json",
+        "snapshot_version": "1.0",
+        "last_refresh": "2026-10-28T16:00:00Z",
+        "enabled": true,
+        "patch_count": 4,
+        "vex_statement_count": 0,
+        "validation_errors": [],
+        "validation_warnings": [],
+        "ambiguous_record_count": 0
+      }
+    ],
+    "feed_conflicts": [],
+    "ambiguous_records": [
+      {
+        "feed_id": "osera-openvex",
+        "statement_index": 5,
+        "product_id": "https://example.org/non-purl-artifact",
+        "vulnerability": "CVE-2026-9999",
+        "status": "fixed",
+        "reason": "Unsupported or non-PURL product identifier: https://example.org/non-purl-artifact"
+      }
+    ],
+    "metrics": {
+      "scope_id": "finos-estate-2026-11",
+      "snapshot_date": "2026-10-28T18:00:00Z",
+      "observation_basis": "sbom_build_observation_not_verified_runtime",
+      "applications_with_available_patch": {
+        "status": "measured",
+        "numerator": 3,
+        "denominator": 4,
+        "ratio": 0.75,
+        "display": "3 / 4 (75.0%)",
+        "numerator_label": "applications with an available released patch",
+        "denominator_label": "inventoried applications",
+        "snapshot_date": "2026-10-28T18:00:00Z",
+        "ids": [
+          "app-risk-engine",
+          "app-settlement-gateway",
+          "app-trading-core"
+        ]
+      },
+      "applications_with_observed_patch_use": {
+        "status": "measured",
+        "numerator": 1,
+        "denominator": 4,
+        "ratio": 0.25,
+        "display": "1 / 4 (25.0%)",
+        "numerator_label": "applications with observed patch use (SBOM/build)",
+        "denominator_label": "inventoried applications",
+        "snapshot_date": "2026-10-28T18:00:00Z",
+        "ids": [
+          "app-trading-core"
+        ]
+      },
+      "patched_eligible_component_instances": {
+        "status": "measured",
+        "numerator": 2,
+        "denominator": 6,
+        "ratio": 0.3333,
+        "display": "2 / 6 (33.3%)",
+        "numerator_label": "patched eligible component instances",
+        "denominator_label": "eligible component instances",
+        "snapshot_date": "2026-10-28T18:00:00Z",
+        "ids": [
+          "app-trading-core::pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00002",
+          "app-trading-core::pkg:maven/io.netty/netty-codec-http2@4.1.100.Final-osera-00001"
+        ]
+      },
+      "state_counts": {
+        "observed_patched": 1,
+        "partially_adopted": 2,
+        "applicable_unadopted": 2,
+        "no_known_patch": 1,
+        "unknown_evidence": 1
+      },
+      "package_state_counts": {
+        "observed_patched": 1,
+        "partially_adopted": 1,
+        "applicable_unadopted": 1,
+        "no_known_patch": 1,
+        "unknown_evidence": 0
+      },
+      "exposure_summary": {
+        "observed_remediated_cves": [
+          "CVE-2023-44487",
+          "CVE-2024-38816"
+        ],
+        "observed_remediated_kevs": [
+          "CVE-2023-44487",
+          "CVE-2024-38816"
+        ],
+        "potential_reducible_cves": [
+          "CVE-2023-44487",
+          "CVE-2025-66566"
+        ],
+        "potential_reducible_kevs": [
+          "CVE-2023-44487"
+        ],
+        "residual_cves": [
+          "CVE-2023-2976"
+        ]
+      },
+      "stale_observation_count": 1,
+      "unknown_observation_count": 1
+    },
+    "package_summaries": [
+      {
+        "ecosystem_type": "maven",
+        "ecosystem": "Java",
+        "library": "at.yawk.lz4:lz4-java",
+        "maintenance_line": "1.8.x",
+        "adoption_state": "applicable_unadopted",
+        "application_count": 2,
+        "application_ids": [
+          "app-risk-engine",
+          "app-trading-core"
+        ],
+        "observed_patched_applications": [],
+        "unadopted_applications": [
+          "app-risk-engine",
+          "app-trading-core"
+        ],
+        "instance_count": 2,
+        "providers": [
+          "OSERA"
+        ],
+        "provider_kinds": [
+          "osera"
+        ],
+        "osera_backpatch_available": true,
+        "addressed_cves": [],
+        "potential_cves": [
+          "CVE-2025-66566"
+        ],
+        "residual_cves": []
+      },
+      {
+        "ecosystem_type": "maven",
+        "ecosystem": "Java",
+        "library": "com.google.guava:guava",
+        "maintenance_line": "31.1.x",
+        "adoption_state": "no_known_patch",
+        "application_count": 1,
+        "application_ids": [
+          "app-settlement-gateway"
+        ],
+        "observed_patched_applications": [],
+        "unadopted_applications": [],
+        "instance_count": 1,
+        "providers": [],
+        "provider_kinds": [],
+        "osera_backpatch_available": false,
+        "addressed_cves": [],
+        "potential_cves": [],
+        "residual_cves": [
+          "CVE-2023-2976"
+        ]
+      },
+      {
+        "ecosystem_type": "maven",
+        "ecosystem": "Java",
+        "library": "io.netty:netty-codec-http2",
+        "maintenance_line": "4.1.x",
+        "adoption_state": "partially_adopted",
+        "application_count": 2,
+        "application_ids": [
+          "app-settlement-gateway",
+          "app-trading-core"
+        ],
+        "observed_patched_applications": [
+          "app-trading-core"
+        ],
+        "unadopted_applications": [
+          "app-settlement-gateway"
+        ],
+        "instance_count": 2,
+        "providers": [
+          "OSERA"
+        ],
+        "provider_kinds": [
+          "osera"
+        ],
+        "osera_backpatch_available": true,
+        "addressed_cves": [
+          "CVE-2023-44487"
+        ],
+        "potential_cves": [
+          "CVE-2023-44487"
+        ],
+        "residual_cves": []
+      },
+      {
+        "ecosystem_type": "maven",
+        "ecosystem": "Java",
+        "library": "org.springframework.boot:spring-boot-autoconfigure",
+        "maintenance_line": "2.7.x",
+        "adoption_state": "observed_patched",
+        "application_count": 1,
+        "application_ids": [
+          "app-trading-core"
+        ],
+        "observed_patched_applications": [
+          "app-trading-core"
+        ],
+        "unadopted_applications": [],
+        "instance_count": 1,
+        "providers": [
+          "OSERA"
+        ],
+        "provider_kinds": [
+          "osera"
+        ],
+        "osera_backpatch_available": true,
+        "addressed_cves": [
+          "CVE-2024-38816"
+        ],
+        "potential_cves": [],
+        "residual_cves": []
+      }
+    ],
+    "instance_records": [
+      {
+        "instance_id": "app-trading-core::pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1",
+        "application_id": "app-trading-core",
+        "project_group": "Capital Markets",
+        "raw_purl": "pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1",
+        "purl": "pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1",
+        "ecosystem_type": "maven",
+        "ecosystem": "Java",
+        "library": "at.yawk.lz4:lz4-java",
+        "version": "1.8.1.1",
+        "maintenance_line": "1.8.x",
+        "dependency_scopes": [
+          "direct",
+          "transitive"
+        ],
+        "cves": [
+          "CVE-2025-66566"
+        ],
+        "kev_cves": [],
+        "eligible": true,
+        "instance_state": "applicable_unadopted",
+        "package_adoption_state": "applicable_unadopted",
+        "reason": "Applicable released patch available (pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1-osera-00001), not yet observed in this application.",
+        "applicable_patches": [
+          {
+            "patch_id": "MEMBER-MIRROR-LZ4-0001",
+            "provider": "OSERA",
+            "provider_kind": "osera",
+            "supplier": "moderne",
+            "replacement_purl": "pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1-osera-00001",
+            "replacement_version": "1.8.1.1-osera-00001",
+            "artifact_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+            "fixed_advisories": [
+              "CVE-2025-66566"
+            ],
+            "required_companions": [],
+            "provenance": [
+              {
+                "feed_id": "member-catalog-v1",
+                "provider": "OSERA",
+                "provider_kind": "osera",
+                "supplier": "moderne",
+                "patch_id": "MEMBER-MIRROR-LZ4-0001",
+                "snapshot_version": "1.0",
+                "source_url": "https://internal.example.org/feeds/patch-catalog-v1.json",
+                "release_state": "released",
+                "artifact_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+                "published_at": "2026-10-28T16:00:00Z"
+              },
+              {
+                "feed_id": "osera-openvex",
+                "provider": "OSERA",
+                "provider_kind": "osera",
+                "supplier": "moderne",
+                "patch_id": "OSERA-PATCH-LZ4-0001",
+                "snapshot_version": "120",
+                "source_url": "https://feed.finos.org/openvex.json",
+                "release_state": "released",
+                "artifact_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+                "published_at": "2026-10-28T15:37:58Z"
+              }
+            ]
+          }
+        ],
+        "blocked_candidates": [],
+        "vex_assessments": [
+          {
+            "feed_id": "osera-openvex",
+            "vulnerability": "CVE-2025-66566",
+            "status": "fixed",
+            "supplier": "moderne",
+            "purl": "pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1-osera-00001"
+          }
+        ],
+        "matched_patch": null,
+        "addressed_cves": [],
+        "addressed_kev_cves": [],
+        "potential_cves": [
+          "CVE-2025-66566"
+        ],
+        "potential_kev_cves": [],
+        "residual_cves": [],
+        "observation_basis": "sbom_build_observation_not_verified_runtime",
+        "stale_observation": false
+      },
+      {
+        "instance_id": "app-trading-core::pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00002",
+        "application_id": "app-trading-core",
+        "project_group": "Capital Markets",
+        "raw_purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00002",
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00002",
+        "ecosystem_type": "maven",
+        "ecosystem": "Java",
+        "library": "org.springframework.boot:spring-boot-autoconfigure",
+        "version": "2.7.18-osera-00002",
+        "maintenance_line": "2.7.x",
+        "dependency_scopes": [
+          "direct"
+        ],
+        "cves": [
+          "CVE-2024-38816"
+        ],
+        "kev_cves": [
+          "CVE-2024-38816"
+        ],
+        "eligible": true,
+        "instance_state": "observed_patched",
+        "package_adoption_state": "observed_patched",
+        "reason": "Observed patched artifact pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00002 via SBOM/build inventory.",
+        "applicable_patches": [
+          {
+            "patch_id": "OSERA-PATCH-SB-0002",
+            "provider": "OSERA",
+            "provider_kind": "osera",
+            "supplier": "moderne",
+            "replacement_purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00002",
+            "replacement_version": "2.7.18-osera-00002",
+            "artifact_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+            "fixed_advisories": [
+              "CVE-2024-38816"
+            ],
+            "required_companions": [
+              "pkg:maven/org.springframework.boot/spring-boot@2.7.18-osera-00002"
+            ],
+            "provenance": [
+              {
+                "feed_id": "osera-openvex",
+                "provider": "OSERA",
+                "provider_kind": "osera",
+                "supplier": "moderne",
+                "patch_id": "OSERA-PATCH-SB-0002",
+                "snapshot_version": "120",
+                "source_url": "https://feed.finos.org/openvex.json",
+                "release_state": "released",
+                "artifact_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+                "published_at": "2026-10-28T15:37:58Z"
+              }
+            ]
+          }
+        ],
+        "blocked_candidates": [
+          {
+            "patch_id": "osera-openvex:pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00001",
+            "replacement_purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00001",
+            "provider": "OSERA",
+            "provider_kind": "osera",
+            "blocked_reason": "superseded_by:pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00002"
+          }
+        ],
+        "vex_assessments": [
+          {
+            "feed_id": "osera-openvex",
+            "vulnerability": "CVE-2024-38816",
+            "status": "fixed",
+            "supplier": "moderne",
+            "purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00001"
+          },
+          {
+            "feed_id": "osera-openvex",
+            "vulnerability": "CVE-2024-38816",
+            "status": "fixed",
+            "supplier": "moderne",
+            "purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00002"
+          }
+        ],
+        "matched_patch": {
+          "patch_id": "OSERA-PATCH-SB-0002",
+          "provider": "OSERA",
+          "provider_kind": "osera",
+          "replacement_purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00002",
+          "artifact_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+        },
+        "addressed_cves": [
+          "CVE-2024-38816"
+        ],
+        "addressed_kev_cves": [
+          "CVE-2024-38816"
+        ],
+        "potential_cves": [],
+        "potential_kev_cves": [],
+        "residual_cves": [],
+        "observation_basis": "sbom_build_observation_not_verified_runtime",
+        "stale_observation": false
+      },
+      {
+        "instance_id": "app-trading-core::pkg:maven/io.netty/netty-codec-http2@4.1.100.Final-osera-00001",
+        "application_id": "app-trading-core",
+        "project_group": "Capital Markets",
+        "raw_purl": "pkg:maven/io.netty/netty-codec-http2@4.1.100.Final-osera-00001",
+        "purl": "pkg:maven/io.netty/netty-codec-http2@4.1.100.Final-osera-00001",
+        "ecosystem_type": "maven",
+        "ecosystem": "Java",
+        "library": "io.netty:netty-codec-http2",
+        "version": "4.1.100.Final-osera-00001",
+        "maintenance_line": "4.1.x",
+        "dependency_scopes": [
+          "transitive"
+        ],
+        "cves": [
+          "CVE-2023-44487"
+        ],
+        "kev_cves": [
+          "CVE-2023-44487"
+        ],
+        "eligible": true,
+        "instance_state": "observed_patched",
+        "package_adoption_state": "partially_adopted",
+        "reason": "Observed patched artifact pkg:maven/io.netty/netty-codec-http2@4.1.100.Final-osera-00001 via SBOM/build inventory.",
+        "applicable_patches": [
+          {
+            "patch_id": "OSERA-PATCH-NETTY-0001",
+            "provider": "OSERA",
+            "provider_kind": "osera",
+            "supplier": "moderne",
+            "replacement_purl": "pkg:maven/io.netty/netty-codec-http2@4.1.100.Final-osera-00001",
+            "replacement_version": "4.1.100.Final-osera-00001",
+            "artifact_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+            "fixed_advisories": [
+              "CVE-2023-44487"
+            ],
+            "required_companions": [
+              "pkg:maven/io.netty/netty-common@4.1.100.Final-osera-00001"
+            ],
+            "provenance": [
+              {
+                "feed_id": "osera-openvex",
+                "provider": "OSERA",
+                "provider_kind": "osera",
+                "supplier": "moderne",
+                "patch_id": "OSERA-PATCH-NETTY-0001",
+                "snapshot_version": "120",
+                "source_url": "https://feed.finos.org/openvex.json",
+                "release_state": "released",
+                "artifact_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+                "published_at": "2026-10-28T15:37:58Z"
+              }
+            ]
+          }
+        ],
+        "blocked_candidates": [],
+        "vex_assessments": [
+          {
+            "feed_id": "osera-openvex",
+            "vulnerability": "CVE-2023-44487",
+            "status": "fixed",
+            "supplier": "moderne",
+            "purl": "pkg:maven/io.netty/netty-codec-http2@4.1.100.Final-osera-00001"
+          }
+        ],
+        "matched_patch": {
+          "patch_id": "OSERA-PATCH-NETTY-0001",
+          "provider": "OSERA",
+          "provider_kind": "osera",
+          "replacement_purl": "pkg:maven/io.netty/netty-codec-http2@4.1.100.Final-osera-00001",
+          "artifact_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+        },
+        "addressed_cves": [
+          "CVE-2023-44487"
+        ],
+        "addressed_kev_cves": [
+          "CVE-2023-44487"
+        ],
+        "potential_cves": [],
+        "potential_kev_cves": [],
+        "residual_cves": [],
+        "observation_basis": "sbom_build_observation_not_verified_runtime",
+        "stale_observation": false
+      },
+      {
+        "instance_id": "app-risk-engine::pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1",
+        "application_id": "app-risk-engine",
+        "project_group": "Risk & Treasury",
+        "raw_purl": "pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1",
+        "purl": "pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1",
+        "ecosystem_type": "maven",
+        "ecosystem": "Java",
+        "library": "at.yawk.lz4:lz4-java",
+        "version": "1.8.1.1",
+        "maintenance_line": "1.8.x",
+        "dependency_scopes": [
+          "transitive"
+        ],
+        "cves": [
+          "CVE-2025-66566"
+        ],
+        "kev_cves": [],
+        "eligible": true,
+        "instance_state": "applicable_unadopted",
+        "package_adoption_state": "applicable_unadopted",
+        "reason": "Applicable released patch available (pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1-osera-00001), not yet observed in this application.",
+        "applicable_patches": [
+          {
+            "patch_id": "MEMBER-MIRROR-LZ4-0001",
+            "provider": "OSERA",
+            "provider_kind": "osera",
+            "supplier": "moderne",
+            "replacement_purl": "pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1-osera-00001",
+            "replacement_version": "1.8.1.1-osera-00001",
+            "artifact_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+            "fixed_advisories": [
+              "CVE-2025-66566"
+            ],
+            "required_companions": [],
+            "provenance": [
+              {
+                "feed_id": "member-catalog-v1",
+                "provider": "OSERA",
+                "provider_kind": "osera",
+                "supplier": "moderne",
+                "patch_id": "MEMBER-MIRROR-LZ4-0001",
+                "snapshot_version": "1.0",
+                "source_url": "https://internal.example.org/feeds/patch-catalog-v1.json",
+                "release_state": "released",
+                "artifact_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+                "published_at": "2026-10-28T16:00:00Z"
+              },
+              {
+                "feed_id": "osera-openvex",
+                "provider": "OSERA",
+                "provider_kind": "osera",
+                "supplier": "moderne",
+                "patch_id": "OSERA-PATCH-LZ4-0001",
+                "snapshot_version": "120",
+                "source_url": "https://feed.finos.org/openvex.json",
+                "release_state": "released",
+                "artifact_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+                "published_at": "2026-10-28T15:37:58Z"
+              }
+            ]
+          }
+        ],
+        "blocked_candidates": [],
+        "vex_assessments": [
+          {
+            "feed_id": "osera-openvex",
+            "vulnerability": "CVE-2025-66566",
+            "status": "fixed",
+            "supplier": "moderne",
+            "purl": "pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1-osera-00001"
+          }
+        ],
+        "matched_patch": null,
+        "addressed_cves": [],
+        "addressed_kev_cves": [],
+        "potential_cves": [
+          "CVE-2025-66566"
+        ],
+        "potential_kev_cves": [],
+        "residual_cves": [],
+        "observation_basis": "sbom_build_observation_not_verified_runtime",
+        "stale_observation": false
+      },
+      {
+        "instance_id": "app-settlement-gateway::pkg:maven/io.netty/netty-codec-http2@4.1.100.Final",
+        "application_id": "app-settlement-gateway",
+        "project_group": "Operations",
+        "raw_purl": "pkg:maven/io.netty/netty-codec-http2@4.1.100.Final",
+        "purl": "pkg:maven/io.netty/netty-codec-http2@4.1.100.Final",
+        "ecosystem_type": "maven",
+        "ecosystem": "Java",
+        "library": "io.netty:netty-codec-http2",
+        "version": "4.1.100.Final",
+        "maintenance_line": "4.1.x",
+        "dependency_scopes": [
+          "direct"
+        ],
+        "cves": [
+          "CVE-2023-44487"
+        ],
+        "kev_cves": [
+          "CVE-2023-44487"
+        ],
+        "eligible": true,
+        "instance_state": "applicable_unadopted",
+        "package_adoption_state": "partially_adopted",
+        "reason": "Applicable released patch available (pkg:maven/io.netty/netty-codec-http2@4.1.100.Final-osera-00001), not yet observed in this application.",
+        "applicable_patches": [
+          {
+            "patch_id": "OSERA-PATCH-NETTY-0001",
+            "provider": "OSERA",
+            "provider_kind": "osera",
+            "supplier": "moderne",
+            "replacement_purl": "pkg:maven/io.netty/netty-codec-http2@4.1.100.Final-osera-00001",
+            "replacement_version": "4.1.100.Final-osera-00001",
+            "artifact_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+            "fixed_advisories": [
+              "CVE-2023-44487"
+            ],
+            "required_companions": [
+              "pkg:maven/io.netty/netty-common@4.1.100.Final-osera-00001"
+            ],
+            "provenance": [
+              {
+                "feed_id": "osera-openvex",
+                "provider": "OSERA",
+                "provider_kind": "osera",
+                "supplier": "moderne",
+                "patch_id": "OSERA-PATCH-NETTY-0001",
+                "snapshot_version": "120",
+                "source_url": "https://feed.finos.org/openvex.json",
+                "release_state": "released",
+                "artifact_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+                "published_at": "2026-10-28T15:37:58Z"
+              }
+            ]
+          }
+        ],
+        "blocked_candidates": [],
+        "vex_assessments": [
+          {
+            "feed_id": "osera-openvex",
+            "vulnerability": "CVE-2023-44487",
+            "status": "fixed",
+            "supplier": "moderne",
+            "purl": "pkg:maven/io.netty/netty-codec-http2@4.1.100.Final-osera-00001"
+          }
+        ],
+        "matched_patch": null,
+        "addressed_cves": [],
+        "addressed_kev_cves": [],
+        "potential_cves": [
+          "CVE-2023-44487"
+        ],
+        "potential_kev_cves": [
+          "CVE-2023-44487"
+        ],
+        "residual_cves": [],
+        "observation_basis": "sbom_build_observation_not_verified_runtime",
+        "stale_observation": false
+      },
+      {
+        "instance_id": "app-settlement-gateway::pkg:maven/com.google.guava/guava@31.1-jre",
+        "application_id": "app-settlement-gateway",
+        "project_group": "Operations",
+        "raw_purl": "pkg:maven/com.google.guava/guava@31.1-jre",
+        "purl": "pkg:maven/com.google.guava/guava@31.1-jre",
+        "ecosystem_type": "maven",
+        "ecosystem": "Java",
+        "library": "com.google.guava:guava",
+        "version": "31.1-jre",
+        "maintenance_line": "31.1.x",
+        "dependency_scopes": [
+          "transitive"
+        ],
+        "cves": [
+          "CVE-2023-2976"
+        ],
+        "kev_cves": [],
+        "eligible": true,
+        "instance_state": "no_known_patch",
+        "package_adoption_state": "no_known_patch",
+        "reason": "No usable released patch (blocked candidates: unreleased_work:planned, withdrawn_artifact).",
+        "applicable_patches": [],
+        "blocked_candidates": [
+          {
+            "patch_id": "PLANNED-GUAVA-31.1-BACKPORT",
+            "replacement_purl": "pkg:maven/com.google.guava/guava@31.1-jre-osera-00001",
+            "provider": "OSERA",
+            "provider_kind": "osera",
+            "blocked_reason": "unreleased_work:planned"
+          },
+          {
+            "patch_id": "WITHDRAWN-GUAVA-31.1-HOTFIX",
+            "replacement_purl": "pkg:maven/com.google.guava/guava@31.1-jre-hotfix-1",
+            "provider": "MemberCurated",
+            "provider_kind": "member",
+            "blocked_reason": "withdrawn_artifact"
+          }
+        ],
+        "vex_assessments": [
+          {
+            "feed_id": "osera-openvex",
+            "vulnerability": "CVE-2023-2976",
+            "status": "under_investigation",
+            "supplier": "moderne",
+            "purl": "pkg:maven/com.google.guava/guava@31.1-jre"
+          },
+          {
+            "feed_id": "osera-openvex",
+            "vulnerability": "CVE-2020-8908",
+            "status": "not_affected",
+            "supplier": "moderne",
+            "purl": "pkg:maven/com.google.guava/guava@31.1-jre"
+          }
+        ],
+        "matched_patch": null,
+        "addressed_cves": [],
+        "addressed_kev_cves": [],
+        "potential_cves": [],
+        "potential_kev_cves": [],
+        "residual_cves": [
+          "CVE-2023-2976"
+        ],
+        "observation_basis": "sbom_build_observation_not_verified_runtime",
+        "stale_observation": false
+      },
+      {
+        "instance_id": "app-legacy-adapter::internal-custom://unmapped-binary-blob",
+        "application_id": "app-legacy-adapter",
+        "project_group": "Legacy",
+        "raw_purl": "internal-custom://unmapped-binary-blob",
+        "purl": "internal-custom://unmapped-binary-blob",
+        "ecosystem_type": "unknown",
+        "ecosystem": "Unknown",
+        "library": "internal-custom://unmapped-binary-blob",
+        "version": "",
+        "maintenance_line": "unknown",
+        "dependency_scopes": [
+          "direct"
+        ],
+        "cves": [],
+        "kev_cves": [],
+        "eligible": false,
+        "instance_state": "unknown_evidence",
+        "package_adoption_state": "unknown_evidence",
+        "reason": "Unsupported or non-PURL product identifier: internal-custom://unmapped-binary-blob",
+        "applicable_patches": [],
+        "blocked_candidates": [],
+        "vex_assessments": [],
+        "matched_patch": null,
+        "addressed_cves": [],
+        "addressed_kev_cves": [],
+        "potential_cves": [],
+        "potential_kev_cves": [],
+        "residual_cves": [],
+        "observation_basis": "sbom_build_observation_not_verified_runtime",
+        "stale_observation": true
+      }
+    ],
+    "uncovered_demand_cart": [
+      {
+        "Action": "CREATE_PATCH_REQUEST",
+        "Scope": "finos-estate-2026-11",
+        "Ecosystem": "Java",
+        "Package": "com.google.guava:guava",
+        "MaintenanceLine": "31.1.x",
+        "ObservedVersions": [
+          "31.1-jre"
+        ],
+        "AffectedApplications": [
+          "app-settlement-gateway"
+        ],
+        "CVEs": [
+          "CVE-2023-2976"
+        ],
+        "KEVs": [],
+        "BlockedReasons": [
+          "unreleased_work:planned",
+          "withdrawn_artifact"
+        ]
+      }
+    ]
+  }
 }

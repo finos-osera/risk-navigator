@@ -1,0 +1,284 @@
+{
+  "feeds": [
+    {
+      "config": {
+        "feed_id": "osera-openvex",
+        "adapter": "osera_openvex",
+        "provider": "OSERA",
+        "provider_kind": "osera",
+        "source_url": "https://feed.finos.org/openvex.json",
+        "snapshot_version": "120",
+        "last_refresh": "2026-10-28T15:37:58Z",
+        "enabled": true,
+        "catalog_overlays": [
+          {
+            "replacement_purl": "pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1-osera-00001",
+            "patch_id": "OSERA-PATCH-LZ4-0001",
+            "applicable_versions": ["1.8.0", "1.8.1", "1.8.1.1"],
+            "maintenance_line": "1.8.x",
+            "artifact_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+            "release_state": "released",
+            "required_companions": []
+          },
+          {
+            "replacement_purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00002",
+            "patch_id": "OSERA-PATCH-SB-0002",
+            "applicable_versions": ["2.7.16", "2.7.17", "2.7.18"],
+            "maintenance_line": "2.7.x",
+            "artifact_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+            "release_state": "released",
+            "required_companions": ["pkg:maven/org.springframework.boot/spring-boot@2.7.18-osera-00002"]
+          },
+          {
+            "replacement_purl": "pkg:maven/io.netty/netty-codec-http2@4.1.100.Final-osera-00001",
+            "patch_id": "OSERA-PATCH-NETTY-0001",
+            "applicable_versions": ["4.1.99.Final", "4.1.100.Final"],
+            "maintenance_line": "4.1.x",
+            "artifact_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+            "release_state": "released",
+            "required_companions": ["pkg:maven/io.netty/netty-common@4.1.100.Final-osera-00001"]
+          }
+        ]
+      },
+      "document": {
+        "@context": "https://openvex.dev/ns/v0.2.0",
+        "@id": "https://feed.finos.org/openvex.json",
+        "version": 120,
+        "last_updated": "2026-10-28T15:37:58Z",
+        "statements": [
+          {
+            "vulnerability": {
+              "name": "CVE-2025-66566",
+              "aliases": ["GHSA-cmp6-m4wj-q63q"]
+            },
+            "products": [
+              { "@id": "pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1-osera-00001" }
+            ],
+            "status": "fixed",
+            "supplier": "moderne",
+            "timestamp": "2026-10-28T15:37:58Z"
+          },
+          {
+            "vulnerability": {
+              "name": "CVE-2024-38816",
+              "aliases": ["GHSA-43mq-6xmg-29vm"]
+            },
+            "products": [
+              { "@id": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00001" },
+              { "@id": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00002" }
+            ],
+            "status": "fixed",
+            "supplier": "moderne",
+            "timestamp": "2026-10-28T15:37:58Z"
+          },
+          {
+            "vulnerability": {
+              "name": "CVE-2023-44487",
+              "aliases": ["GHSA-xpw8-rcwv-8f8p"]
+            },
+            "products": [
+              { "@id": "pkg:maven/io.netty/netty-codec-http2@4.1.100.Final-osera-00001" }
+            ],
+            "status": "fixed",
+            "supplier": "moderne",
+            "timestamp": "2026-10-28T15:37:58Z"
+          },
+          {
+            "vulnerability": {
+              "name": "CVE-2023-2976",
+              "aliases": []
+            },
+            "products": [
+              { "@id": "pkg:maven/com.google.guava/guava@31.1-jre" }
+            ],
+            "status": "under_investigation",
+            "supplier": "moderne",
+            "timestamp": "2026-10-28T15:37:58Z"
+          },
+          {
+            "vulnerability": {
+              "name": "CVE-2020-8908",
+              "aliases": []
+            },
+            "products": [
+              { "@id": "pkg:maven/com.google.guava/guava@31.1-jre" }
+            ],
+            "status": "not_affected",
+            "supplier": "moderne",
+            "timestamp": "2026-10-28T15:37:58Z"
+          },
+          {
+            "vulnerability": {
+              "name": "CVE-2026-9999",
+              "aliases": []
+            },
+            "products": [
+              { "@id": "https://example.org/non-purl-artifact" }
+            ],
+            "status": "fixed",
+            "supplier": "moderne",
+            "timestamp": "2026-10-28T15:37:58Z"
+          }
+        ]
+      }
+    },
+    {
+      "config": {
+        "feed_id": "member-catalog-v1",
+        "adapter": "provider_catalog",
+        "provider": "MemberCurated",
+        "provider_kind": "member",
+        "source_url": "https://internal.example.org/feeds/patch-catalog-v1.json",
+        "snapshot_version": "2026.10.28",
+        "last_refresh": "2026-10-28T16:00:00Z",
+        "enabled": true
+      },
+      "document": {
+        "schema_version": "osera-patch-catalog/v1",
+        "as_of": "2026-10-28T16:00:00Z",
+        "patches": [
+          {
+            "patch_id": "MEMBER-MIRROR-LZ4-0001",
+            "provider": "OSERA",
+            "provider_kind": "osera",
+            "supplier": "moderne",
+            "replacement_purl": "pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1-osera-00001",
+            "applicable_versions": ["1.8.1.1"],
+            "maintenance_line": "1.8.x",
+            "artifact_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+            "fixed_advisories": ["CVE-2025-66566"],
+            "aliases": ["GHSA-cmp6-m4wj-q63q"],
+            "release_state": "released",
+            "evidence_links": [
+              { "kind": "member-attestation", "url": "https://internal.example.org/evidence/lz4-0001.json" }
+            ]
+          },
+          {
+            "patch_id": "UPSTREAM-AXIOS-1.7.4",
+            "provider": "Upstream",
+            "provider_kind": "upstream",
+            "supplier": "axios",
+            "replacement_purl": "pkg:npm/axios@1.7.4",
+            "applicable_versions": ["1.7.1", "1.7.2", "1.7.3"],
+            "maintenance_line": "1.7.x",
+            "artifact_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "fixed_advisories": ["CVE-2024-39338"],
+            "aliases": ["GHSA-8hc4-vh64-cxmj"],
+            "release_state": "released"
+          },
+          {
+            "patch_id": "PLANNED-GUAVA-31.1-BACKPORT",
+            "provider": "OSERA",
+            "provider_kind": "osera",
+            "supplier": "osera-backlog",
+            "replacement_purl": "pkg:maven/com.google.guava/guava@31.1-jre-osera-00001",
+            "applicable_versions": ["31.1-jre"],
+            "maintenance_line": "31.1.x",
+            "fixed_advisories": ["CVE-2023-2976"],
+            "release_state": "planned"
+          },
+          {
+            "patch_id": "WITHDRAWN-GUAVA-31.1-HOTFIX",
+            "provider": "MemberCurated",
+            "provider_kind": "member",
+            "supplier": "internal-sec",
+            "replacement_purl": "pkg:maven/com.google.guava/guava@31.1-jre-hotfix-1",
+            "applicable_versions": ["31.1-jre"],
+            "maintenance_line": "31.1.x",
+            "fixed_advisories": ["CVE-2023-2976"],
+            "release_state": "withdrawn",
+            "withdrawn": true
+          }
+        ]
+      }
+    }
+  ],
+  "estate_snapshot": {
+    "snapshot_id": "finos-estate-2026-11",
+    "snapshot_date": "2026-10-28T18:00:00Z",
+    "stale_after_days": 30,
+    "applications": [
+      {
+        "application_id": "app-trading-core",
+        "name": "Trading Core Engine",
+        "project_group": "Capital Markets",
+        "observed_at": "2026-10-28T17:00:00Z",
+        "components": [
+          {
+            "purl": "pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1",
+            "dependency_scope": "direct",
+            "cves": ["CVE-2025-66566"],
+            "kev_cves": []
+          },
+          {
+            "purl": "pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1",
+            "dependency_scope": "transitive",
+            "cves": ["CVE-2025-66566"],
+            "kev_cves": []
+          },
+          {
+            "purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.7.18-osera-00002",
+            "artifact_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+            "dependency_scope": "direct",
+            "cves": ["CVE-2024-38816"],
+            "kev_cves": ["CVE-2024-38816"]
+          },
+          {
+            "purl": "pkg:maven/io.netty/netty-codec-http2@4.1.100.Final-osera-00001",
+            "artifact_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+            "dependency_scope": "transitive",
+            "cves": ["CVE-2023-44487"],
+            "kev_cves": ["CVE-2023-44487"]
+          }
+        ]
+      },
+      {
+        "application_id": "app-risk-engine",
+        "name": "Risk Aggregation Service",
+        "project_group": "Risk & Treasury",
+        "observed_at": "2026-10-28T17:15:00Z",
+        "components": [
+          {
+            "purl": "pkg:maven/at.yawk.lz4/lz4-java@1.8.1.1",
+            "dependency_scope": "transitive",
+            "cves": ["CVE-2025-66566"],
+            "kev_cves": []
+          }
+        ]
+      },
+      {
+        "application_id": "app-settlement-gateway",
+        "name": "Settlement Gateway",
+        "project_group": "Operations",
+        "observed_at": "2026-10-28T17:30:00Z",
+        "components": [
+          {
+            "purl": "pkg:maven/io.netty/netty-codec-http2@4.1.100.Final",
+            "dependency_scope": "direct",
+            "cves": ["CVE-2023-44487"],
+            "kev_cves": ["CVE-2023-44487"]
+          },
+          {
+            "purl": "pkg:maven/com.google.guava/guava@31.1-jre",
+            "dependency_scope": "transitive",
+            "cves": ["CVE-2023-2976"],
+            "kev_cves": []
+          }
+        ]
+      },
+      {
+        "application_id": "app-legacy-adapter",
+        "name": "Legacy Mainframe Adapter",
+        "project_group": "Legacy",
+        "observed_at": "2026-08-15T10:00:00Z",
+        "components": [
+          {
+            "purl": "internal-custom://unmapped-binary-blob",
+            "dependency_scope": "direct",
+            "cves": []
+          }
+        ]
+      }
+    ]
+  }
+}

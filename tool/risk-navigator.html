@@ -5109,6 +5109,152 @@ function activeDatasetDisplayName() {
   return division ? `${division} / ${scopeLabel}` : scopeLabel;
 }
 
+function renderPatchFeedAdoptionDashboard(dataset) {
+  const adoption = dataset && dataset.patch_feed_adoption;
+  if (!adoption || typeof adoption !== "object") return "";
+  const m = adoption.metrics || {};
+  const avail = m.applications_with_available_patch || {};
+  const obs = m.applications_with_observed_patch_use || {};
+  const inst = m.patched_eligible_component_instances || {};
+  const pkgStates = m.package_state_counts || {};
+  const stateCounts = m.state_counts || {};
+  const exp = m.exposure_summary || {};
+  const feeds = Array.isArray(adoption.feeds) ? adoption.feeds : [];
+  const uncovered = Array.isArray(adoption.uncovered_demand_cart) ? adoption.uncovered_demand_cart : [];
+  const instances = Array.isArray(adoption.instance_records) ? adoption.instance_records : [];
+  const unknownCount = Number(
+    m.unknown_observation_count != null
+      ? m.unknown_observation_count
+      : stateCounts.unknown_evidence != null
+      ? stateCounts.unknown_evidence
+      : pkgStates.unknown_evidence || 0
+  );
+  const staleCount = Number(m.stale_observation_count || 0);
+
+  const pfFilter = state.patchAdoptionFilter || { feedId: "", adoptionState: "" };
+  const activeFeedId = String(pfFilter.feedId || "");
+  const activeAdoptionState = String(pfFilter.adoptionState || "");
+
+  const filteredInstances = instances.filter(rec => {
+    if (activeAdoptionState && rec.instance_state !== activeAdoptionState && rec.package_adoption_state !== activeAdoptionState) {
+      return false;
+    }
+    if (activeFeedId) {
+      const patches = Array.isArray(rec.applicable_patches) ? rec.applicable_patches : [];
+      const vexList = Array.isArray(rec.vex_assessments) ? rec.vex_assessments : [];
+      const matchesPatchFeed = patches.some(p =>
+        Array.isArray(p.provenance) && p.provenance.some(pr => pr.feed_id === activeFeedId)
+      );
+      const matchesVexFeed = vexList.some(v => v.feed_id === activeFeedId);
+      if (!matchesPatchFeed && !matchesVexFeed) return false;
+    }
+    return true;
+  });
+
+  const datasetScopeName = String((dataset.meta && dataset.meta.scope_name) || "").trim();
+  const adoptionScopeId = String(adoption.snapshot_id || m.scope_id || "estate-default").trim();
+  const isSeparateFixtureScope = Boolean(datasetScopeName && adoptionScopeId && datasetScopeName !== adoptionScopeId);
+
+  const feedRows = feeds.map(f => {
+    const errs = Array.isArray(f.validation_errors) ? f.validation_errors : [];
+    const warns = Array.isArray(f.validation_warnings) ? f.validation_warnings : [];
+    const validationDetail = errs.length
+      ? `${errs.length} error(s): ${escapeHtml(errs[0])}`
+      : warns.length
+      ? `${warns.length} warning(s): ${escapeHtml(warns[0])}`
+      : "Valid";
+    return `
+      <tr>
+        <td><strong>${escapeHtml(f.provider || "-")}</strong> (<code>${escapeHtml(f.feed_id || "-")}</code>)</td>
+        <td>${escapeHtml(f.adapter || "-")}</td>
+        <td><code>${escapeHtml(f.snapshot_version || "-")}</code></td>
+        <td>${escapeHtml(f.last_refresh || "-")}</td>
+        <td>${f.enabled ? "Enabled" : "Disabled"}</td>
+        <td>${Number(f.patch_count || 0)} patches / ${Number(f.vex_statement_count || 0)} VEX</td>
+        <td>${validationDetail}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const instanceRows = filteredInstances.map(r => {
+    const cveList = Array.isArray(r.cves) && r.cves.length ? r.cves.join(", ") : "None";
+    const patchLabel = r.matched_patch
+      ? `<code>${escapeHtml(r.matched_patch.replacement_purl || "-")}</code> (observed in SBOM/build)`
+      : Array.isArray(r.applicable_patches) && r.applicable_patches.length
+      ? `<code>${escapeHtml(r.applicable_patches[0].replacement_purl || "-")}</code> (available)`
+      : "-";
+    const staleBadge = r.stale_observation ? ` <span class="badge">stale observation</span>` : "";
+    return `
+      <tr>
+        <td><code>${escapeHtml(r.application_id || "-")}</code><div class="small">${escapeHtml(r.project_group || "-")}</div></td>
+        <td><code>${escapeHtml(r.purl || r.raw_purl || "-")}</code>${staleBadge}</td>
+        <td>${escapeHtml((r.dependency_scopes || []).join(", ") || "-")}</td>
+        <td><code>${escapeHtml(r.instance_state || "-")}</code><div class="small">pkg: <code>${escapeHtml(r.package_adoption_state || "-")}</code></div></td>
+        <td>${patchLabel}</td>
+        <td><code>${escapeHtml(cveList)}</code></td>
+        <td class="small">${escapeHtml(r.reason || "-")}</td>
+      </tr>
+    `;
+  }).join("");
+
+  return `
+    <section class="dashboard-section" id="patch-feed-adoption-section">
+      <h3>Estate Patch Availability &amp; Observed Adoption (SBOM / Build Observation)</h3>
+      <div class="dashboard-note" style="margin-bottom:8px;">
+        Scope <code>${escapeHtml(adoptionScopeId)}</code> · Snapshot <code>${escapeHtml(adoption.snapshot_date || "-")}</code> · Observation basis: <code>${escapeHtml(m.observation_basis || "sbom_build_observation_not_verified_runtime")}</code> (not verified runtime deployment). VEX <code>not_affected</code> / <code>under_investigation</code> and unreleased / withdrawn entries do not count as available patches.
+        ${isSeparateFixtureScope ? `<br><strong>Demonstration fixture notice:</strong> This section renders the self-contained 4-application fixture evaluation (<code>data/fixtures/patch-feeds-estate-sample.json</code>, scope <code>${escapeHtml(adoptionScopeId)}</code>) and is independent of the surrounding <code>${escapeHtml(datasetScopeName)}</code> sample dataset.` : ""}
+      </div>
+      <div class="dashboard-kpis" style="margin-bottom:10px;">
+        <section class="dashboard-card">
+          <div class="label">Apps with available patch</div>
+          <div class="value">${escapeHtml(avail.display || "Not applicable")}</div>
+          <div class="sub">${escapeHtml(avail.numerator_label || "apps with available patch")} / ${escapeHtml(avail.denominator_label || "inventoried apps")}</div>
+        </section>
+        <section class="dashboard-card">
+          <div class="label">Apps with observed patch use</div>
+          <div class="value">${escapeHtml(obs.display || "Not applicable")}</div>
+          <div class="sub">${escapeHtml(obs.numerator_label || "apps with observed patch")} / ${escapeHtml(obs.denominator_label || "inventoried apps")}</div>
+        </section>
+        <section class="dashboard-card">
+          <div class="label">Patched eligible instances</div>
+          <div class="value">${escapeHtml(inst.display || "Not applicable")}</div>
+          <div class="sub">${escapeHtml(inst.numerator_label || "patched eligible instances")} / ${escapeHtml(inst.denominator_label || "eligible instances")}</div>
+        </section>
+        <section class="dashboard-card">
+          <div class="label">States &amp; Uncovered Demand</div>
+          <div class="value">${Number(pkgStates.observed_patched || 0)} patched · ${Number(pkgStates.partially_adopted || 0)} partial · ${Number(pkgStates.applicable_unadopted || 0)} unadopted</div>
+          <div class="sub">${Number(pkgStates.no_known_patch || 0)} coverage gap(s) (${uncovered.length} request-cart item(s)) · ${unknownCount} unknown · ${staleCount} stale</div>
+        </section>
+      </div>
+      <div class="small" style="margin-bottom:8px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
+        <div>
+          <strong>Exposure accounting:</strong>
+          Observed remediated CVEs: <code>${(exp.observed_remediated_cves || []).length}</code> (KEV: <code>${(exp.observed_remediated_kevs || []).length}</code>) ·
+          Potential reducible CVEs from remaining patches: <code>${(exp.potential_reducible_cves || []).length}</code> (KEV: <code>${(exp.potential_reducible_kevs || []).length}</code>) ·
+          Residual CVEs: <code>${(exp.residual_cves || []).length}</code>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <label class="small">Feed:
+            <select data-patch-feed-filter="1">
+              <option value="">All feeds</option>
+              ${feeds.map(f => `<option value="${escapeHtml(f.feed_id || "")}" ${activeFeedId === f.feed_id ? "selected" : ""}>${escapeHtml(f.feed_id || "-")}</option>`).join("")}
+            </select>
+          </label>
+          <label class="small">Adoption state:
+            <select data-patch-state-filter="1">
+              <option value="">All states</option>
+              ${["observed_patched", "partially_adopted", "applicable_unadopted", "no_known_patch", "unknown_evidence"].map(st => `<option value="${st}" ${activeAdoptionState === st ? "selected" : ""}>${st}</option>`).join("")}
+            </select>
+          </label>
+          <button type="button" class="btn" data-export-uncovered-demand="1">Export Uncovered Demand (${uncovered.length})</button>
+        </div>
+      </div>
+      ${feedRows ? `<div class="libs-table-wrap" style="margin-bottom:10px;"><table class="libs-table"><thead><tr><th>Feed / Provider</th><th>Adapter</th><th>Snapshot</th><th>Last Refresh</th><th>State</th><th>Records</th><th>Validation</th></tr></thead><tbody>${feedRows}</tbody></table></div>` : ""}
+      ${instanceRows ? `<div class="libs-table-wrap"><table class="libs-table"><thead><tr><th>Application</th><th>Observed Component</th><th>Scope</th><th>Adoption State</th><th>Patch Candidate</th><th>CVEs</th><th>Assessment</th></tr></thead><tbody>${instanceRows}</tbody></table></div>` : `<div class="small">No component instances match the current patch adoption filter.</div>`}
+    </section>
+  `;
+}
+
 function renderDashboard(filteredLibraries) {
   if (!els.dashboardView || !els.mainTable) return;
   const metrics = computeDashboardMetrics(filteredLibraries);
@@ -5214,6 +5360,7 @@ function renderDashboard(filteredLibraries) {
         </table>
       </div>
     </section>
+    ${renderPatchFeedAdoptionDashboard(state.dataset)}
   `;
   renderDashboardFilterSidebar(metrics);
 }
@@ -6769,6 +6916,30 @@ function bindEvents() {
     const cveId = cveBtn.getAttribute("data-open-cve") || "";
     if (cveId) openCveModalById(cveId);
   });
+  if (els.dashboardView) {
+    els.dashboardView.addEventListener("change", e => {
+      const t = e.target;
+      if (!(t instanceof Element)) return;
+      if (t.matches("[data-patch-feed-filter]")) {
+        state.patchAdoptionFilter = state.patchAdoptionFilter || { feedId: "", adoptionState: "" };
+        state.patchAdoptionFilter.feedId = t.value || "";
+        render();
+      } else if (t.matches("[data-patch-state-filter]")) {
+        state.patchAdoptionFilter = state.patchAdoptionFilter || { feedId: "", adoptionState: "" };
+        state.patchAdoptionFilter.adoptionState = t.value || "";
+        render();
+      }
+    });
+    els.dashboardView.addEventListener("click", e => {
+      const t = e.target;
+      if (!(t instanceof Element)) return;
+      const exportBtn = t.closest("[data-export-uncovered-demand]");
+      if (exportBtn) {
+        const cart = (state.dataset && state.dataset.patch_feed_adoption && state.dataset.patch_feed_adoption.uncovered_demand_cart) || [];
+        openModal("Uncovered Demand Cart (JSON)", JSON.stringify(cart, null, 2));
+      }
+    });
+  }
   els.detail.addEventListener("click", e => {
     const t = e.target;
     if (!(t instanceof Element)) return;
