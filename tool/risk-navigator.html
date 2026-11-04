@@ -3209,6 +3209,56 @@ function closeVersionModal() {
   els.versionModal.classList.remove("open");
 }
 
+function renderPatchReadinessPanel(lib) {
+  const scenarios = lib && lib.patch_readiness_scenarios && typeof lib.patch_readiness_scenarios === "object"
+    ? lib.patch_readiness_scenarios
+    : null;
+  const selectedScenarioId = (state.selectedReadinessScenarioByLib && state.selectedReadinessScenarioByLib[lib.id]) || "";
+  const readiness = (scenarios && selectedScenarioId && scenarios[selectedScenarioId]) || (lib && lib.patch_readiness);
+  if (!readiness || typeof readiness !== "object") return "";
+  const activeCandidateId = String(readiness.candidate_id || selectedScenarioId || "default");
+  const stages = readiness.stages || {};
+  const src = stages.source_fitness || {};
+  const promo = stages.artifact_promotion || {};
+  const member = stages.member_validation || {};
+  const blockers = Array.isArray(readiness.blockers) ? readiness.blockers : [];
+  const proposals = Array.isArray(readiness.proposal_warnings) ? readiness.proposal_warnings : [];
+  const unrelated = Array.isArray(readiness.unrelated_artifact_notices) ? readiness.unrelated_artifact_notices : [];
+  const checks = Array.isArray(src.checks) ? src.checks : [];
+
+  const scenarioOptions = scenarios
+    ? Object.keys(scenarios).map(cid => `<option value="${escapeHtml(cid)}" ${cid === activeCandidateId ? "selected" : ""}>${escapeHtml(cid)}</option>`).join("")
+    : "";
+
+  const checkRows = checks.map(chk => `
+    <tr>
+      <td><code>${escapeHtml(chk.id || "-")}</code></td>
+      <td>${escapeHtml(chk.tier || "adopted")}</td>
+      <td>${escapeHtml(chk.version || "-")}</td>
+      <td><span class="chip">${escapeHtml(chk.status || "not-tested")}</span></td>
+      <td><code>${escapeHtml(String(chk.expected ?? "-"))}</code> / <code>${escapeHtml(String(chk.observed ?? "-"))}</code></td>
+    </tr>
+  `).join("");
+
+  return `
+    <h4>Patch Readiness (Source Fitness · Artifact Promotion · Member Policy)</h4>
+    <div class="small" style="margin-bottom:6px;">
+      <strong>Simulated verifier &amp; fixture boundary:</strong> Candidate records from <code>data/fixtures/patch-readiness-sample.json</code> represent synthetic demonstration evidence evaluated by <code>DefaultGateVerifier</code>. A supplied <code>cryptographically_verified</code> attribute models the verdict of an external trusted attestation gate (<code>AttestationVerifier</code>) rather than live in-browser signature verification.
+      ${scenarioOptions ? `<div style="margin-top:4px;"><label>Fixture candidate scenario: <select data-readiness-scenario-select="1" data-readiness-lib-id="${escapeHtml(lib.id || "")}">${scenarioOptions}</select></label></div>` : ""}
+    </div>
+    <div class="kv">
+      <div class="k">Candidate / Verdict</div><div><code>${escapeHtml(activeCandidateId)}</code> — <strong>${escapeHtml(readiness.overall_status || "incomplete")}</strong> (${readiness.eligible_for_deployment ? "Eligible" : "Not eligible"})</div>
+      <div class="k">1. Source fitness</div><div>${escapeHtml(src.status || "unknown")} (pack <code>${escapeHtml(src.traceability?.pack_version || "-")}</code>, commit <code>${escapeHtml(src.traceability?.library_commit || "-")}</code>, artifact digest <code>${escapeHtml(String(src.traceability?.artifact_digest ?? "null"))}</code>)</div>
+      <div class="k">2. Artifact promotion</div><div>${escapeHtml(promo.status || "pending")} (trusted gate signature flag: <code>${String(Boolean(promo.signature_verified))}</code>, digest <code>${escapeHtml(promo.traceability?.artifact_digest || "-")}</code>)</div>
+      <div class="k">3. Member validation</div><div>${escapeHtml(member.status || "pending")} (policy <code>${escapeHtml(member.traceability?.policy_id || "-")}@${escapeHtml(member.traceability?.policy_version || "-")}</code>, bound evidence <code>${escapeHtml(member.traceability?.bound_evidence_digest || "-")}</code>)</div>
+    </div>
+    ${blockers.length ? `<div class="small" style="margin-top:6px;"><strong>Blocking findings (${blockers.length}):</strong><ul>${blockers.map(b => `<li><code>${escapeHtml(b.code)}</code> (${escapeHtml(b.stage)}): ${escapeHtml(b.message)}</li>`).join("")}</ul></div>` : ""}
+    ${proposals.length ? `<div class="small" style="margin-top:6px;"><strong>Proposal warnings (non-blocking, separate from adopted requirements):</strong><ul>${proposals.map(p => `<li><code>${escapeHtml(p.code)}</code> [${escapeHtml(p.status)}]: ${escapeHtml(p.message)}</li>`).join("")}</ul></div>` : ""}
+    ${unrelated.length ? `<div class="small" style="margin-top:6px;"><strong>Unrelated artifacts outside closure (non-blocking):</strong><ul>${unrelated.map(u => `<li><code>${escapeHtml(u.artifact_id)}</code> [${escapeHtml(u.status)}]: ${escapeHtml(u.message)}</li>`).join("")}</ul></div>` : ""}
+    ${checkRows ? `<table class="mini-table" style="margin-top:6px;"><thead><tr><th>Check</th><th>Tier</th><th>Version</th><th>Status</th><th>Expected / Observed</th></tr></thead><tbody>${checkRows}</tbody></table>` : ""}
+  `;
+}
+
 function openLibraryDetailsModal(lib) {
   if (!lib || !lib.id) return;
   const assessment = buildBackpatchAssessment(lib);
@@ -3234,6 +3284,7 @@ function openLibraryDetailsModal(lib) {
       <div class="k">Consumers</div><div>${lib.total_consumer_count || 0} (${lib.direct_consumer_count || 0} direct / ${lib.transitive_consumer_count || 0} transitive)</div>
       <div class="k">Frameworks</div><div>${renderFrameworkJumpButtons(lib)}</div>
     </div>
+    ${renderPatchReadinessPanel(lib)}
     <div class="h-row" style="margin:8px 0;">
       <button data-open-version="${lib.id}" class="ghost">Open full version explorer</button>
     </div>
@@ -5128,7 +5179,7 @@ function renderPatchFeedAdoptionDashboard(dataset) {
   const instanceRows = filteredInstances.map(r => {
     const cveList = Array.isArray(r.cves) && r.cves.length ? r.cves.join(", ") : "None";
     const patchLabel = r.matched_patch
-      ? `<code>${escapeHtml(r.matched_patch.replacement_purl || "-")}</code> (verified)`
+      ? `<code>${escapeHtml(r.matched_patch.replacement_purl || "-")}</code> (observed in SBOM/build)`
       : Array.isArray(r.applicable_patches) && r.applicable_patches.length
       ? `<code>${escapeHtml(r.applicable_patches[0].replacement_purl || "-")}</code> (available)`
       : "-";
@@ -6939,6 +6990,18 @@ function bindEvents() {
     if (!lib) return;
     closeLibraryModal();
     openVersionExplorerForLibrary(lib);
+  });
+  els.libraryModalBody.addEventListener("change", e => {
+    const t = e.target;
+    if (!(t instanceof Element)) return;
+    if (t.matches("[data-readiness-scenario-select]")) {
+      const libId = t.getAttribute("data-readiness-lib-id") || "";
+      const lib = getLibraryById(libId);
+      if (!lib) return;
+      state.selectedReadinessScenarioByLib = state.selectedReadinessScenarioByLib || {};
+      state.selectedReadinessScenarioByLib[libId] = t.value || "";
+      openLibraryDetailsModal(lib);
+    }
   });
   els.cveModalBody.addEventListener("click", e => {
     const t = e.target;
