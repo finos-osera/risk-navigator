@@ -2,10 +2,18 @@ import copy
 import json
 from pathlib import Path
 
-from patch_readiness import evaluate_patch_readiness, evaluate_patch_readiness_bundle
+from patch_readiness import (
+    DEFAULT_DATASET_LIBRARY_ID,
+    attach_patch_readiness_to_dataset,
+    evaluate_patch_readiness,
+    evaluate_patch_readiness_bundle,
+    main as patch_readiness_main,
+)
 
 
-FIXTURE_PATH = Path(__file__).resolve().parents[1] / "data" / "fixtures" / "patch-readiness-sample.json"
+ROOT_DIR = Path(__file__).resolve().parents[1]
+FIXTURE_PATH = ROOT_DIR / "data" / "fixtures" / "patch-readiness-sample.json"
+SAMPLE_DATASET_PATH = ROOT_DIR / "data" / "finos-sample-platform.json"
 
 
 def _load_candidates() -> dict[str, dict]:
@@ -128,4 +136,91 @@ def test_evaluate_patch_readiness_bundle_returns_all_scenarios():
     assert bundle["by_id"]["ready-with-unrelated-broken-artifact"]["overall_status"] == "ready"
     assert bundle["by_id"]["source-pass-only"]["overall_status"] == "source_only"
     assert bundle["by_id"]["evidence-disagreement-and-broken-required-chain"]["overall_status"] == "blocked"
+
+
+def test_default_write_dataset_attaches_spring_web_readiness_and_preserves_adoption_data(tmp_path):
+    assert DEFAULT_DATASET_LIBRARY_ID == "maven|org.springframework|spring-web|5.3.39"
+    committed_dataset = json.loads(SAMPLE_DATASET_PATH.read_text(encoding="utf-8"))
+    committed_spring_web = next(
+        (lib for lib in committed_dataset.get("libraries", []) if lib.get("id") == DEFAULT_DATASET_LIBRARY_ID),
+        None,
+    )
+    assert committed_spring_web is not None
+    assert committed_spring_web.get("patch_readiness", {}).get("overall_status") == "ready"
+    assert set(committed_spring_web.get("patch_readiness_scenarios", {}).keys()) == {
+        "source-pass-only",
+        "evidence-disagreement-and-broken-required-chain",
+        "ready-with-unrelated-broken-artifact",
+    }
+    assert committed_dataset.get("patch_feed_adoption") is not None
+
+    # Strip readiness fields on a temp copy and verify the documented default CLI invocation re-attaches them
+    stripped_dataset = copy.deepcopy(committed_dataset)
+    original_top_adoption = copy.deepcopy(stripped_dataset.get("patch_feed_adoption"))
+    for lib in stripped_dataset.get("libraries", []):
+        if lib.get("id") == DEFAULT_DATASET_LIBRARY_ID:
+            lib.pop("patch_readiness", None)
+            lib.pop("patch_readiness_scenarios", None)
+    temp_dataset_path = tmp_path / "finos-sample-platform.json"
+    temp_dataset_path.write_text(json.dumps(stripped_dataset, indent=2) + "\n", encoding="utf-8")
+
+    rc = patch_readiness_main([
+        "--fixture",
+        str(FIXTURE_PATH),
+        "--write-dataset",
+        str(temp_dataset_path),
+    ])
+    assert rc == 0
+
+    written = json.loads(temp_dataset_path.read_text(encoding="utf-8"))
+    assert written.get("patch_feed_adoption") == original_top_adoption
+    spring_web = next(
+        (lib for lib in written.get("libraries", []) if lib.get("id") == DEFAULT_DATASET_LIBRARY_ID),
+        None,
+    )
+    assert spring_web is not None
+    assert spring_web["patch_readiness"]["overall_status"] == "ready"
+    assert spring_web["patch_readiness"]["verifier_mode"] == "simulated_gate_fixture_evidence"
+    assert set(spring_web["patch_readiness_scenarios"].keys()) == {
+        "source-pass-only",
+        "evidence-disagreement-and-broken-required-chain",
+        "ready-with-unrelated-broken-artifact",
+    }
+
+
+def test_write_dataset_fails_clearly_when_library_id_matches_no_library(tmp_path):
+    payload = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+    bundle = evaluate_patch_readiness_bundle(payload)
+    dataset = {"libraries": [{"id": DEFAULT_DATASET_LIBRARY_ID, "name": "spring-web"}]}
+
+    try:
+        attach_patch_readiness_to_dataset(
+            dataset,
+            bundle,
+            library_id="maven:org.springframework:spring-web:5.3.39",
+        )
+        raise AssertionError("Expected ValueError for unmatched library_id")
+    except ValueError as exc:
+        assert "maven:org.springframework:spring-web:5.3.39" in str(exc)
+
+    temp_dataset_path = tmp_path / "unmatched-dataset.json"
+    original_text = json.dumps(dataset, indent=2) + "\n"
+    temp_dataset_path.write_text(original_text, encoding="utf-8")
+
+    try:
+        patch_readiness_main([
+            "--fixture",
+            str(FIXTURE_PATH),
+            "--write-dataset",
+            str(temp_dataset_path),
+            "--library-id",
+            "maven:org.springframework:spring-web:5.3.39",
+        ])
+        raise AssertionError("Expected SystemExit for unmatched --library-id")
+    except SystemExit as exc_info:
+        assert "maven:org.springframework:spring-web:5.3.39" in str(exc_info)
+        assert "was not found in dataset libraries" in str(exc_info)
+    assert temp_dataset_path.read_text(encoding="utf-8") == original_text
+
+
 

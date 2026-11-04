@@ -24,6 +24,8 @@ DEFAULT_ADOPTED_MANDATORY_CHECKS = (
     "REL-006",
     "EVD-001",
 )
+DEFAULT_DATASET_LIBRARY_ID = "maven|org.springframework|spring-web|5.3.39"
+DEFAULT_CANDIDATE_ID = "ready-with-unrelated-broken-artifact"
 
 
 class AttestationVerifier(Protocol):
@@ -408,7 +410,37 @@ def evaluate_patch_readiness_bundle(
     }
 
 
-def main() -> int:
+def attach_patch_readiness_to_dataset(
+    dataset: Dict[str, Any],
+    bundle_eval: Dict[str, Any],
+    library_id: str = DEFAULT_DATASET_LIBRARY_ID,
+    candidate_id: str = DEFAULT_CANDIDATE_ID,
+) -> int:
+    """Attach evaluated patch_readiness and scenario map to matching library records in dataset.
+
+    Raises ValueError when no library in dataset matches library_id or candidate_id is missing.
+    """
+    by_id = bundle_eval.get("by_id") if isinstance(bundle_eval, dict) else {}
+    candidates = bundle_eval.get("candidates") if isinstance(bundle_eval, dict) else []
+    primary = (by_id or {}).get(candidate_id) or (candidates[0] if candidates else None)
+    if primary is None:
+        raise ValueError(f"Candidate ID {candidate_id!r} was not found in evaluated readiness bundle.")
+
+    matched = 0
+    for lib in (dataset.get("libraries") or []) if isinstance(dataset, dict) else []:
+        if isinstance(lib, dict) and lib.get("id") == library_id:
+            lib["patch_readiness"] = primary
+            lib["patch_readiness_scenarios"] = by_id
+            matched += 1
+
+    if matched == 0:
+        raise ValueError(
+            f"Target library ID {library_id!r} was not found in dataset libraries."
+        )
+    return matched
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Evaluate OSERA patch readiness candidates (#25).")
     parser.add_argument(
         "--fixture",
@@ -419,7 +451,7 @@ def main() -> int:
     parser.add_argument(
         "--candidate-id",
         type=str,
-        default="ready-with-unrelated-broken-artifact",
+        default=DEFAULT_CANDIDATE_ID,
         help="Default candidate ID to attach as primary patch_readiness when writing to a dataset.",
     )
     parser.add_argument(
@@ -431,21 +463,25 @@ def main() -> int:
     parser.add_argument(
         "--library-id",
         type=str,
-        default="maven:org.springframework:spring-web:5.3.39",
+        default=DEFAULT_DATASET_LIBRARY_ID,
         help="Target library ID in --write-dataset to populate with patch_readiness and patch_readiness_scenarios.",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     bundle_raw = json.loads(args.fixture.read_text(encoding="utf-8"))
     bundle_eval = evaluate_patch_readiness_bundle(bundle_raw)
     if args.write_dataset:
         dataset = json.loads(args.write_dataset.read_text(encoding="utf-8"))
-        primary = bundle_eval["by_id"].get(args.candidate_id) or (
-            bundle_eval["candidates"][0] if bundle_eval["candidates"] else None
-        )
-        for lib in dataset.get("libraries") or []:
-            if isinstance(lib, dict) and lib.get("id") == args.library_id:
-                lib["patch_readiness"] = primary
-                lib["patch_readiness_scenarios"] = bundle_eval["by_id"]
+        try:
+            attach_patch_readiness_to_dataset(
+                dataset,
+                bundle_eval,
+                library_id=args.library_id,
+                candidate_id=args.candidate_id,
+            )
+        except ValueError as exc:
+            raise SystemExit(
+                f"error: --write-dataset ({args.write_dataset}) failed: {exc}"
+            ) from exc
         args.write_dataset.write_text(json.dumps(dataset, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(bundle_eval, indent=2))
     return 0
