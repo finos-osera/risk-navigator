@@ -46,6 +46,11 @@ def slugify(text: str) -> str:
     return base or "scope"
 
 
+def canonical_package_name(namespace: str, name: str) -> str:
+    """Use the PyPA lookup identity for PyPI; preserve other ecosystems' names."""
+    return re.sub(r"[-_.]+", "-", name).lower() if namespace.lower() == "pypi" else name
+
+
 def split_coords(namespace: str, name: str) -> Tuple[str, str, str]:
     ns = namespace.lower()
     if ns == "maven" and ":" in name:
@@ -57,11 +62,11 @@ def split_coords(namespace: str, name: str) -> Tuple[str, str, str]:
     else:
         meta = ""
         proj = name
-    return ns, meta, proj
+    return ns, meta, canonical_package_name(ns, proj)
 
 
 def make_library_id(namespace: str, meta: str, proj: str, release: str) -> str:
-    return f"{namespace}|{meta}|{proj}|{release}"
+    return f"{namespace}|{meta}|{canonical_package_name(namespace, proj)}|{release}"
 
 
 def canonical_release(namespace: str, release: str) -> str:
@@ -87,7 +92,7 @@ def canonical_library_id(library_id: str) -> str:
 
 def parse_library_id(library_id: str) -> Tuple[str, str, str, str]:
     namespace, meta, proj, release = library_id.split("|", 3)
-    return namespace, meta, proj, release
+    return namespace, meta, canonical_package_name(namespace, proj), release
 
 
 def is_ga_release(release: str) -> bool:

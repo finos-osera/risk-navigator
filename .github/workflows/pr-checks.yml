@@ -5,7 +5,8 @@ on:
     paths:
       - ".node-version"
       - ".github/workflows/pr-checks.yml"
-      - "data/finos-sample-platform.json"
+      - "data/**"
+      - "scripts/**"
       - "docs/**"
       - "package.json"
       - "package-lock.json"
@@ -59,6 +60,9 @@ jobs:
 
       - name: Build Docusaurus site
         run: npm run docs:build
+
+      - name: Test patch coverage
+        run: npm run test:patches
 
       - name: Run tests
         run: python -m pytest -q

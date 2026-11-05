@@ -1,0 +1,51 @@
+name: Refresh FINOS sample
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 5 * * 1"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: refresh-finos
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Refresh inventory and signals with distribution size limits
+        run: python scripts/refresh_finos.py
+      - name: Validate refresh tests
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pytest -q
+      - name: Propose the refreshed sample
+        env:
+          GH_REPO: ${{ github.repository }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git ls-remote --exit-code --heads origin codex/automated-finos-refresh > /dev/null; then
+            git fetch origin codex/automated-finos-refresh:refs/remotes/origin/codex/automated-finos-refresh
+          fi
+          git switch -C codex/automated-finos-refresh
+          git add data/finos-github-org.json data/finos-coverage.json tool/manifest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Refresh compact FINOS inventory and risk signals'
+          git push --force-with-lease origin codex/automated-finos-refresh
+          if [ -z "$(gh pr list --head codex/automated-finos-refresh --state open --json number --jq '.[0].number // empty')" ]; then
+            gh pr create --base main --head codex/automated-finos-refresh \
+              --title 'Refresh FINOS sample inventory and risk signals' \
+              --body-file .github/finos-refresh-pr.md
+          fi
