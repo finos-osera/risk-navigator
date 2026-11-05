@@ -41,7 +41,8 @@ def test_version_chains_do_not_duplicate_canonical_releases():
         for lib in payload.get("libraries", []):
             seen = set()
             namespace = str(lib.get("namespace", ""))
-            for row in lib.get("version_chain", []):
+            chain = payload.get("version_chains", {}).get(lib.get("version_chain_ref"), lib.get("version_chain", []))
+            for row in chain:
                 release = canonical_release(namespace, str(row.get("release", "")))
                 assert release not in seen, f"{dataset_path.name} duplicates {lib.get('id')} release {release}"
                 seen.add(release)

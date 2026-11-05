@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, Iterator, List, Optional, Sequence, Set, Tuple
 
-from common import split_coords
+from common import canonical_package_name, canonical_release, split_coords
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE_DIR = ROOT / "data" / "sources" / "osv"
@@ -477,7 +477,7 @@ def normalize_package_key(namespace: str, meta: str, proj: str) -> Tuple[str, st
     return (
         namespace.strip().lower(),
         meta.strip(),
-        proj.strip(),
+        canonical_package_name(namespace, proj.strip()),
     )
 
 
@@ -538,6 +538,7 @@ def build_ingest_fingerprint(
     package_allowlist_file: Optional[Path],
 ) -> Dict[str, object]:
     out: Dict[str, object] = {
+        "identity_schema_version": 2,  # Re-ingest caches created before canonical package/version identities.
         "source_dir": str(source_dir),
         "source_zip": str(source_zip) if source_zip else "",
         "allowed_ecosystems": sorted(list(allowed_ecosystems)),
@@ -675,7 +676,7 @@ def iter_edges(record: Dict[str, object], cvss: float) -> Iterable[VulnVersionEd
                         namespace=namespace,
                         meta=meta,
                         proj=proj,
-                        release=version.strip(),
+                        release=canonical_release(namespace, version),
                         cvss=cvss,
                         exploitability=exploitability,
                         priority=priority,
