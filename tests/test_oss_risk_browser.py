@@ -457,3 +457,191 @@ def test_collect_osera_openvex_matching_deduplication_unavailable_and_cache_time
     assert res_unavailable["confidence"] == 0.0
     assert res_unavailable["published_patch_count"] == 0
 
+
+def _load_refresh_oss_risk_module():
+    import importlib.util
+
+    refresh_path = Path(__file__).resolve().parents[1] / "oss-risk" / "collectors" / "refresh_oss_risk.py"
+    spec = importlib.util.spec_from_file_location("refresh_oss_risk", refresh_path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_refresh_oss_risk_validate_only_passes_on_committed_datasets():
+    mod = _load_refresh_oss_risk_module()
+    assert mod.main(["--validate-only"]) == 0
+
+
+def test_refresh_oss_risk_fail_closed_preserves_existing_published_files(tmp_path, monkeypatch):
+    mod = _load_refresh_oss_risk_module()
+    out_dir = tmp_path / "published"
+    out_dir.mkdir(parents=True)
+    stage_dir = tmp_path / "staging"
+
+    # Seed existing valid baseline files in out_dir
+    seed_record = {
+        "project": {
+            "name": "log4j-core",
+            "ecosystem": "maven",
+            "package": "org.apache.logging.log4j:log4j-core",
+            "repository": "https://github.com/apache/logging-log4j2",
+        },
+        "enterprise": {"versions_in_use": [{"version": "2.12.4-osera.1"}]},
+        "evidence": {"finos_osera_backpatch": {"backpatch_repository": "finos-osera/backpatch-log4j2"}},
+    }
+    baseline_seeds = {"schema_version": "0.1", "records": [seed_record, {**seed_record, "project": {**seed_record["project"], "name": "jodd-json", "package": "org.jodd:jodd-json"}}]}
+    baseline_bp = {"schema_version": "0.1", "generated_at": "2026-10-01T00:00:00Z", "records": [seed_record, seed_record]}
+    seeds_file = out_dir / mod.DEFAULT_BACKPATCH_SEEDS.name
+    bp_file = out_dir / mod.DEFAULT_BACKPATCH_SCORECARDS.name
+    seeds_file.write_text(json.dumps(baseline_seeds), encoding="utf-8")
+    bp_file.write_text(json.dumps(baseline_bp), encoding="utf-8")
+    original_bp_text = bp_file.read_text(encoding="utf-8")
+
+    # 1. Missing GitHub token fails closed before touching out_dir
+    monkeypatch.setattr(mod.discovery, "github_token", lambda: "")
+    try:
+        mod.run_refresh(
+            staging_dir=stage_dir,
+            output_dir=out_dir,
+            skip_discovery=True,
+            skip_examples=True,
+            min_backpatch_records=1,
+        )
+        assert False, "Expected RuntimeError when GitHub token is missing"
+    except RuntimeError as exc:
+        assert "GitHub API authentication is required" in str(exc)
+    assert bp_file.read_text(encoding="utf-8") == original_bp_text
+
+    # 2. Shrink below existing published count fails closed
+    monkeypatch.setattr(mod.discovery, "github_token", lambda: "ghs_test_token")
+    shrunk_seeds = {"schema_version": "0.1", "records": [seed_record]}
+    seeds_file.write_text(json.dumps(shrunk_seeds), encoding="utf-8")
+    try:
+        mod.run_refresh(
+            staging_dir=stage_dir,
+            output_dir=out_dir,
+            skip_discovery=True,
+            skip_examples=True,
+            min_backpatch_records=1,
+        )
+        assert False, "Expected RuntimeError when discovered seed count shrinks below baseline"
+    except RuntimeError as exc:
+        assert "smaller than existing published snapshot" in str(exc)
+    assert bp_file.read_text(encoding="utf-8") == original_bp_text
+
+    # 3. Unavailable OpenVEX or GitHub rate-limit error fails closed during staged validation
+    def _bad_collect_record(_client, rec, _observed, include_osv=True):
+        return {
+            "project": rec["project"],
+            "scores": {"oss_vitality": 72.5},
+            "evidence": {
+                "osera_openvex": {"coverage_status": "unavailable", "error": "HTTP 503"},
+                "osv": {"source": "osv-query-api", "observed_at": "2026-11-04T00:00:00Z"},
+                "cisa_kev": {"source": "cisa-kev-json", "observed_at": "2026-11-04T00:00:00Z", "catalog_count": 100},
+                "github": {"source": "github-api", "observed_at": "2026-11-04T00:00:00Z", "repo_api": {"error": "HTTP 403"}},
+            },
+        }
+
+    monkeypatch.setattr(mod.collector, "collect_record", _bad_collect_record)
+    try:
+        mod.run_refresh(
+            staging_dir=stage_dir,
+            output_dir=out_dir,
+            skip_discovery=True,
+            skip_examples=True,
+            allow_shrink=True,
+            min_backpatch_records=1,
+        )
+        assert False, "Expected RuntimeError when staged validation fails"
+    except RuntimeError as exc:
+        msg = str(exc)
+        assert "OSERA OpenVEX feed unavailable" in msg
+        assert "GitHub API error" in msg
+    assert bp_file.read_text(encoding="utf-8") == original_bp_text
+
+
+def test_refresh_oss_risk_staged_publish_and_workflow_triggers(tmp_path, monkeypatch):
+    mod = _load_refresh_oss_risk_module()
+    out_dir = tmp_path / "published"
+    out_dir.mkdir(parents=True)
+    stage_dir = tmp_path / "staging"
+    cache_dir = tmp_path / "cache"
+
+    seed_record = {
+        "project": {
+            "name": "log4j-core",
+            "ecosystem": "maven",
+            "package": "org.apache.logging.log4j:log4j-core",
+            "repository": "https://github.com/apache/logging-log4j2",
+        },
+        "enterprise": {"versions_in_use": [{"version": "2.12.4-osera.1"}]},
+        "evidence": {"finos_osera_backpatch": {"backpatch_repository": "finos-osera/backpatch-log4j2"}},
+    }
+    seeds_file = out_dir / mod.DEFAULT_BACKPATCH_SEEDS.name
+    seeds_file.write_text(json.dumps({"schema_version": "0.1", "records": [seed_record]}), encoding="utf-8")
+    ex_seeds_file = tmp_path / "example-seeds.json"
+    ex_seeds_file.write_text(json.dumps({"records": [seed_record]}), encoding="utf-8")
+
+    observed_refresh_flags = []
+
+    def _valid_collect_record(client, rec, _observed, include_osv=True):
+        observed_refresh_flags.append(client.refresh)
+        return {
+            "project": rec["project"],
+            "scores": {"oss_vitality": 81.2},
+            "evidence": {
+                "osera_openvex": {
+                    "coverage_status": "covered",
+                    "retrieved_at": "2026-11-04T12:00:00Z",
+                    "feed_version": 161,
+                    "feed_last_updated": "2026-11-02T15:22:11Z",
+                },
+                "osv": {"source": "osv-query-api", "observed_at": "2026-11-04T12:00:00Z"},
+                "cisa_kev": {
+                    "source": "cisa-kev-json",
+                    "observed_at": "2026-11-04T12:00:00Z",
+                    "catalog_count": 1662,
+                },
+                "github": {
+                    "source": "github-api",
+                    "observed_at": "2026-11-04T12:00:00Z",
+                    "confidence": 0.9,
+                    "repo_api": {"status": 200},
+                },
+            },
+        }
+
+    monkeypatch.setattr(mod.discovery, "github_token", lambda: "ghs_test_token")
+    monkeypatch.setattr(mod.collector, "collect_record", _valid_collect_record)
+
+    published = mod.run_refresh(
+        staging_dir=stage_dir,
+        output_dir=out_dir,
+        cache_dir=cache_dir,
+        example_seeds_path=ex_seeds_file,
+        skip_discovery=True,
+        skip_examples=False,
+        min_backpatch_records=1,
+        min_example_records=1,
+    )
+    assert observed_refresh_flags == [True, True]
+    assert set(published.keys()) == {
+        "finos-osera-backpatch-libraries.json",
+        "finos-osera-backpatch-scorecards.json",
+        "collected-library-scorecards.json",
+    }
+
+    root = Path(__file__).resolve().parents[1]
+    refresh_wf = (root / ".github" / "workflows" / "refresh-oss-risk.yml").read_text(encoding="utf-8")
+    pr_checks_wf = (root / ".github" / "workflows" / "pr-checks.yml").read_text(encoding="utf-8")
+    pages_wf = (root / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
+
+    assert "workflow_dispatch:" in refresh_wf
+    assert "schedule:" in refresh_wf
+    assert "npm run refresh:oss-risk" in refresh_wf
+    assert '"oss-risk/**"' in pr_checks_wf
+    assert '"oss-risk/**"' in pages_wf
+
+

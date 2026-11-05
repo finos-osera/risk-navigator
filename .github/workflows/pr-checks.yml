@@ -14,6 +14,7 @@ on:
       - "tool/**"
       - "website/**"
       - "netlify.toml"
+      - "oss-risk/**"
   workflow_dispatch:
 
 permissions:

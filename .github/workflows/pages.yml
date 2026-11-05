@@ -10,6 +10,7 @@ on:
       - "docs/**"
       - "website/**"
       - "package.json"
+      - "oss-risk/**"
   workflow_dispatch:
 
 permissions:

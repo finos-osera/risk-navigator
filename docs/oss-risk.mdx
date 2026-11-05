@@ -164,7 +164,19 @@ inventory.
 
 ## Updating The Data
 
-The focused OSERA dataset is generated with:
+To run a full, fail-closed live refresh and validation locally (discovering `finos-osera/backpatch-*` seeds, bypassing the collector HTTP cache via `--refresh`, validating source provenance and distribution size limits in `data/local/oss-risk-refresh/publish`, and atomically updating `oss-risk/data/*.json` only when validation passes):
+
+```bash
+npm run refresh:oss-risk
+```
+
+To validate the committed `oss-risk/data/*.json` datasets without performing live network collection:
+
+```bash
+npm run validate:oss-risk
+```
+
+For individual collector runs during development, the focused OSERA dataset is generated with:
 
 ```bash
 npm run collect:oss-risk:finos-osera
@@ -175,6 +187,15 @@ The smaller example dataset is generated with:
 ```bash
 npm run collect:oss-risk
 ```
+
+### Automated GitHub Actions Refresh & Publishing
+
+1. **Workflow & Schedule**: `.github/workflows/refresh-oss-risk.yml` (`Refresh OSS-risk datasets`) runs weekly on schedule (`43 5 * * 1`) and on demand via `workflow_dispatch`.
+2. **Credentials & Rate-Limit Handling**: The workflow supplies `GH_TOKEN` / `GITHUB_TOKEN` from `${{ github.token }}`. `refresh_oss_risk.py` requires an authenticated GitHub token (or `gh auth token` locally) and fails closed if GitHub API rate-limit/authentication errors (`HTTP 401`, `HTTP 403`, `HTTP 429`, `HTTP 5xx`) occur or if repository metadata lookups drop below the required success threshold.
+3. **Cache Bypass & Provenance Retention**: Automated refreshes always execute with cache bypass enabled (`HttpClient(..., refresh=True)`), ensuring fresh upstream responses while writing `.meta.json` cache sidecars and recording `generated_at`, per-source `observed_at` / `retrieved_at` timestamps, and OSERA OpenVEX `feed_version` / `feed_last_updated` metadata.
+4. **Fail-Closed Staging & Publication**: Refreshed datasets are written to `data/local/oss-risk-refresh/publish/` first and checked against minimum record counts, baseline shrink guards, schema/provenance requirements, OpenVEX/OSV/CISA KEV availability, and the 5 MiB per-file distribution cap. If any collector or validation check fails, the job exits non-zero and leaves the committed `oss-risk/data/*.json` snapshot untouched.
+5. **Reviewable Refresh PR & Site Deployment**: When validation, `python -m pytest -q`, and `npm run docs:build` succeed, the workflow uploads the `oss-risk-datasets` build artifact and opens or updates a reviewable pull request from `codex/automated-oss-risk-refresh` (without auto-merging). Both `.github/workflows/pr-checks.yml` and `.github/workflows/pages.yml` watch `oss-risk/**`, so OSS-risk-data-only PRs run CI checks and merging the refresh PR automatically triggers the GitHub Pages deployment.
+6. **Rerunning a Failed Refresh**: Maintainers can inspect the failed step in the **Refresh OSS-risk datasets** workflow logs and trigger a manual rerun from the GitHub Actions UI (**Run workflow** on `Refresh OSS-risk datasets`) or via `gh workflow run refresh-oss-risk.yml` once upstream API availability or rate limits recover.
 
 The Docusaurus website build copies the browser and JSON datasets into
 `website/static/oss-risk/` during `npm run docs:build`, so the hosted page is
