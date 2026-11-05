@@ -18,6 +18,8 @@ export default defineConfig({
           req.url = `/tool/risk-navigator.html${suffix}`;
         } else if (pathname === "/tools/manifest.json") {
           req.url = `/tool/manifest.json${suffix}`;
+        } else if (pathname.startsWith("/tools/patches/")) {
+          req.url = `/tool/patches/${pathname.slice("/tools/patches/".length)}${suffix}`;
         } else if (pathname.startsWith("/tools/assets/")) {
           req.url = `/tool/assets/${pathname.slice("/tools/assets/".length)}${suffix}`;
         }
