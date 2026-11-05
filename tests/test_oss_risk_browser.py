@@ -887,5 +887,24 @@ def test_refresh_oss_risk_rejects_oversized_seed_payload_and_preserves_existing_
     assert seeds_file.read_bytes() == original_seeds_bytes
     assert bp_file.read_bytes() == original_bp_bytes
 
+    # Verify --require-live-discovery fails closed when /orgs/finos-osera/repos returns 0 visible backpatch-* repos
+    monkeypatch.setattr(mod, "check_file_size", lambda path, max_bytes=mod.MAX_DATASET_BYTES: None)
+    monkeypatch.setattr(mod.discovery, "list_org_repos", lambda client, org: [{"name": "risk-navigator"}])
+    try:
+        mod.run_refresh(
+            staging_dir=stage_dir,
+            output_dir=out_dir,
+            skip_discovery=False,
+            require_live_discovery=True,
+            skip_examples=True,
+            min_backpatch_records=1,
+        )
+        assert False, "Expected RuntimeError when require_live_discovery=True and 0 backpatch-* repos are visible"
+    except RuntimeError as exc:
+        assert "expected at least 1 seed records, found 0" in str(exc)
+    assert seeds_file.read_bytes() == original_seeds_bytes
+    assert bp_file.read_bytes() == original_bp_bytes
+
+
 
 

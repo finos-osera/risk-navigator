@@ -314,6 +314,7 @@ def run_refresh(
     cache_dir: Path = collector.DEFAULT_CACHE,
     example_seeds_path: Path = DEFAULT_EXAMPLE_SEEDS,
     skip_discovery: bool = False,
+    require_live_discovery: bool = False,
     skip_examples: bool = False,
     reuse_cache: bool = False,
     allow_unauthenticated_github: bool = False,
@@ -334,10 +335,11 @@ def run_refresh(
     staged_ex = staging_dir / DEFAULT_EXAMPLE_SCORECARDS.name
 
     # 1. Discover or copy FINOS OSERA backpatch seed records into staging
+    source_seeds = output_dir / DEFAULT_BACKPATCH_SEEDS.name
+    if not source_seeds.exists():
+        source_seeds = DEFAULT_BACKPATCH_SEEDS
+
     if skip_discovery:
-        source_seeds = output_dir / DEFAULT_BACKPATCH_SEEDS.name
-        if not source_seeds.exists():
-            source_seeds = DEFAULT_BACKPATCH_SEEDS
         shutil.copyfile(source_seeds, staged_seeds)
         seeds_payload = json.loads(staged_seeds.read_text(encoding="utf-8"))
     else:
@@ -350,23 +352,33 @@ def run_refresh(
             and r["name"].startswith(discovery.PREFIX)
             and not r.get("archived")
         ]
-        seed_records = []
-        skipped = []
-        for repo in sorted(repos, key=lambda item: item["name"]):
-            rec = discovery.make_record(gh_client, repo, observed_at)
-            if rec:
-                seed_records.append(rec)
-            else:
-                skipped.append(repo.get("full_name") or repo["name"])
-        seeds_payload = {
-            "schema_version": "0.1",
-            "generated_at": observed_at,
-            "source": f"github-org:{discovery.ORG}",
-            "repository_prefix": discovery.PREFIX,
-            "records": seed_records,
-            "skipped": skipped,
-        }
-        staged_seeds.write_text(json.dumps(seeds_payload, indent=2) + "\n", encoding="utf-8")
+        if not repos and not require_live_discovery and source_seeds.exists():
+            shutil.copyfile(source_seeds, staged_seeds)
+            seeds_payload = json.loads(staged_seeds.read_text(encoding="utf-8"))
+            print(
+                f"Note: /orgs/{discovery.ORG}/repos returned 0 visible {discovery.PREFIX}* repositories "
+                f"with the current token; retaining existing seed inventory "
+                f"(generated_at={seeds_payload.get('generated_at')}) and refreshing live scorecard evidence.",
+                file=sys.stderr,
+            )
+        else:
+            seed_records = []
+            skipped = []
+            for repo in sorted(repos, key=lambda item: item["name"]):
+                rec = discovery.make_record(gh_client, repo, observed_at)
+                if rec:
+                    seed_records.append(rec)
+                else:
+                    skipped.append(repo.get("full_name") or repo["name"])
+            seeds_payload = {
+                "schema_version": "0.1",
+                "generated_at": observed_at,
+                "source": f"github-org:{discovery.ORG}",
+                "repository_prefix": discovery.PREFIX,
+                "records": seed_records,
+                "skipped": skipped,
+            }
+            staged_seeds.write_text(json.dumps(seeds_payload, indent=2) + "\n", encoding="utf-8")
 
     seed_errors = validate_seed_payload(
         seeds_payload,
@@ -562,6 +574,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Reuse existing finos-osera-backpatch-libraries.json seed file instead of querying GitHub org repos.",
     )
     parser.add_argument(
+        "--require-live-discovery",
+        action="store_true",
+        help="Fail closed if /orgs/finos-osera/repos returns 0 visible backpatch-* repositories instead of retaining the committed seed inventory.",
+    )
+    parser.add_argument(
         "--skip-examples",
         action="store_true",
         help="Skip refreshing collected-library-scorecards.json.",
@@ -614,6 +631,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             output_dir=args.output_dir,
             cache_dir=args.cache_dir,
             skip_discovery=args.skip_discovery,
+            require_live_discovery=args.require_live_discovery,
             skip_examples=args.skip_examples,
             reuse_cache=args.reuse_cache,
             allow_unauthenticated_github=args.allow_unauthenticated_github,
