@@ -64,6 +64,9 @@ def validate(path: Path) -> List[str]:
                 errors.append(f"$.libraries[{idx}] must be an object")
                 continue
             require_keys(lib, REQUIRED_LIBRARY, f"$.libraries[{idx}]", errors)
+            ref = lib.get("version_chain_ref")
+            if ref and not isinstance(payload.get("version_chains", {}).get(ref), list):
+                errors.append(f"Missing shared version chain: {ref}")
 
     return errors
 

@@ -2026,7 +2026,527 @@
       "risk_signal": 13.604585,
       "frameworks": [
         "spring-framework"
-      ]
+      ],
+      "patch_readiness": {
+        "candidate_id": "ready-with-unrelated-broken-artifact",
+        "artifact_id": "maven:org.springframework:spring-web:5.3.39-osera.1",
+        "overall_status": "ready",
+        "eligible_for_deployment": true,
+        "verifier_mode": "simulated_gate_fixture_evidence",
+        "stages": {
+          "source_fitness": {
+            "status": "pass",
+            "traceability": {
+              "pack_version": "0.2.0",
+              "library_commit": "0123456789abcdef0123456789abcdef01234567",
+              "release_commit": "89abcdef0123456789abcdef0123456789abcdef",
+              "evidence_file_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "artifact_digest": null,
+              "evaluated_at": "2026-11-02T12:00:00Z"
+            },
+            "checks": [
+              {
+                "id": "FORK-001",
+                "version": "0.2.0",
+                "status": "pass",
+                "tier": "adopted",
+                "blocking": true,
+                "expected": "true",
+                "observed": "true",
+                "freshness": "2026-11-02T12:00:00Z",
+                "reason": ""
+              },
+              {
+                "id": "SRC-001",
+                "version": "0.2.0",
+                "status": "pass",
+                "tier": "adopted",
+                "blocking": true,
+                "expected": "0",
+                "observed": "0",
+                "freshness": "2026-11-02T12:00:00Z",
+                "reason": ""
+              },
+              {
+                "id": "REL-001",
+                "version": "0.2.0",
+                "status": "pass",
+                "tier": "adopted",
+                "blocking": true,
+                "expected": "signed-tag",
+                "observed": "signed-tag",
+                "freshness": "2026-11-02T12:00:00Z",
+                "reason": ""
+              },
+              {
+                "id": "REL-006",
+                "version": "0.2.0",
+                "status": "pass",
+                "tier": "adopted",
+                "blocking": true,
+                "expected": "vex+sbom",
+                "observed": "vex+sbom",
+                "freshness": "2026-11-02T12:00:00Z",
+                "reason": ""
+              },
+              {
+                "id": "EVD-001",
+                "version": "0.2.0",
+                "status": "pass",
+                "tier": "adopted",
+                "blocking": true,
+                "expected": "complete",
+                "observed": "complete",
+                "freshness": "2026-11-02T12:00:00Z",
+                "reason": ""
+              },
+              {
+                "id": "CP-REL-004",
+                "version": "0.2.0-draft",
+                "status": "warn",
+                "tier": "proposal",
+                "blocking": false,
+                "expected": "multi-builder-reproducible",
+                "observed": "single-builder",
+                "freshness": "2026-11-02T12:00:00Z",
+                "reason": "CP-REL-004 proposal warning: secondary rebuild is optional under current policy."
+              }
+            ]
+          },
+          "artifact_promotion": {
+            "status": "verified",
+            "signature_verified": true,
+            "traceability": {
+              "pack_version": "0.2.0",
+              "release_commit": "89abcdef0123456789abcdef0123456789abcdef",
+              "artifact_digest": "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+              "observed_artifact_digest": "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+              "evidence_file_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "observed_evidence_file_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "evaluated_at": "2026-11-02T12:20:00Z",
+              "rehearsal": false,
+              "global_status": "verified",
+              "signature_url": "https://example.org/signatures/spring-web-5.3.39-osera.1.sig",
+              "verdict_url": "https://example.org/verdicts/spring-web-5.3.39-osera.1.json"
+            }
+          },
+          "member_validation": {
+            "status": "approved",
+            "traceability": {
+              "policy_id": "member-tier1-prod-policy",
+              "policy_version": "2026.11",
+              "decision": "approved",
+              "evaluated_at": "2026-11-02T12:30:00Z",
+              "bound_artifact_digest": "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+              "bound_evidence_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+            }
+          }
+        },
+        "blockers": [],
+        "adopted_warnings": [],
+        "proposal_warnings": [
+          {
+            "code": "CP-REL-004",
+            "tier": "proposal",
+            "status": "warn",
+            "message": "CP-REL-004 proposal warning: secondary rebuild is optional under current policy."
+          }
+        ],
+        "unrelated_artifact_notices": [
+          {
+            "artifact_id": "maven:org.springframework:spring-webflux:5.3.39-osera.1",
+            "status": "broken",
+            "message": "Unrelated reactive module outside proposed servlet closure failed optional build."
+          }
+        ]
+      },
+      "patch_readiness_scenarios": {
+        "source-pass-only": {
+          "candidate_id": "source-pass-only",
+          "artifact_id": "maven:org.springframework:spring-web:5.3.39-osera.1",
+          "overall_status": "source_only",
+          "eligible_for_deployment": false,
+          "verifier_mode": "simulated_gate_fixture_evidence",
+          "stages": {
+            "source_fitness": {
+              "status": "pass",
+              "traceability": {
+                "pack_version": "0.2.0",
+                "library_commit": "0123456789abcdef0123456789abcdef01234567",
+                "release_commit": "89abcdef0123456789abcdef0123456789abcdef",
+                "evidence_file_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                "artifact_digest": null,
+                "evaluated_at": "2026-11-02T12:00:00Z"
+              },
+              "checks": [
+                {
+                  "id": "FORK-001",
+                  "version": "0.2.0",
+                  "status": "pass",
+                  "tier": "adopted",
+                  "blocking": true,
+                  "expected": "true",
+                  "observed": "true",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": ""
+                },
+                {
+                  "id": "SRC-001",
+                  "version": "0.2.0",
+                  "status": "pass",
+                  "tier": "adopted",
+                  "blocking": true,
+                  "expected": "0",
+                  "observed": "0",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": ""
+                },
+                {
+                  "id": "REL-001",
+                  "version": "0.2.0",
+                  "status": "pass",
+                  "tier": "adopted",
+                  "blocking": true,
+                  "expected": "signed-tag",
+                  "observed": "signed-tag",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": ""
+                },
+                {
+                  "id": "REL-006",
+                  "version": "0.2.0",
+                  "status": "pass",
+                  "tier": "adopted",
+                  "blocking": true,
+                  "expected": "vex+sbom",
+                  "observed": "vex+sbom",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": ""
+                },
+                {
+                  "id": "EVD-001",
+                  "version": "0.2.0",
+                  "status": "pass",
+                  "tier": "adopted",
+                  "blocking": true,
+                  "expected": "complete",
+                  "observed": "complete",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": ""
+                },
+                {
+                  "id": "CP-REL-004",
+                  "version": "0.2.0-draft",
+                  "status": "warn",
+                  "tier": "proposal",
+                  "blocking": false,
+                  "expected": "multi-builder-reproducible",
+                  "observed": "single-builder",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": "CP-REL-004 proposal warning: secondary independent rebuild not yet attached."
+                }
+              ]
+            },
+            "artifact_promotion": {
+              "status": "pending",
+              "signature_verified": false,
+              "traceability": {
+                "pack_version": null,
+                "release_commit": null,
+                "artifact_digest": null,
+                "observed_artifact_digest": null,
+                "evidence_file_digest": null,
+                "observed_evidence_file_digest": null,
+                "evaluated_at": null,
+                "rehearsal": false,
+                "global_status": null,
+                "signature_url": null,
+                "verdict_url": null
+              }
+            },
+            "member_validation": {
+              "status": "pending",
+              "traceability": {
+                "policy_id": null,
+                "policy_version": null,
+                "decision": null,
+                "evaluated_at": null,
+                "bound_artifact_digest": null,
+                "bound_evidence_digest": null
+              }
+            }
+          },
+          "blockers": [],
+          "adopted_warnings": [],
+          "proposal_warnings": [
+            {
+              "code": "CP-REL-004",
+              "tier": "proposal",
+              "status": "warn",
+              "message": "CP-REL-004 proposal warning: secondary independent rebuild not yet attached."
+            }
+          ],
+          "unrelated_artifact_notices": []
+        },
+        "evidence-disagreement-and-broken-required-chain": {
+          "candidate_id": "evidence-disagreement-and-broken-required-chain",
+          "artifact_id": "maven:org.springframework:spring-web:5.3.39-osera.1",
+          "overall_status": "blocked",
+          "eligible_for_deployment": false,
+          "verifier_mode": "simulated_gate_fixture_evidence",
+          "stages": {
+            "source_fitness": {
+              "status": "pass",
+              "traceability": {
+                "pack_version": "0.2.0",
+                "library_commit": "0123456789abcdef0123456789abcdef01234567",
+                "release_commit": "89abcdef0123456789abcdef0123456789abcdef",
+                "evidence_file_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                "artifact_digest": null,
+                "evaluated_at": "2026-11-02T12:00:00Z"
+              },
+              "checks": [
+                {
+                  "id": "FORK-001",
+                  "version": "0.2.0",
+                  "status": "pass",
+                  "tier": "adopted",
+                  "blocking": true,
+                  "expected": "true",
+                  "observed": "true",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": ""
+                },
+                {
+                  "id": "SRC-001",
+                  "version": "0.2.0",
+                  "status": "pass",
+                  "tier": "adopted",
+                  "blocking": true,
+                  "expected": "0",
+                  "observed": "0",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": ""
+                },
+                {
+                  "id": "REL-001",
+                  "version": "0.2.0",
+                  "status": "pass",
+                  "tier": "adopted",
+                  "blocking": true,
+                  "expected": "signed-tag",
+                  "observed": "signed-tag",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": ""
+                },
+                {
+                  "id": "REL-006",
+                  "version": "0.2.0",
+                  "status": "pass",
+                  "tier": "adopted",
+                  "blocking": true,
+                  "expected": "vex+sbom",
+                  "observed": "vex+sbom",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": ""
+                },
+                {
+                  "id": "EVD-001",
+                  "version": "0.2.0",
+                  "status": "pass",
+                  "tier": "adopted",
+                  "blocking": true,
+                  "expected": "complete",
+                  "observed": "complete",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": ""
+                }
+              ]
+            },
+            "artifact_promotion": {
+              "status": "blocked",
+              "signature_verified": false,
+              "traceability": {
+                "pack_version": "0.2.0",
+                "release_commit": "89abcdef0123456789abcdef0123456789abcdef",
+                "artifact_digest": "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+                "observed_artifact_digest": "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+                "evidence_file_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                "observed_evidence_file_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+                "evaluated_at": "2026-11-02T12:15:00Z",
+                "rehearsal": false,
+                "global_status": "verified",
+                "signature_url": "https://example.org/signatures/spring-web-5.3.39-osera.1.sig",
+                "verdict_url": "https://example.org/verdicts/spring-web-5.3.39-osera.1.json"
+              }
+            },
+            "member_validation": {
+              "status": "pending",
+              "traceability": {
+                "policy_id": null,
+                "policy_version": null,
+                "decision": null,
+                "evaluated_at": null,
+                "bound_artifact_digest": null,
+                "bound_evidence_digest": null
+              }
+            }
+          },
+          "blockers": [
+            {
+              "stage": "artifact_promotion",
+              "code": "EVIDENCE_DOCUMENT_DISAGREEMENT",
+              "message": "Promotion summary document disagrees with underlying evidence file digest."
+            },
+            {
+              "stage": "artifact_promotion",
+              "code": "BROKEN_REQUIRED_CHAIN:maven:org.springframework:spring-core:5.3.39-osera.1",
+              "message": "Companion spring-core artifact digest missing from promotion bundle."
+            },
+            {
+              "stage": "artifact_promotion",
+              "code": "UNVERIFIED_ATTESTATION_SIGNATURE",
+              "message": "Present signature/verdict links or global status are not verified by a trusted attestation gate."
+            }
+          ],
+          "adopted_warnings": [],
+          "proposal_warnings": [],
+          "unrelated_artifact_notices": []
+        },
+        "ready-with-unrelated-broken-artifact": {
+          "candidate_id": "ready-with-unrelated-broken-artifact",
+          "artifact_id": "maven:org.springframework:spring-web:5.3.39-osera.1",
+          "overall_status": "ready",
+          "eligible_for_deployment": true,
+          "verifier_mode": "simulated_gate_fixture_evidence",
+          "stages": {
+            "source_fitness": {
+              "status": "pass",
+              "traceability": {
+                "pack_version": "0.2.0",
+                "library_commit": "0123456789abcdef0123456789abcdef01234567",
+                "release_commit": "89abcdef0123456789abcdef0123456789abcdef",
+                "evidence_file_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                "artifact_digest": null,
+                "evaluated_at": "2026-11-02T12:00:00Z"
+              },
+              "checks": [
+                {
+                  "id": "FORK-001",
+                  "version": "0.2.0",
+                  "status": "pass",
+                  "tier": "adopted",
+                  "blocking": true,
+                  "expected": "true",
+                  "observed": "true",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": ""
+                },
+                {
+                  "id": "SRC-001",
+                  "version": "0.2.0",
+                  "status": "pass",
+                  "tier": "adopted",
+                  "blocking": true,
+                  "expected": "0",
+                  "observed": "0",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": ""
+                },
+                {
+                  "id": "REL-001",
+                  "version": "0.2.0",
+                  "status": "pass",
+                  "tier": "adopted",
+                  "blocking": true,
+                  "expected": "signed-tag",
+                  "observed": "signed-tag",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": ""
+                },
+                {
+                  "id": "REL-006",
+                  "version": "0.2.0",
+                  "status": "pass",
+                  "tier": "adopted",
+                  "blocking": true,
+                  "expected": "vex+sbom",
+                  "observed": "vex+sbom",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": ""
+                },
+                {
+                  "id": "EVD-001",
+                  "version": "0.2.0",
+                  "status": "pass",
+                  "tier": "adopted",
+                  "blocking": true,
+                  "expected": "complete",
+                  "observed": "complete",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": ""
+                },
+                {
+                  "id": "CP-REL-004",
+                  "version": "0.2.0-draft",
+                  "status": "warn",
+                  "tier": "proposal",
+                  "blocking": false,
+                  "expected": "multi-builder-reproducible",
+                  "observed": "single-builder",
+                  "freshness": "2026-11-02T12:00:00Z",
+                  "reason": "CP-REL-004 proposal warning: secondary rebuild is optional under current policy."
+                }
+              ]
+            },
+            "artifact_promotion": {
+              "status": "verified",
+              "signature_verified": true,
+              "traceability": {
+                "pack_version": "0.2.0",
+                "release_commit": "89abcdef0123456789abcdef0123456789abcdef",
+                "artifact_digest": "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+                "observed_artifact_digest": "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+                "evidence_file_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                "observed_evidence_file_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                "evaluated_at": "2026-11-02T12:20:00Z",
+                "rehearsal": false,
+                "global_status": "verified",
+                "signature_url": "https://example.org/signatures/spring-web-5.3.39-osera.1.sig",
+                "verdict_url": "https://example.org/verdicts/spring-web-5.3.39-osera.1.json"
+              }
+            },
+            "member_validation": {
+              "status": "approved",
+              "traceability": {
+                "policy_id": "member-tier1-prod-policy",
+                "policy_version": "2026.11",
+                "decision": "approved",
+                "evaluated_at": "2026-11-02T12:30:00Z",
+                "bound_artifact_digest": "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+                "bound_evidence_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+              }
+            }
+          },
+          "blockers": [],
+          "adopted_warnings": [],
+          "proposal_warnings": [
+            {
+              "code": "CP-REL-004",
+              "tier": "proposal",
+              "status": "warn",
+              "message": "CP-REL-004 proposal warning: secondary rebuild is optional under current policy."
+            }
+          ],
+          "unrelated_artifact_notices": [
+            {
+              "artifact_id": "maven:org.springframework:spring-webflux:5.3.39-osera.1",
+              "status": "broken",
+              "message": "Unrelated reactive module outside proposed servlet closure failed optional build."
+            }
+          ]
+        }
+      }
     },
     {
       "id": "maven|org.springframework|spring-webmvc|6.1.3",

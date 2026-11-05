@@ -8,6 +8,8 @@ on:
       - ".node-version"
       - ".github/workflows/pages.yml"
       - "docs/**"
+      - "data/**"
+      - "tool/**"
       - "website/**"
       - "package.json"
   workflow_dispatch:

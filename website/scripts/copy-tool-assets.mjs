@@ -23,6 +23,7 @@ const copies = [
   ["data/finos-sbom-demo.json", "data/finos-sbom-demo.json"],
   ["data/finos-deep-sbom-demo.json", "data/finos-deep-sbom-demo.json"],
   ["data/finos-github-org.json", "data/finos-github-org.json"],
+  ["data/finos-coverage.json", "data/finos-coverage.json"],
 ];
 
 await rm(resolve(staticDir, "tool"), { recursive: true, force: true });

@@ -84,20 +84,14 @@ npm run generate:finos-deep-sbom-demo
 ## Build the FINOS GitHub org snapshot
 
 ```bash
-npm run build:all:finos-org:full-osv
+npm run refresh:finos
 ```
 
 This is the recommended refresh path for the committed `FINOS GitHub Org Snapshot` dataset. It lists public FINOS repositories through the GitHub REST API, keeps active non-fork repositories, extracts supported dependency manifests, builds an observed package allowlist, ingests matching OSV records, fetches KEV and EPSS signals, and validates `data/finos-github-org.json`.
 
 Use authenticated GitHub API access, for example `gh auth login` or a token in the standard GitHub environment variables, to avoid unauthenticated API rate limits.
 
-The current committed snapshot includes:
-
-- 132 active non-fork public FINOS repositories.
-- 97 repositories with extracted dependency edges.
-- 4,040 dependency edges.
-- 72 distinct vulnerable libraries in the final viewer dataset.
-- 2 KEV-listed libraries.
+Current counts, repository commits and scan gaps are published in `data/finos-coverage.json`. See [FINOS refresh](./finos-refresh.md) for the bounded lockfile scan, weekly updates and distribution size limits.
 
 For a faster smoke test, this command uses the sample OSV seed and produces lower vulnerability coverage:
 

@@ -1,0 +1,161 @@
+{
+  "schema_version": "0.1",
+  "description": "Sample OSERA patch readiness evaluation fixtures covering source-only pass, evidence/document disagreement, global verified status alongside an individual broken chain, unrelated artifact isolation, and CP-REL-004 proposal separation.",
+  "candidates": [
+    {
+      "id": "source-pass-only",
+      "artifact_id": "maven:org.springframework:spring-web:5.3.39-osera.1",
+      "proposed_closure_artifacts": [
+        "maven:org.springframework:spring-web:5.3.39-osera.1",
+        "maven:org.springframework:spring-core:5.3.39-osera.1"
+      ],
+      "source_fitness": {
+        "pack_version": "0.2.0",
+        "library_commit": "0123456789abcdef0123456789abcdef01234567",
+        "release_commit": "89abcdef0123456789abcdef0123456789abcdef",
+        "evidence_file_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "artifact_digest": null,
+        "evaluated_at": "2026-11-02T12:00:00Z",
+        "checks": [
+          { "id": "FORK-001", "version": "0.2.0", "status": "pass", "expected": "true", "observed": "true" },
+          { "id": "SRC-001", "version": "0.2.0", "status": "pass", "expected": "0", "observed": "0" },
+          { "id": "REL-001", "version": "0.2.0", "status": "pass", "expected": "signed-tag", "observed": "signed-tag" },
+          { "id": "REL-006", "version": "0.2.0", "status": "pass", "expected": "vex+sbom", "observed": "vex+sbom" },
+          { "id": "EVD-001", "version": "0.2.0", "status": "pass", "expected": "complete", "observed": "complete" },
+          {
+            "id": "CP-REL-004",
+            "version": "0.2.0-draft",
+            "tier": "proposal",
+            "status": "warn",
+            "expected": "multi-builder-reproducible",
+            "observed": "single-builder",
+            "reason": "CP-REL-004 proposal warning: secondary independent rebuild not yet attached."
+          }
+        ]
+      }
+    },
+    {
+      "id": "evidence-disagreement-and-broken-required-chain",
+      "artifact_id": "maven:org.springframework:spring-web:5.3.39-osera.1",
+      "proposed_closure_artifacts": [
+        "maven:org.springframework:spring-web:5.3.39-osera.1",
+        "maven:org.springframework:spring-core:5.3.39-osera.1"
+      ],
+      "source_fitness": {
+        "pack_version": "0.2.0",
+        "library_commit": "0123456789abcdef0123456789abcdef01234567",
+        "release_commit": "89abcdef0123456789abcdef0123456789abcdef",
+        "evidence_file_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "artifact_digest": null,
+        "evaluated_at": "2026-11-02T12:00:00Z",
+        "checks": [
+          { "id": "FORK-001", "version": "0.2.0", "status": "pass", "expected": "true", "observed": "true" },
+          { "id": "SRC-001", "version": "0.2.0", "status": "pass", "expected": "0", "observed": "0" },
+          { "id": "REL-001", "version": "0.2.0", "status": "pass", "expected": "signed-tag", "observed": "signed-tag" },
+          { "id": "REL-006", "version": "0.2.0", "status": "pass", "expected": "vex+sbom", "observed": "vex+sbom" },
+          { "id": "EVD-001", "version": "0.2.0", "status": "pass", "expected": "complete", "observed": "complete" }
+        ]
+      },
+      "artifact_promotion": {
+        "pack_version": "0.2.0",
+        "release_commit": "89abcdef0123456789abcdef0123456789abcdef",
+        "artifact_digest": "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+        "observed_artifact_digest": "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+        "evidence_file_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "observed_evidence_file_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+        "global_status": "verified",
+        "rehearsal": false,
+        "evaluated_at": "2026-11-02T12:15:00Z",
+        "attestation": {
+          "signature_url": "https://example.org/signatures/spring-web-5.3.39-osera.1.sig",
+          "verdict_url": "https://example.org/verdicts/spring-web-5.3.39-osera.1.json",
+          "cryptographically_verified": false
+        },
+        "artifact_chains": [
+          {
+            "artifact_id": "maven:org.springframework:spring-web:5.3.39-osera.1",
+            "status": "verified"
+          },
+          {
+            "artifact_id": "maven:org.springframework:spring-core:5.3.39-osera.1",
+            "status": "broken",
+            "reason": "Companion spring-core artifact digest missing from promotion bundle."
+          }
+        ]
+      }
+    },
+    {
+      "id": "ready-with-unrelated-broken-artifact",
+      "artifact_id": "maven:org.springframework:spring-web:5.3.39-osera.1",
+      "proposed_closure_artifacts": [
+        "maven:org.springframework:spring-web:5.3.39-osera.1",
+        "maven:org.springframework:spring-core:5.3.39-osera.1"
+      ],
+      "source_fitness": {
+        "pack_version": "0.2.0",
+        "library_commit": "0123456789abcdef0123456789abcdef01234567",
+        "release_commit": "89abcdef0123456789abcdef0123456789abcdef",
+        "evidence_file_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "artifact_digest": null,
+        "evaluated_at": "2026-11-02T12:00:00Z",
+        "checks": [
+          { "id": "FORK-001", "version": "0.2.0", "status": "pass", "expected": "true", "observed": "true" },
+          { "id": "SRC-001", "version": "0.2.0", "status": "pass", "expected": "0", "observed": "0" },
+          { "id": "REL-001", "version": "0.2.0", "status": "pass", "expected": "signed-tag", "observed": "signed-tag" },
+          { "id": "REL-006", "version": "0.2.0", "status": "pass", "expected": "vex+sbom", "observed": "vex+sbom" },
+          { "id": "EVD-001", "version": "0.2.0", "status": "pass", "expected": "complete", "observed": "complete" },
+          {
+            "id": "CP-REL-004",
+            "version": "0.2.0-draft",
+            "tier": "proposal",
+            "status": "warn",
+            "expected": "multi-builder-reproducible",
+            "observed": "single-builder",
+            "reason": "CP-REL-004 proposal warning: secondary rebuild is optional under current policy."
+          }
+        ]
+      },
+      "artifact_promotion": {
+        "pack_version": "0.2.0",
+        "release_commit": "89abcdef0123456789abcdef0123456789abcdef",
+        "artifact_digest": "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+        "observed_artifact_digest": "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+        "evidence_file_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "observed_evidence_file_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "global_status": "verified",
+        "rehearsal": false,
+        "evaluated_at": "2026-11-02T12:20:00Z",
+        "attestation": {
+          "signature_url": "https://example.org/signatures/spring-web-5.3.39-osera.1.sig",
+          "verdict_url": "https://example.org/verdicts/spring-web-5.3.39-osera.1.json",
+          "cryptographically_verified": true,
+          "verified_by": "osera-trusted-gate",
+          "subject_digest": "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111"
+        },
+        "artifact_chains": [
+          {
+            "artifact_id": "maven:org.springframework:spring-web:5.3.39-osera.1",
+            "status": "verified"
+          },
+          {
+            "artifact_id": "maven:org.springframework:spring-core:5.3.39-osera.1",
+            "status": "verified"
+          },
+          {
+            "artifact_id": "maven:org.springframework:spring-webflux:5.3.39-osera.1",
+            "status": "broken",
+            "reason": "Unrelated reactive module outside proposed servlet closure failed optional build."
+          }
+        ]
+      },
+      "member_validation": {
+        "policy_id": "member-tier1-prod-policy",
+        "policy_version": "2026.11",
+        "decision": "approved",
+        "evaluated_at": "2026-11-02T12:30:00Z",
+        "bound_artifact_digest": "sha256:aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+        "bound_evidence_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    }
+  ]
+}
