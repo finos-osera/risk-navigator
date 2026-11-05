@@ -36,6 +36,8 @@
     "collect:oss-risk:no-osv": "python3 oss-risk/collectors/collect_oss_risk.py --no-osv",
     "discover:oss-risk:finos-osera": "python3 oss-risk/collectors/discover_finos_osera_backpatch.py",
     "collect:oss-risk:finos-osera": "npm run discover:oss-risk:finos-osera && python3 oss-risk/collectors/collect_oss_risk.py --input oss-risk/data/finos-osera-backpatch-libraries.json --output oss-risk/data/finos-osera-backpatch-scorecards.json",
+    "refresh:oss-risk": "python3 oss-risk/collectors/refresh_oss_risk.py",
+    "validate:oss-risk": "python3 oss-risk/collectors/refresh_oss_risk.py --validate-only",
     "docs:install": "npm install --prefix website",
     "docs:start": "npm --prefix website run start --",
     "docs:build": "npm run build --prefix website",

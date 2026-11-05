@@ -1,0 +1,9 @@
+Refreshes the FINOS OSERA `backpatch-*` library seed inventory and collected OSS-risk scorecards from live public evidence sources (`https://feed.finos.org/openvex.json`, OSV, CISA KEV, OpenSSF Scorecard, `deps.dev`, npm downloads, and the GitHub API).
+
+All upstream HTTP and API responses are fetched with explicit cache bypass (`--refresh`), and each evidence block retains its source `observed_at` / `retrieved_at` timestamps and OSERA OpenVEX `feed_version` / `feed_last_updated` provenance.
+
+Only validated JSON datasets (`oss-risk/data/finos-osera-backpatch-libraries.json`, `oss-risk/data/finos-osera-backpatch-scorecards.json`, and `oss-risk/data/collected-library-scorecards.json`, each bounded to a 5 MiB distribution limit) are committed; transient staging files and HTTP response caches stay out of Git.
+
+Validation performed in the refresh job before opening/updating this PR: staged fail-closed schema, provenance, GitHub subrequest (`repo_api`, `release_api`, `tag_api`, `commit_api`, `issue_api`, `pull_api`), and size checks (`npm run validate:oss-risk`), patch and Python test suites (`npm run test:patches` and `pytest -q`), and Docusaurus static build (`npm run docs:build`).
+
+**Starting PR checks when opened with default `GITHUB_TOKEN`**: Per GitHub Actions workflow-trigger rules, `pull_request` events (`opened` / `synchronize` / `reopened`) created with the default `GITHUB_TOKEN` do not automatically start downstream `pull_request` workflows unless `OSS_RISK_REFRESH_TOKEN` is configured. To run `PR checks` on this PR when opened via `GITHUB_TOKEN`, a maintainer can approve the workflow run if prompted, close and reopen this PR to trigger a user-attributed `reopened` event, or dispatch `PR checks` manually on branch `codex/automated-oss-risk-refresh` (`gh workflow run pr-checks.yml --ref codex/automated-oss-risk-refresh`).
