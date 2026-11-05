@@ -53,10 +53,14 @@ jobs:
           python -m pip install -r requirements-dev.txt
 
       - name: Refresh and validate OSS-risk datasets
-        run: npm run refresh:oss-risk
+        run: |
+          npm run refresh:oss-risk
+          npm run validate:oss-risk
 
-      - name: Run Python test suite
-        run: python -m pytest -q
+      - name: Run Python and patch test suites
+        run: |
+          npm run test:patches
+          python -m pytest -q
 
       - name: Verify Docusaurus static site build
         run: npm run docs:build
@@ -75,6 +79,8 @@ jobs:
       - name: Propose the refreshed OSS-risk dataset PR
         env:
           GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.OSS_RISK_REFRESH_TOKEN || github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -92,8 +98,8 @@ jobs:
           fi
           git commit -m 'Refresh OSS-risk library scorecards and OSERA OpenVEX evidence'
           git push --force-with-lease origin codex/automated-oss-risk-refresh
-          if [ -z "$(gh pr list --head codex/automated-oss-risk-refresh --state open --json number --jq '.[0].number // empty')" ]; then
-            gh pr create --base main --head codex/automated-oss-risk-refresh \
+          if [ -z "$(gh pr list --repo "$GH_REPO" --head codex/automated-oss-risk-refresh --state open --json number --jq '.[0].number // empty')" ]; then
+            gh pr create --repo "$GH_REPO" --base "$DEFAULT_BRANCH" --head codex/automated-oss-risk-refresh \
               --title 'Refresh OSS-risk library scorecards and OSERA OpenVEX evidence' \
               --body-file .github/oss-risk-refresh-pr.md
           fi

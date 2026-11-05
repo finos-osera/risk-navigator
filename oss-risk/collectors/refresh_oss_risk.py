@@ -172,7 +172,7 @@ def validate_scorecards_payload(
                         f"{label} ({pkg_label}): CISA KEV catalog_count is empty"
                     )
 
-        # 3. Validate GitHub evidence and detect API rate-limit / auth failures
+        # 3. Validate GitHub evidence and detect API rate-limit / auth / subrequest failures
         repo_url = str(proj.get("repository") or proj.get("repo_url") or "")
         gh = evidence.get("github")
         if "github.com/" in repo_url:
@@ -180,13 +180,64 @@ def validate_scorecards_payload(
             if not isinstance(gh, dict):
                 errors.append(f"{label} ({pkg_label}): missing evidence.github")
             else:
-                gh_repo_err = (gh.get("repo_api") or {}).get("error") if isinstance(gh.get("repo_api"), dict) else None
+                repo_api = gh.get("repo_api")
+                gh_repo_err = repo_api.get("error") if isinstance(repo_api, dict) else None
                 gh_err = str(gh.get("error") or gh_repo_err or "").strip()
-                if gh_err and gh_err != "HTTP 404":
-                    errors.append(
-                        f"{label} ({pkg_label}): GitHub API error for {repo_url}: {gh_err}"
-                    )
-                elif gh.get("source") == "github-api" and gh.get("observed_at") and float(gh.get("confidence") or 0) >= 0.8:
+                subrequest_failed = False
+
+                if gh_err:
+                    if gh_err != "HTTP 404":
+                        errors.append(
+                            f"{label} ({pkg_label}): GitHub API error for {repo_url}: {gh_err}"
+                        )
+                    for sub_key in ("release_api", "tag_api", "commit_api", "issue_api", "pull_api"):
+                        sub_meta = gh.get(sub_key)
+                        sub_err = str(sub_meta.get("error") or "").strip() if isinstance(sub_meta, dict) else ""
+                        if sub_err and sub_err != "HTTP 404":
+                            subrequest_failed = True
+                            errors.append(
+                                f"{label} ({pkg_label}): GitHub subrequest {sub_key} failed for {repo_url}: {sub_err}"
+                            )
+                else:
+                    if not isinstance(repo_api, dict) or not repo_api:
+                        subrequest_failed = True
+                        errors.append(
+                            f"{label} ({pkg_label}): missing github.repo_api metadata for {repo_url}"
+                        )
+                    for sub_key in ("release_api", "commit_api", "issue_api", "pull_api"):
+                        sub_meta = gh.get(sub_key)
+                        if not isinstance(sub_meta, dict) or not sub_meta:
+                            subrequest_failed = True
+                            errors.append(
+                                f"{label} ({pkg_label}): missing github.{sub_key} metadata for {repo_url}"
+                            )
+                        else:
+                            sub_err = str(sub_meta.get("error") or "").strip()
+                            page_errs = sub_meta.get("page_errors")
+                            if not sub_err and isinstance(page_errs, list) and page_errs:
+                                first_pe = page_errs[0]
+                                sub_err = str(first_pe.get("error") if isinstance(first_pe, dict) else first_pe or "").strip()
+                            if sub_err:
+                                subrequest_failed = True
+                                errors.append(
+                                    f"{label} ({pkg_label}): GitHub subrequest {sub_key} failed for {repo_url}: {sub_err}"
+                                )
+                    tag_meta = gh.get("tag_api")
+                    if isinstance(tag_meta, dict) and tag_meta:
+                        tag_err = str(tag_meta.get("error") or "").strip()
+                        if tag_err:
+                            subrequest_failed = True
+                            errors.append(
+                                f"{label} ({pkg_label}): GitHub subrequest tag_api failed for {repo_url}: {tag_err}"
+                            )
+
+                if (
+                    not gh_err
+                    and not subrequest_failed
+                    and gh.get("source") == "github-api"
+                    and gh.get("observed_at")
+                    and float(gh.get("confidence") or 0) >= 0.8
+                ):
                     github_success_count += 1
 
     if require_covered_openvex and covered_openvex_count == 0:
@@ -291,27 +342,29 @@ def run_refresh(
         seeds_payload = json.loads(staged_seeds.read_text(encoding="utf-8"))
     else:
         gh_client = discovery.GitHubClient()
-        repos = discovery.list_org_repos(gh_client, discovery.ORG)
-        backpatch_repos = sorted(
-            [
-                r
-                for r in repos
-                if isinstance(r.get("name"), str)
-                and r["name"].startswith(discovery.PREFIX)
-            ],
-            key=lambda item: item["name"].lower(),
-        )
-        seed_records = [discovery.build_record(gh_client, repo) for repo in backpatch_repos]
+        observed_at = discovery.now_iso()
+        repos = [
+            r
+            for r in discovery.list_org_repos(gh_client, discovery.ORG)
+            if isinstance(r.get("name"), str)
+            and r["name"].startswith(discovery.PREFIX)
+            and not r.get("archived")
+        ]
+        seed_records = []
+        skipped = []
+        for repo in sorted(repos, key=lambda item: item["name"]):
+            rec = discovery.make_record(gh_client, repo, observed_at)
+            if rec:
+                seed_records.append(rec)
+            else:
+                skipped.append(repo.get("full_name") or repo["name"])
         seeds_payload = {
             "schema_version": "0.1",
-            "generated_at": discovery.now_iso(),
-            "source_org": f"https://github.com/{discovery.ORG}",
-            "selection_rule": (
-                "Repositories in finos-osera matching backpatch-*; library_name strips the "
-                "backpatch- prefix and upstream_repo_url points to the original upstream project when known."
-            ),
-            "record_count": len(seed_records),
+            "generated_at": observed_at,
+            "source": f"github-org:{discovery.ORG}",
+            "repository_prefix": discovery.PREFIX,
             "records": seed_records,
+            "skipped": skipped,
         }
         staged_seeds.write_text(json.dumps(seeds_payload, indent=2) + "\n", encoding="utf-8")
 
@@ -320,6 +373,9 @@ def run_refresh(
         min_records=min_backpatch_records,
         label=staged_seeds.name,
     )
+    seed_size_err = check_file_size(staged_seeds)
+    if seed_size_err:
+        seed_errors.append(seed_size_err)
     if seed_errors:
         raise RuntimeError(
             "Refusing to continue refresh due to invalid seed discovery:\n- "
@@ -357,6 +413,9 @@ def run_refresh(
     staged_bp.write_text(json.dumps(bp_payload, indent=2) + "\n", encoding="utf-8")
 
     validation_errors: List[str] = []
+    staged_seed_size_err = check_file_size(staged_seeds)
+    if staged_seed_size_err:
+        validation_errors.append(staged_seed_size_err)
     validation_errors.extend(
         validate_scorecards_payload(
             bp_payload,
@@ -406,11 +465,69 @@ def run_refresh(
             + "\n- ".join(validation_errors)
         )
 
-    output_dir.mkdir(parents=True, exist_ok=True)
+    return publish_dataset_set(staged_files)
+
+
+def _write_bytes_fsync(path: Path, data: bytes) -> None:
+    with open(path, "wb") as fh:
+        fh.write(data)
+        fh.flush()
+        os.fsync(fh.fileno())
+
+
+def _commit_staged_file(tmp_path: Path, dst: Path) -> None:
+    os.replace(tmp_path, dst)
+
+
+def publish_dataset_set(staged_files: Sequence[tuple[Path, Path]]) -> Dict[str, Path]:
+    """Transactionally publish all staged dataset files or roll back the entire set on error."""
+    if not staged_files:
+        return {}
+    pid = os.getpid()
+    had_original: Dict[Path, bool] = {}
+    backups: Dict[Path, Path] = {}
+    temps: Dict[Path, Path] = {}
+
+    for _, dst in staged_files:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        existed = dst.exists()
+        had_original[dst] = existed
+        if existed:
+            bak_path = dst.parent / f".{dst.name}.bak.{pid}"
+            _write_bytes_fsync(bak_path, dst.read_bytes())
+            backups[dst] = bak_path
+
     published: Dict[str, Path] = {}
-    for src, dst in staged_files:
-        shutil.copyfile(src, dst)
-        published[dst.name] = dst
+    try:
+        # Phase 1: Copy all staged files to sibling .tmp files on the destination filesystem and fsync
+        for src, dst in staged_files:
+            tmp_path = dst.parent / f".{dst.name}.tmp.{pid}"
+            temps[dst] = tmp_path
+            shutil.copyfile(src, tmp_path)
+            with open(tmp_path, "rb") as fh:
+                os.fsync(fh.fileno())
+
+        # Phase 2: Atomically replace each destination file; if any step fails, except block restores all
+        for _, dst in staged_files:
+            _commit_staged_file(temps[dst], dst)
+            published[dst.name] = dst
+    except BaseException:
+        for _, dst in staged_files:
+            if had_original.get(dst):
+                bak_path = backups.get(dst)
+                if bak_path is not None and bak_path.exists():
+                    os.replace(bak_path, dst)
+            elif dst.exists():
+                dst.unlink()
+        raise
+    finally:
+        for path in [*temps.values(), *backups.values()]:
+            if path.exists():
+                try:
+                    path.unlink()
+                except OSError:
+                    pass
+
     return published
 
 

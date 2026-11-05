@@ -609,6 +609,10 @@ def test_refresh_oss_risk_staged_publish_and_workflow_triggers(tmp_path, monkeyp
                     "observed_at": "2026-11-04T12:00:00Z",
                     "confidence": 0.9,
                     "repo_api": {"status": 200},
+                    "release_api": {"status": 200},
+                    "commit_api": {"status": 200},
+                    "issue_api": {"status": 200},
+                    "pull_api": {"status": 200},
                 },
             },
         }
@@ -641,7 +645,247 @@ def test_refresh_oss_risk_staged_publish_and_workflow_triggers(tmp_path, monkeyp
     assert "workflow_dispatch:" in refresh_wf
     assert "schedule:" in refresh_wf
     assert "npm run refresh:oss-risk" in refresh_wf
+    assert "npm run validate:oss-risk" in refresh_wf
     assert '"oss-risk/**"' in pr_checks_wf
     assert '"oss-risk/**"' in pages_wf
+
+
+def test_refresh_oss_risk_rejects_github_subrequest_and_multipage_failures(tmp_path, monkeypatch):
+    mod = _load_refresh_oss_risk_module()
+    out_dir = tmp_path / "published"
+    out_dir.mkdir(parents=True)
+    stage_dir = tmp_path / "staging"
+
+    seed_record = {
+        "project": {
+            "name": "log4j-core",
+            "ecosystem": "maven",
+            "package": "org.apache.logging.log4j:log4j-core",
+            "repository": "https://github.com/apache/logging-log4j2",
+        },
+        "enterprise": {"versions_in_use": [{"version": "2.12.4-osera.1"}]},
+        "evidence": {"finos_osera_backpatch": {"backpatch_repository": "finos-osera/backpatch-log4j2"}},
+    }
+    seeds_file = out_dir / mod.DEFAULT_BACKPATCH_SEEDS.name
+    bp_file = out_dir / mod.DEFAULT_BACKPATCH_SCORECARDS.name
+    seeds_file.write_text(json.dumps({"schema_version": "0.1", "records": [seed_record]}), encoding="utf-8")
+    bp_file.write_text(json.dumps({"schema_version": "0.1", "generated_at": "2026-10-01T00:00:00Z", "records": [seed_record]}), encoding="utf-8")
+    original_bp_text = bp_file.read_text(encoding="utf-8")
+
+    # 1. Verify summarize_github_metas surfaces multi-page errors (e.g. page 1 succeeds, page 2 hits HTTP 403)
+    page_summary = mod.collector.summarize_github_metas(
+        [
+            {"status": 200, "url": "https://api.github.com/repos/apache/logging-log4j2/commits?per_page=100&page=1"},
+            {"error": "HTTP 403", "url": "https://api.github.com/repos/apache/logging-log4j2/commits?per_page=100&page=2"},
+        ]
+    )
+    assert page_summary["error"] == "HTTP 403"
+    assert page_summary["pages_fetched"] == 2
+    assert len(page_summary["page_errors"]) == 1
+
+    # 2. Verify committed scorecards fail validation if release_api, commit_api, issue_api, or pull_api is set to HTTP 403
+    committed_bp = json.loads(mod.DEFAULT_BACKPATCH_SCORECARDS.read_text(encoding="utf-8"))
+    for sub_key in ("release_api", "commit_api", "issue_api", "pull_api"):
+        mutated = json.loads(json.dumps(committed_bp))
+        for rec in mutated["records"]:
+            gh = rec.get("evidence", {}).get("github")
+            if isinstance(gh, dict):
+                gh[sub_key] = {"error": "HTTP 403"}
+        errs = mod.validate_scorecards_payload(
+            mutated,
+            min_records=mod.MIN_BACKPATCH_RECORDS,
+            require_covered_openvex=True,
+            label="finos-osera-backpatch-scorecards.json",
+        )
+        assert any(f"GitHub subrequest {sub_key} failed" in e for e in errs), f"Expected validation error for {sub_key}"
+
+    # 3. Verify each GitHub subrequest field (release_api, tag_api, commit_api, issue_api, pull_api) is rejected on HTTP 403 during run_refresh even when repo_api succeeds
+    monkeypatch.setattr(mod.discovery, "github_token", lambda: "ghs_test_token")
+    for sub_key in ("release_api", "tag_api", "commit_api", "issue_api", "pull_api"):
+        def _subrequest_fail_collect(_client, rec, _observed, include_osv=True, _failing_key=sub_key):
+            gh = {
+                "source": "github-api",
+                "observed_at": "2026-11-04T12:00:00Z",
+                "confidence": 0.9,
+                "repo_api": {"status": 200},
+                "release_api": {"status": 200},
+                "commit_api": {"status": 200},
+                "issue_api": {"status": 200},
+                "pull_api": {"status": 200},
+            }
+            gh[_failing_key] = {"error": "HTTP 403", "url": f"https://api.github.com/repos/apache/logging-log4j2/{_failing_key}"}
+            return {
+                "project": rec["project"],
+                "scores": {"oss_vitality": 80.0},
+                "evidence": {
+                    "osera_openvex": {"coverage_status": "covered", "retrieved_at": "2026-11-04T12:00:00Z", "feed_version": 161},
+                    "osv": {"source": "osv-query-api", "observed_at": "2026-11-04T12:00:00Z"},
+                    "cisa_kev": {"source": "cisa-kev-json", "observed_at": "2026-11-04T12:00:00Z", "catalog_count": 1662},
+                    "github": gh,
+                },
+            }
+
+        monkeypatch.setattr(mod.collector, "collect_record", _subrequest_fail_collect)
+        try:
+            mod.run_refresh(
+                staging_dir=stage_dir,
+                output_dir=out_dir,
+                skip_discovery=True,
+                skip_examples=True,
+                min_backpatch_records=1,
+            )
+            assert False, f"Expected RuntimeError when {sub_key} fails with HTTP 403"
+        except RuntimeError as exc:
+            assert f"GitHub subrequest {sub_key} failed" in str(exc)
+        assert bp_file.read_text(encoding="utf-8") == original_bp_text
+
+
+def test_refresh_oss_risk_transactional_publish_rolls_back_entire_set_on_mid_write_failure(tmp_path, monkeypatch):
+    mod = _load_refresh_oss_risk_module()
+    out_dir = tmp_path / "published"
+    out_dir.mkdir(parents=True)
+    stage_dir = tmp_path / "staging"
+
+    seed_record = {
+        "project": {
+            "name": "log4j-core",
+            "ecosystem": "maven",
+            "package": "org.apache.logging.log4j:log4j-core",
+            "repository": "https://github.com/apache/logging-log4j2",
+        },
+        "enterprise": {"versions_in_use": [{"version": "2.12.4-osera.1"}]},
+        "evidence": {"finos_osera_backpatch": {"backpatch_repository": "finos-osera/backpatch-log4j2"}},
+    }
+    seeds_file = out_dir / mod.DEFAULT_BACKPATCH_SEEDS.name
+    bp_file = out_dir / mod.DEFAULT_BACKPATCH_SCORECARDS.name
+    ex_file = out_dir / mod.DEFAULT_EXAMPLE_SCORECARDS.name
+    ex_seeds_file = tmp_path / "example-seeds.json"
+    ex_seeds_file.write_text(json.dumps({"records": [seed_record]}), encoding="utf-8")
+
+    # Write distinct baseline content to all 3 published files
+    seeds_file.write_text(json.dumps({"schema_version": "0.1", "baseline": "old-seeds", "records": [seed_record]}), encoding="utf-8")
+    bp_file.write_text(json.dumps({"schema_version": "0.1", "baseline": "old-bp", "generated_at": "2026-10-01T00:00:00Z", "records": [seed_record]}), encoding="utf-8")
+    ex_file.write_text(json.dumps({"schema_version": "0.1", "baseline": "old-ex", "generated_at": "2026-10-01T00:00:00Z", "records": [seed_record]}), encoding="utf-8")
+
+    old_seeds_bytes = seeds_file.read_bytes()
+    old_bp_bytes = bp_file.read_bytes()
+    old_ex_bytes = ex_file.read_bytes()
+
+    def _new_collect_record(_client, rec, _observed, include_osv=True):
+        return {
+            "project": rec["project"],
+            "scores": {"oss_vitality": 91.5},
+            "evidence": {
+                "osera_openvex": {"coverage_status": "covered", "retrieved_at": "2026-11-05T00:00:00Z", "feed_version": 162},
+                "osv": {"source": "osv-query-api", "observed_at": "2026-11-05T00:00:00Z"},
+                "cisa_kev": {"source": "cisa-kev-json", "observed_at": "2026-11-05T00:00:00Z", "catalog_count": 1662},
+                "github": {
+                    "source": "github-api",
+                    "observed_at": "2026-11-05T00:00:00Z",
+                    "confidence": 0.9,
+                    "repo_api": {"status": 200},
+                    "release_api": {"status": 200},
+                    "commit_api": {"status": 200},
+                    "issue_api": {"status": 200},
+                    "pull_api": {"status": 200},
+                },
+            },
+        }
+
+    # Ensure staged seeds differ from old_seeds_bytes so we can prove rollback of the 1st file after it was already replaced
+    monkeypatch.setattr(mod.discovery, "github_token", lambda: "ghs_test_token")
+    monkeypatch.setattr(mod.discovery.GitHubClient, "get", lambda self, path: [])
+    monkeypatch.setattr(mod.discovery, "list_org_repos", lambda client, org: [{"name": "backpatch-log4j2", "full_name": "finos-osera/backpatch-log4j2"}])
+    monkeypatch.setattr(mod.discovery, "make_record", lambda client, repo, observed_at: seed_record)
+    monkeypatch.setattr(mod.collector, "collect_record", _new_collect_record)
+
+    real_commit = mod._commit_staged_file
+    commit_calls = []
+
+    def _fail_on_second_commit(tmp_path: Path, dst: Path) -> None:
+        commit_calls.append(dst.name)
+        if len(commit_calls) == 2:
+            raise OSError("Simulated disk failure after first file was already replaced")
+        real_commit(tmp_path, dst)
+
+    monkeypatch.setattr(mod, "_commit_staged_file", _fail_on_second_commit)
+
+    try:
+        mod.run_refresh(
+            staging_dir=stage_dir,
+            output_dir=out_dir,
+            example_seeds_path=ex_seeds_file,
+            skip_discovery=False,
+            skip_examples=False,
+            min_backpatch_records=1,
+            min_example_records=1,
+        )
+        assert False, "Expected OSError during mid-publication commit"
+    except OSError as exc:
+        assert "Simulated disk failure after first file was already replaced" in str(exc)
+
+    # First file was committed before the second failed, and must be rolled back to its exact old bytes
+    assert len(commit_calls) == 2
+    assert seeds_file.read_bytes() == old_seeds_bytes
+    assert bp_file.read_bytes() == old_bp_bytes
+    assert ex_file.read_bytes() == old_ex_bytes
+    assert list(out_dir.glob(".*.tmp.*")) == []
+    assert list(out_dir.glob(".*.bak.*")) == []
+
+
+def test_refresh_oss_risk_rejects_oversized_seed_payload_and_preserves_existing_outputs(tmp_path, monkeypatch):
+    mod = _load_refresh_oss_risk_module()
+    out_dir = tmp_path / "published"
+    out_dir.mkdir(parents=True)
+    stage_dir = tmp_path / "staging"
+
+    seed_record = {
+        "project": {
+            "name": "log4j-core",
+            "ecosystem": "maven",
+            "package": "org.apache.logging.log4j:log4j-core",
+            "repository": "https://github.com/apache/logging-log4j2",
+            "padding": "x" * 2048,
+        },
+        "enterprise": {"versions_in_use": [{"version": "2.12.4-osera.1"}]},
+        "evidence": {"finos_osera_backpatch": {"backpatch_repository": "finos-osera/backpatch-log4j2"}},
+    }
+    seeds_file = out_dir / mod.DEFAULT_BACKPATCH_SEEDS.name
+    bp_file = out_dir / mod.DEFAULT_BACKPATCH_SCORECARDS.name
+    seeds_file.write_text(json.dumps({"schema_version": "0.1", "records": [seed_record]}), encoding="utf-8")
+    bp_file.write_text(json.dumps({"schema_version": "0.1", "generated_at": "2026-10-01T00:00:00Z", "records": [seed_record]}), encoding="utf-8")
+    original_seeds_bytes = seeds_file.read_bytes()
+    original_bp_bytes = bp_file.read_bytes()
+
+    # Enforce a 512-byte distribution cap so the ~2.3 KiB seed file is rejected
+    monkeypatch.setattr(mod, "MAX_DATASET_BYTES", 512)
+    monkeypatch.setattr(
+        mod,
+        "check_file_size",
+        lambda path, max_bytes=512: f"{path.name}: file size {path.stat().st_size:,} bytes exceeds limit {max_bytes:,} bytes"
+        if path.stat().st_size > max_bytes
+        else None,
+    )
+    monkeypatch.setattr(mod.discovery, "github_token", lambda: "ghs_test_token")
+    monkeypatch.setattr(mod.discovery.GitHubClient, "get", lambda self, path: [])
+    monkeypatch.setattr(mod.discovery, "list_org_repos", lambda client, org: [{"name": "backpatch-log4j2", "full_name": "finos-osera/backpatch-log4j2"}])
+    monkeypatch.setattr(mod.discovery, "make_record", lambda client, repo, observed_at: seed_record)
+
+    try:
+        mod.run_refresh(
+            staging_dir=stage_dir,
+            output_dir=out_dir,
+            skip_discovery=False,
+            skip_examples=True,
+            min_backpatch_records=1,
+        )
+        assert False, "Expected RuntimeError when staged seed file exceeds distribution size limit"
+    except RuntimeError as exc:
+        assert "finos-osera-backpatch-libraries.json: file size" in str(exc)
+        assert "exceeds limit" in str(exc)
+
+    assert seeds_file.read_bytes() == original_seeds_bytes
+    assert bp_file.read_bytes() == original_bp_bytes
+
 
 

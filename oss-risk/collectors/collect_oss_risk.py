@@ -258,6 +258,26 @@ def github_list(client: HttpClient, path: str, max_pages: int = 5) -> Tuple[List
     return rows, metas
 
 
+def summarize_github_metas(metas: List[Dict[str, Any]]) -> Dict[str, Any]:
+    if not metas:
+        return {}
+    summary = dict(metas[0])
+    if len(metas) > 1:
+        summary["pages_fetched"] = len(metas)
+    failed = [m for m in metas if isinstance(m, dict) and m.get("error")]
+    if failed:
+        first_err = failed[0]
+        summary["error"] = first_err["error"]
+        if first_err.get("url"):
+            summary["failed_url"] = first_err["url"]
+        if first_err.get("body"):
+            summary["body"] = first_err["body"]
+        summary["page_errors"] = [
+            {"url": m.get("url"), "error": m.get("error")} for m in failed
+        ]
+    return summary
+
+
 def collect_github(client: HttpClient, repository_url: str, observed: datetime) -> Dict[str, Any]:
     path = repo_path(repository_url)
     if not path:
@@ -265,7 +285,7 @@ def collect_github(client: HttpClient, repository_url: str, observed: datetime) 
 
     repo, repo_meta = github_get(client, f"/repos/{path}")
     releases, release_metas = github_list(client, f"/repos/{path}/releases", max_pages=1)
-    tags, _ = github_list(client, f"/repos/{path}/tags", max_pages=1) if not releases else ([], [])
+    tags, tag_metas = github_list(client, f"/repos/{path}/tags", max_pages=1) if not releases else ([], [])
     commits, commit_metas = github_list(
         client,
         f"/repos/{path}/commits?since={observed.replace(year=observed.year - 1).isoformat().replace('+00:00', 'Z')}",
@@ -277,6 +297,16 @@ def collect_github(client: HttpClient, repository_url: str, observed: datetime) 
         max_pages=3,
     )
     pulls, pull_metas = github_list(client, f"/repos/{path}/pulls?state=closed", max_pages=3)
+
+    release_api = summarize_github_metas(release_metas)
+    tag_api = summarize_github_metas(tag_metas)
+    commit_api = summarize_github_metas(commit_metas)
+    issue_api = summarize_github_metas(issue_metas)
+    pull_api = summarize_github_metas(pull_metas)
+    has_api_error = any(
+        isinstance(meta_obj, dict) and bool(meta_obj.get("error"))
+        for meta_obj in (repo_meta, release_api, tag_api, commit_api, issue_api, pull_api)
+    )
 
     author_windows = {"365d": set(), "180d": set(), "90d": set(), "30d": set()}
     commit_windows = {"365d": 0, "180d": 0, "90d": 0, "30d": 0}
@@ -318,11 +348,11 @@ def collect_github(client: HttpClient, repository_url: str, observed: datetime) 
     pr_merge_ratio = round(merged_prs / closed_prs, 3) if closed_prs else None
 
     observed_iso = repo_meta.get("retrieved_at") or observed.isoformat().replace("+00:00", "Z")
-    return {
+    result = {
         "source": "github-api",
         "url": f"https://api.github.com/repos/{path}",
         "observed_at": observed_iso,
-        "confidence": 0.9 if repo else 0.3,
+        "confidence": 0.9 if (repo and not has_api_error) else 0.3,
         "stars": repo.get("stargazers_count"),
         "forks": repo.get("forks_count"),
         "open_issues": repo.get("open_issues_count"),
@@ -348,11 +378,14 @@ def collect_github(client: HttpClient, repository_url: str, observed: datetime) 
         "median_pr_merge_days": median_pr_merge_days,
         "commit_sample_truncated": len(commits) >= 1000,
         "repo_api": repo_meta,
-        "release_api": release_metas[0] if release_metas else {},
-        "commit_api": commit_metas[0] if commit_metas else {},
-        "issue_api": issue_metas[0] if issue_metas else {},
-        "pull_api": pull_metas[0] if pull_metas else {},
+        "release_api": release_api,
+        "commit_api": commit_api,
+        "issue_api": issue_api,
+        "pull_api": pull_api,
     }
+    if tag_api:
+        result["tag_api"] = tag_api
+    return result
 
 
 def collect_scorecard(client: HttpClient, repository_url: str, observed: datetime) -> Dict[str, Any]:
