@@ -33,7 +33,7 @@ export function normalizeFeed(doc, source = 'Imported feed', releaseSets = null)
       patches: (raw.patches || []).map((p, i) => ({ ...p, id: p.patch_id || `patch-${i}`,
         target: p.replacement_purl, source_versions: p.applicable_versions || [], advisories: p.fixed_advisories || [],
         aliases: (p.fixed_advisories || []).length === 1 ? [[...p.fixed_advisories, ...(p.aliases || [])]] : [],
-        state: p.withdrawn ? 'withdrawn' : ['supported_line','backlog_closed','draft','candidate'].includes(p.release_state) ? 'planned' : p.release_state || 'released', evidence: p.evidence_links || source,
+        state: p.withdrawn ? 'withdrawn' : ['supported_line','backlog_closed','draft','candidate','coverage_commitment','future_availability'].includes(p.release_state) || (p.available_from && p.available_from > (raw.as_of || raw.updated || raw.timestamp || '')) ? 'planned' : p.release_state || 'released', evidence: p.evidence_links || source,
         companions: p.required_companions || [] })) };
   }
   const errors = [], patches = [];
@@ -203,3 +203,4 @@ export function analyze(dataset, feeds, filters = {}) {
     candidates: rows.filter(r => r.candidates.length).length,
     unknown: rows.filter(r => ['unknown', 'unconfirmed'].includes(r.status)).length };
 }
+export { parseCatalogCsv, normalizeCommonCatalogEntry, comparePatchOptions, ingestOseraBacklogSnapshot, reconcileBacklogWithEstate } from './backlog.mjs';

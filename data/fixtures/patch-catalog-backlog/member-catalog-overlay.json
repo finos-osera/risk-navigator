@@ -1,0 +1,36 @@
+{
+  "schema_version": "osera-member-catalog-overlay/v1",
+  "member_id": "member-tier1-bank",
+  "as_of": "2026-10-28T00:00:00Z",
+  "entitlements": [
+    {
+      "provider": "RedHat",
+      "library": "org.springframework:spring-web",
+      "status": "entitled",
+      "approval_status": "approved",
+      "expires_at": "2027-06-30T23:59:59Z",
+      "internal_repository_url": "https://nexus.internal.bank.example/repository/redhat-ga-maven/",
+      "pricing": {
+        "contract_id": "ENT-RH-2026-009",
+        "billing_model": "annual_subscription",
+        "currency": "USD"
+      }
+    },
+    {
+      "provider": "HeroDevs",
+      "library": "org.springframework:spring-web",
+      "status": "entitled",
+      "approval_status": "approved",
+      "expires_at": "2026-01-01T00:00:00Z",
+      "internal_repository_url": "https://nexus.internal.bank.example/repository/herodevs-nes/"
+    }
+  ],
+  "approvals": {
+    "OSERA": "approved",
+    "Spring Upstream": "approved"
+  },
+  "repository_routing": {
+    "OSERA": "https://nexus.internal.bank.example/repository/finos-osera-releases/",
+    "Spring Upstream": "https://nexus.internal.bank.example/repository/maven-central-proxy/"
+  }
+}

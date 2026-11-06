@@ -1,0 +1,220 @@
+{
+  "schema_version": "osera-patch-catalog/v1",
+  "feed_id": "common-multi-provider-spring-web-catalog",
+  "provider": "MultiProviderCatalog",
+  "provider_kind": "member",
+  "source_url": "https://osera.finos.org/catalogs/common-spring-web-v1.json",
+  "snapshot_version": "2026.10.28.1",
+  "as_of": "2026-10-27T18:00:00Z",
+  "patches": [
+    {
+      "patch_id": "upstream-spring-web-5.3.39",
+      "provider": "Spring Upstream",
+      "provider_kind": "upstream",
+      "supplier": "VMware / Broadcom",
+      "original_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.39",
+      "applicable_versions": ["5.3.18", "5.3.20"],
+      "maintenance_line": "5.3.x",
+      "fixed_advisories": ["CVE-2024-22243", "CVE-2024-22259"],
+      "aliases": ["GHSA-22243-spring", "GHSA-22259-spring"],
+      "residual_advisories": ["CVE-2016-1000027"],
+      "runtime_constraints": {
+        "java_min": "8",
+        "abi_compatible": true,
+        "behavior_notes": "Requires full minor-line jump from 5.3.20 to 5.3.39"
+      },
+      "required_companions": [
+        "pkg:maven/org.springframework/spring-core@5.3.39",
+        "pkg:maven/org.springframework/spring-beans@5.3.39"
+      ],
+      "release_state": "released",
+      "published_at": "2026-10-15T12:00:00Z",
+      "artifact_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "evidence_links": [
+        {
+          "kind": "upstream_release_notes",
+          "url": "https://spring.io/security/cve-2024-22243"
+        }
+      ],
+      "support_dates": {
+        "support_start": "2021-10-01T00:00:00Z",
+        "support_end": "2026-12-31T23:59:59Z"
+      },
+      "withdrawn": false
+    },
+    {
+      "patch_id": "osera-spring-web-5.3.20-osera-00002",
+      "provider": "OSERA",
+      "provider_kind": "osera",
+      "supplier": "FINOS OSERA",
+      "original_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00002",
+      "applicable_versions": ["5.3.20"],
+      "maintenance_line": "5.3.20-osera",
+      "fixed_advisories": ["CVE-2024-22243", "CVE-2024-22259", "CVE-2024-22262"],
+      "aliases": ["GHSA-22243-spring", "GHSA-22259-spring", "GHSA-22262-spring"],
+      "residual_advisories": [],
+      "runtime_constraints": {
+        "java_min": "8",
+        "abi_compatible": true,
+        "zero_api_breakage": true
+      },
+      "required_companions": [
+        "pkg:maven/org.springframework/spring-core@5.3.20-osera-00002"
+      ],
+      "release_state": "released",
+      "published_at": "2026-10-26T09:30:00Z",
+      "artifact_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "evidence_links": [
+        {
+          "kind": "openvex",
+          "url": "https://osera.finos.org/vex/spring-web-5.3.20-osera-00002.openvex.json"
+        },
+        {
+          "kind": "slsa_provenance",
+          "url": "https://osera.finos.org/attestations/spring-web-5.3.20-osera-00002.intoto.jsonl"
+        }
+      ],
+      "support_dates": {
+        "support_start": "2026-01-01T00:00:00Z",
+        "support_end": "2027-12-31T23:59:59Z"
+      },
+      "withdrawn": false
+    },
+    {
+      "patch_id": "commercial-redhat-spring-web-5.3.20.redhat-00004",
+      "provider": "RedHat",
+      "provider_kind": "commercial",
+      "supplier": "Red Hat Enterprise Maven",
+      "original_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.20.redhat-00004",
+      "applicable_versions": ["5.3.20"],
+      "maintenance_line": "5.3.20.redhat",
+      "fixed_advisories": ["CVE-2024-22243", "CVE-2024-22259"],
+      "aliases": ["RHSA-2024:3100", "GHSA-22243-spring"],
+      "residual_advisories": ["CVE-2024-22262"],
+      "runtime_constraints": {
+        "java_min": "11",
+        "abi_compatible": true
+      },
+      "required_companions": [
+        "pkg:maven/org.springframework/spring-core@5.3.20.redhat-00004"
+      ],
+      "release_state": "released",
+      "published_at": "2026-10-20T14:00:00Z",
+      "artifact_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "evidence_links": [
+        {
+          "kind": "vendor_csaf_vex",
+          "url": "https://access.redhat.com/errata/RHSA-2024:3100"
+        }
+      ],
+      "vendor_version_mapping": {
+        "vendor_backport_base": "5.3.20",
+        "upstream_equivalent_version": "5.3.34",
+        "fix_evidence": "https://access.redhat.com/security/cve/CVE-2024-22243"
+      },
+      "support_dates": {
+        "support_start": "2024-01-01T00:00:00Z",
+        "support_end": "2027-06-30T23:59:59Z"
+      },
+      "withdrawn": false
+    },
+    {
+      "patch_id": "osera-coverage-commitment-without-release",
+      "provider": "OSERA",
+      "provider_kind": "osera",
+      "supplier": "FINOS OSERA",
+      "original_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00003",
+      "applicable_versions": ["5.3.20"],
+      "maintenance_line": "5.3.20-osera",
+      "fixed_advisories": ["CVE-2024-22243", "CVE-2024-22259", "CVE-2024-22262"],
+      "release_state": "coverage_commitment",
+      "published_at": "2026-10-27T10:00:00Z",
+      "withdrawn": false
+    },
+    {
+      "patch_id": "osera-future-delayed-availability",
+      "provider": "OSERA",
+      "provider_kind": "osera",
+      "supplier": "FINOS OSERA",
+      "original_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00004",
+      "applicable_versions": ["5.3.20"],
+      "maintenance_line": "5.3.20-osera",
+      "fixed_advisories": ["CVE-2024-22243"],
+      "release_state": "released",
+      "available_from": "2026-12-15T00:00:00Z",
+      "published_at": "2026-10-27T10:00:00Z",
+      "withdrawn": false
+    },
+    {
+      "patch_id": "commercial-expired-entitlement-herodevs",
+      "provider": "HeroDevs",
+      "provider_kind": "commercial",
+      "supplier": "HeroDevs NES",
+      "original_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.20-nes-1",
+      "applicable_versions": ["5.3.20"],
+      "fixed_advisories": ["CVE-2024-22243"],
+      "release_state": "released",
+      "published_at": "2026-09-01T00:00:00Z",
+      "vendor_version_mapping": {
+        "vendor_backport_base": "5.3.20",
+        "upstream_equivalent_version": "5.3.39",
+        "fix_evidence": "https://www.herodevs.com/vulnerability-directory/cve-2024-22243"
+      },
+      "evidence_links": [
+        {
+          "kind": "vendor_advisory",
+          "url": "https://www.herodevs.com/vulnerability-directory/cve-2024-22243"
+        }
+      ],
+      "withdrawn": false
+    },
+    {
+      "patch_id": "osera-withdrawn-artifact-00001",
+      "provider": "OSERA",
+      "provider_kind": "osera",
+      "supplier": "FINOS OSERA",
+      "original_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00001",
+      "applicable_versions": ["5.3.20"],
+      "fixed_advisories": ["CVE-2024-22243"],
+      "release_state": "withdrawn",
+      "published_at": "2026-10-01T00:00:00Z",
+      "withdrawn": true
+    },
+    {
+      "patch_id": "commercial-unentitled-fork-vendor",
+      "provider": "UncontractedForkVendor",
+      "provider_kind": "commercial",
+      "supplier": "UncontractedForkVendor",
+      "original_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.20-vendorfork-1",
+      "applicable_versions": ["5.3.20"],
+      "fixed_advisories": ["CVE-2024-22243"],
+      "release_state": "released",
+      "published_at": "2026-10-20T00:00:00Z",
+      "vendor_version_mapping": {
+        "vendor_backport_base": "5.3.20",
+        "upstream_equivalent_version": "5.3.39",
+        "fix_evidence": "https://vendor.example/cve-2024-22243"
+      }
+    },
+    {
+      "patch_id": "commercial-missing-vendor-mapping",
+      "provider": "RedHat",
+      "provider_kind": "commercial",
+      "supplier": "Red Hat Enterprise Maven",
+      "original_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.20.redhat-unmapped",
+      "applicable_versions": ["5.3.20"],
+      "fixed_advisories": ["CVE-2024-22243"],
+      "release_state": "released",
+      "published_at": "2026-10-20T00:00:00Z"
+    }
+  ]
+}
