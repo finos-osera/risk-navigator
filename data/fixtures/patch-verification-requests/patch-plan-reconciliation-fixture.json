@@ -1,0 +1,158 @@
+{
+  "stale_inventory_cutoff": "2026-10-20T00:00:00Z",
+  "withdrawn_artifacts": [
+    "pkg:maven/io.netty/netty-handler@4.1.100.Final-osera-00001"
+  ],
+  "invalidated_advisory_claims": [],
+  "deployment_observations": [
+    {
+      "application_id": "payments-gateway",
+      "environment": "production",
+      "observed_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00002",
+      "observed_artifact_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "observed_at": "2026-10-28T10:00:00Z",
+      "validation_status": "passed"
+    },
+    {
+      "application_id": "settlement-router",
+      "environment": "production",
+      "observed_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00002",
+      "observed_artifact_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "observed_at": "2026-10-28T10:05:00Z",
+      "validation_status": "passed"
+    },
+    {
+      "application_id": "treasury-engine-closed-ticket-only",
+      "environment": "production",
+      "observed_purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.50",
+      "observed_at": "2026-10-28T11:00:00Z",
+      "validation_status": "pending"
+    },
+    {
+      "application_id": "partial-app-1",
+      "environment": "production",
+      "observed_purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.4-osera-00001",
+      "observed_at": "2026-10-28T09:00:00Z",
+      "validation_status": "passed"
+    },
+    {
+      "application_id": "partial-app-2-stale",
+      "environment": "production",
+      "observed_purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.4",
+      "observed_at": "2026-10-01T00:00:00Z",
+      "validation_status": "pending"
+    },
+    {
+      "application_id": "validation-fail-app",
+      "environment": "production",
+      "observed_purl": "pkg:maven/org.eclipse.jetty/jetty-server@9.4.51-osera-00001",
+      "observed_at": "2026-10-28T12:00:00Z",
+      "validation_status": "failed"
+    },
+    {
+      "application_id": "rollback-app",
+      "environment": "production",
+      "observed_purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.17.0",
+      "observed_at": "2026-10-28T12:30:00Z",
+      "previously_deployed_target": true,
+      "validation_status": "passed"
+    },
+    {
+      "application_id": "decommissioned-drift-app",
+      "environment": "production",
+      "removed_from_scope": true
+    }
+  ],
+  "plans": [
+    {
+      "plan_id": "plan-verified-full-rollout",
+      "opportunity_id": "opp-osera-spring-web-kev",
+      "current_stage": "deployed",
+      "source_snapshot_id": "estate-2026-10-27",
+      "policy_binding": {
+        "policy_id": "member-tier1-prod-policy",
+        "policy_version": "2026.10"
+      },
+      "source_artifact_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "selected_artifact_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00002",
+      "selected_artifact_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "required_environment": "production",
+      "target_applications": ["payments-gateway", "settlement-router"],
+      "expected_fixed_advisories": ["CVE-2024-22243", "CVE-2024-22259"]
+    },
+    {
+      "plan_id": "plan-closed-ticket-no-deployment",
+      "opportunity_id": "opp-upstream-tomcat-core",
+      "current_stage": "planned",
+      "source_snapshot_id": "estate-2026-10-27",
+      "policy_binding": {
+        "policy_id": "member-tier1-prod-policy",
+        "policy_version": "2026.10"
+      },
+      "source_artifact_purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.50",
+      "selected_artifact_purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.86",
+      "required_environment": "production",
+      "target_applications": ["treasury-engine-closed-ticket-only"],
+      "expected_fixed_advisories": ["CVE-2024-24549"],
+      "ticket_status": "closed",
+      "osera_issue_status": "closed",
+      "recipe_generated": true,
+      "reference_graph_updated": true
+    },
+    {
+      "plan_id": "plan-partial-rollout-and-stale-inventory",
+      "opportunity_id": "opp-jackson-databind",
+      "current_stage": "deployed",
+      "source_snapshot_id": "estate-2026-10-27",
+      "source_artifact_purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.4",
+      "selected_artifact_purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.4-osera-00001",
+      "required_environment": "production",
+      "target_applications": ["partial-app-1", "partial-app-2-stale"],
+      "expected_fixed_advisories": ["CVE-2023-35116"]
+    },
+    {
+      "plan_id": "plan-failed-validation",
+      "opportunity_id": "opp-jetty-server",
+      "current_stage": "tested",
+      "source_snapshot_id": "estate-2026-10-27",
+      "source_artifact_purl": "pkg:maven/org.eclipse.jetty/jetty-server@9.4.51",
+      "selected_artifact_purl": "pkg:maven/org.eclipse.jetty/jetty-server@9.4.51-osera-00001",
+      "required_environment": "production",
+      "target_applications": ["validation-fail-app"],
+      "expected_fixed_advisories": ["CVE-2023-40167"]
+    },
+    {
+      "plan_id": "plan-rollback-reopened",
+      "opportunity_id": "opp-log4j-core",
+      "current_stage": "verified",
+      "source_snapshot_id": "estate-2026-10-27",
+      "source_artifact_purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.17.0",
+      "selected_artifact_purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.17.0-osera-00001",
+      "required_environment": "production",
+      "target_applications": ["rollback-app"],
+      "expected_fixed_advisories": ["CVE-2021-44832"]
+    },
+    {
+      "plan_id": "plan-withdrawn-artifact-reopened",
+      "opportunity_id": "opp-netty-withdrawn",
+      "current_stage": "verified",
+      "source_snapshot_id": "estate-2026-10-27",
+      "source_artifact_purl": "pkg:maven/io.netty/netty-handler@4.1.100.Final",
+      "selected_artifact_purl": "pkg:maven/io.netty/netty-handler@4.1.100.Final-osera-00001",
+      "required_environment": "production",
+      "target_applications": ["edge-proxy"],
+      "expected_fixed_advisories": ["CVE-2024-29025"]
+    },
+    {
+      "plan_id": "plan-scope-drift-only",
+      "opportunity_id": "opp-decommissioned-app",
+      "current_stage": "planned",
+      "source_snapshot_id": "estate-2026-10-27",
+      "source_artifact_purl": "pkg:maven/commons-io/commons-io@2.8.0",
+      "selected_artifact_purl": "pkg:maven/commons-io/commons-io@2.8.0-osera-00001",
+      "required_environment": "production",
+      "target_applications": ["decommissioned-drift-app"],
+      "expected_fixed_advisories": ["CVE-2024-47554"]
+    }
+  ]
+}

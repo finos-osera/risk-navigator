@@ -1,0 +1,93 @@
+{
+  "co_released_group_mapping": {
+    "pkg:maven/org.springframework/spring-web": "org.springframework:spring-framework-bom",
+    "pkg:maven/org.springframework/spring-core": "org.springframework:spring-framework-bom"
+  },
+  "existing_catalog_patches": [
+    {
+      "package": "pkg:maven/org.springframework/spring-web",
+      "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00001",
+      "applicable_versions": ["5.3.20"],
+      "fixed_advisories": ["CVE-2024-22243"],
+      "release_state": "released"
+    }
+  ],
+  "existing_osera_work": [
+    {
+      "package": "pkg:maven/org.springframework/spring-web",
+      "line": "5.3.20",
+      "status": "in_progress",
+      "url": "https://github.com/finos-osera-forks/backlog/issues/104"
+    }
+  ],
+  "raw_requests": [
+    {
+      "identity": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "precision": "exact",
+      "line": "5.3.20",
+      "advisories": ["CVE-2024-22243", "CVE-2024-22259"],
+      "acceptable_remediation": ["backpatch"],
+      "rationale": "Production tier-1 payment services pinned to 5.3.20",
+      "application_id": "PRIVATE-BANK-APP-01",
+      "owner": "PRIVATE-TEAM-OWNER",
+      "dependency_path": "PRIVATE-ROOT->spring-web",
+      "contract_id": "PRIVATE-CONTRACT-999"
+    },
+    {
+      "identity": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "precision": "exact",
+      "line": "5.3.20",
+      "advisories": ["CVE-2024-22262"],
+      "acceptable_remediation": ["backpatch"]
+    },
+    {
+      "identity": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.50",
+      "precision": "major",
+      "line": "9.x",
+      "advisories": ["CVE-2024-24549"],
+      "acceptable_remediation": ["backpatch", "upstream-fix"],
+      "rationale": "Broad major line request across 9.x fleet"
+    }
+  ],
+  "intake_submissions": [
+    {
+      "member_auth_id": "member-bank-alpha",
+      "requests": [
+        {
+          "package": "pkg:maven/org.springframework/spring-web",
+          "scope": { "precision": "exact", "value": "5.3.20" },
+          "unresolved_advisories": ["CVE-2024-22259"],
+          "rationale": "Shared consortium demand for Spring 5.3.20"
+        }
+      ]
+    },
+    {
+      "member_auth_id": "member-bank-alpha",
+      "requests": [
+        {
+          "package": "pkg:maven/org.springframework/spring-web",
+          "scope": { "precision": "exact", "value": "5.3.20" },
+          "unresolved_advisories": ["CVE-2024-22262"],
+          "rationale": "Duplicate submission from member-bank-alpha"
+        }
+      ]
+    },
+    {
+      "member_auth_id": "member-bank-beta",
+      "requests": [
+        {
+          "package": "pkg:maven/org.springframework/spring-web",
+          "scope": { "precision": "exact", "value": "5.3.20" },
+          "unresolved_advisories": ["CVE-2024-22259"],
+          "rationale": "Second independent member requesting Spring 5.3.20"
+        },
+        {
+          "package": "pkg:maven/commons-io/commons-io",
+          "scope": { "precision": "exact", "value": "2.8.0" },
+          "unresolved_advisories": ["CVE-2024-47554"],
+          "rationale": "Rare single-member internal mainframe adapter rationale"
+        }
+      ]
+    }
+  ]
+}
