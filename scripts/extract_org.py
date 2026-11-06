@@ -120,7 +120,7 @@ class Project:
 class DepEdge:
     consumer_id: str
     library_id: str
-    direct: int
+    direct: Optional[int]
     qualifier: str
     parent_id: str = ""
 
@@ -851,6 +851,46 @@ def load_vuln_edges(db_path: Path) -> Dict[str, List[Dict[str, object]]]:
     if not db_path.exists():
         return {}
 
+    out: Dict[str, List[Dict[str, object]]] = defaultdict(list)
+    seen: set[Tuple[str, str]] = set()
+
+    if db_path.suffix.lower() == ".json":
+        payload = json.loads(db_path.read_text(encoding="utf-8"))
+        if isinstance(payload, dict):
+            for pkg_key, pkg_obj in payload.items():
+                parts = str(pkg_key).split("|")
+                if len(parts) < 3 or not isinstance(pkg_obj, dict):
+                    continue
+                namespace, meta, proj = parts[0], parts[1], parts[2]
+                for rel_obj in pkg_obj.get("releases") or []:
+                    if not isinstance(rel_obj, dict):
+                        continue
+                    rel = canonical_release(namespace, str(rel_obj.get("release") or ""))
+                    if not rel:
+                        continue
+                    lid = make_library_id(namespace, meta, proj, rel)
+                    # Ensure safe candidate versions are registered in out keys with empty CVE list
+                    out.setdefault(lid, [])
+                    for cve in rel_obj.get("cves") or []:
+                        if not isinstance(cve, dict):
+                            continue
+                        cve_id = str(cve.get("cve_id") or "").strip()
+                        if not cve_id:
+                            continue
+                        key = (lid, cve_id)
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        out[lid].append(
+                            {
+                                "cve_id": cve_id,
+                                "cvss": float(cve.get("cvss") or 0.0),
+                                "priority": str(cve.get("priority") or "P4"),
+                                "exploitability": str(cve.get("exploitability") or "UNPROVEN"),
+                            }
+                        )
+        return out
+
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
@@ -863,8 +903,6 @@ def load_vuln_edges(db_path: Path) -> Dict[str, List[Dict[str, object]]]:
     finally:
         conn.close()
 
-    out: Dict[str, List[Dict[str, object]]] = defaultdict(list)
-    seen: set[Tuple[str, str]] = set()
     for row in rows:
         release = canonical_release(row["namespace"], row["release"])
         lid = make_library_id(row["namespace"], row["meta"], row["proj"], release)
@@ -970,7 +1008,7 @@ def write_scope_extract(scope: str, projects: Sequence[Project], edges: Sequence
         {
             "consumer_id": e.consumer_id,
             "library_id": e.library_id,
-            "direct": e.direct,
+            "direct": "unknown" if e.direct is None else e.direct,
             "qualifier": e.qualifier,
             "parent_id": e.parent_id,
         }
@@ -1030,7 +1068,7 @@ def write_scope_extract(scope: str, projects: Sequence[Project], edges: Sequence
     # Amplifiers derive from parent ids on transitive vulnerable edges.
     amp_counter: Dict[Tuple[str, str], set] = defaultdict(set)
     for edge in edges:
-        if edge.direct:
+        if edge.direct != 0:
             continue
         if not edge.parent_id:
             continue
@@ -1272,77 +1310,88 @@ def dependency_parent_map_from_cyclonedx(payload: Dict[str, object], root_ref: s
     return parent_by_child
 
 
-def extract_from_cyclonedx(scope: str, sbom_dir: Path, db_path: Path, raw_root: Path) -> Dict[str, object]:
-    """Import CycloneDX SBOMs as project inventory plus dependency edges."""
+def extract_from_estate(
+    scope: str,
+    source_paths: Optional[Sequence[Path]] = None,
+    db_path: Optional[Path] = None,
+    raw_root: Path = DEFAULT_RAW_ROOT,
+    *,
+    estate_paths: Optional[Sequence[Path]] = None,
+    vuln_db_path: Optional[Path] = None,
+) -> Dict[str, object]:
+    """Import CycloneDX, SPDX, and/or company inventory feeds via the versioned estate contract (#22).
 
+    Separates application, build, and deployment identities so repeated SBOM imports
+    do not inflate application or exposure counts, preserves full PURLs/qualifiers/digests/paths,
+    and represents missing dependency graphs explicitly as `unknown` (`direct = None`).
+    """
+    from estate_import import import_estate_sources
+
+    resolved_paths = source_paths if source_paths is not None else (estate_paths or [])
+    resolved_db = db_path if db_path is not None else (vuln_db_path or DEFAULT_DB)
+
+    estate = import_estate_sources(resolved_paths, scope=scope)
     projects: List[Project] = []
     edges: List[DepEdge] = []
+    seen_edges: set = set()
 
-    for sbom_file in sorted(sbom_dir.glob("*.json")):
-        with open(sbom_file, "r", encoding="utf-8") as handle:
-            payload = json.load(handle)
-
-        metadata = payload.get("metadata") or {}
-        component = metadata.get("component") or {}
-        if not isinstance(component, dict):
-            component = {}
-        comp_name = str(component.get("name") or sbom_file.stem)
-        comp_version = str(component.get("version") or "0.0.0")
-        project_ref = project_ref_from_cyclonedx(component, sbom_file)
-        ref_parts = project_ref.split("/")
-        owner = ref_parts[1] if len(ref_parts) >= 3 and ref_parts[0] == "github" else "imported"
-        repo_name = ref_parts[2] if len(ref_parts) >= 3 and ref_parts[0] == "github" else slugify(comp_name)
-        project_id = f"github|{owner}|{repo_name}"
-        root_ref = str(component.get("bom-ref") or "").strip()
+    for idx, app in enumerate(estate.get("applications") or []):
+        project_id = str(app["application_id"])
         projects.append(
             Project(
                 id=project_id,
-                namespace="github",
-                meta=owner,
-                proj=repo_name,
-                release=comp_version,
-                project_ref=project_ref,
-                eonid=f"SBOM-{len(projects)+1}",
-                department="SBOM Scan",
-                tai_system=comp_name,
+                namespace=str(app.get("namespace") or "github"),
+                meta=str(app.get("meta") or "imported"),
+                proj=str(app.get("proj") or slugify(str(app.get("name") or "app"))),
+                release=str(app.get("release") or "0.0.0"),
+                project_ref=str(app.get("project_ref") or f"github/imported/{project_id}"),
+                eonid=str(app.get("eonid") or f"SBOM-{idx + 1}"),
+                department=str(app.get("department") or "SBOM Scan"),
+                tai_system=str(app.get("tai_system") or app.get("name") or project_id),
             )
         )
 
-        components_raw = payload.get("components") or []
-        components = [comp for comp in components_raw if isinstance(comp, dict)] if isinstance(components_raw, list) else []
-        component_by_ref = {str(comp.get("bom-ref") or ""): comp for comp in components if str(comp.get("bom-ref") or "")}
-        library_id_by_ref: Dict[str, str] = {}
-        for comp in components:
-            ref = str(comp.get("bom-ref") or "").strip()
-            coords = cyclonedx_component_coords(comp)
-            if not ref or not coords:
+        # Deduplicate edges per (application, library_id, direct_classification, qualifier, parent_id)
+        for comp in sorted(app.get("components") or [], key=lambda c: str(c.get("library_id") or "")):
+            library_id = str(comp.get("library_id") or "")
+            if not library_id:
                 continue
-            namespace, meta, proj, release = coords
-            library_id = make_library_id(namespace, meta, proj, release)
-            library_id_by_ref[ref] = library_id
+            qualifier = str(comp.get("qualifier") or "runtime")
+            dep_class = str(comp.get("dependency_classification") or "unknown")
+            direct: Optional[int] = 1 if dep_class == "direct" else (0 if dep_class == "transitive" else None)
+            parent_ids = comp.get("parent_ids") or [""]
+            if dep_class != "transitive":
+                parent_ids = [""]
 
-        direct_refs = direct_refs_from_cyclonedx(payload, root_ref) if root_ref else set()
-        parent_by_child = dependency_parent_map_from_cyclonedx(payload, root_ref) if root_ref else {}
-        graph_available = bool(direct_refs or parent_by_child)
-        seen_edges: set = set()
+            for parent_id in parent_ids:
+                key = (project_id, library_id, direct, qualifier, parent_id)
+                if key in seen_edges:
+                    continue
+                seen_edges.add(key)
+                edges.append(DepEdge(project_id, library_id, direct, qualifier, parent_id))
 
-        for ref, library_id in sorted(library_id_by_ref.items(), key=lambda item: item[1]):
-            comp = component_by_ref.get(ref, {})
-            qualifier = cyclonedx_qualifier(comp)
-            parent_ref = parent_by_child.get(ref, "")
-            direct = 1 if (not graph_available or ref in direct_refs or parent_ref == root_ref) else 0
-            parent_id = "" if direct else library_id_by_ref.get(parent_ref, "")
-            key = (project_id, library_id, direct, qualifier, parent_id)
-            if key in seen_edges:
-                continue
-            seen_edges.add(key)
-            edges.append(DepEdge(project_id, library_id, direct, qualifier, parent_id))
+    stats = write_scope_extract(scope=scope, projects=projects, edges=edges, db_path=resolved_db, raw_root=raw_root)
+    raw_dir = raw_root / scope
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    contract_path = raw_dir / "07-estate-contract.json"
+    contract_path.write_text(json.dumps(estate, indent=2) + "\n", encoding="utf-8")
 
+    report = estate.get("completeness_report") or {}
     return {
-        **write_scope_extract(scope=scope, projects=projects, edges=edges, db_path=db_path, raw_root=raw_root),
-        "sbom_dir": str(sbom_dir),
-        "sboms": len(projects),
+        **stats,
+        "sbom_dir": str(resolved_paths[0]) if resolved_paths else "",
+        "sboms": int(report.get("raw_sbom_documents_imported") or len(projects)),
+        "deduplicated_applications": len(projects),
+        "distinct_builds": int(report.get("distinct_builds") or len(projects)),
+        "distinct_deployments": int(report.get("distinct_deployments") or len(projects)),
+        "completeness_report": report,
     }
+
+
+def extract_from_cyclonedx(scope: str, sbom_dir: Path, db_path: Path, raw_root: Path) -> Dict[str, object]:
+    """Import CycloneDX SBOMs as project inventory plus dependency edges."""
+
+    return extract_from_estate(scope=scope, source_paths=[sbom_dir], db_path=db_path, raw_root=raw_root)
 
 
 def parse_args() -> argparse.Namespace:
@@ -1350,8 +1399,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--scope", default="finos-sample-platform")
     parser.add_argument("--db", type=Path, default=DEFAULT_DB)
     parser.add_argument("--raw-root", type=Path, default=DEFAULT_RAW_ROOT)
-    parser.add_argument("--source", choices=["synthetic", "cyclonedx", "finos-github"], default="synthetic")
-    parser.add_argument("--sbom-dir", type=Path, help="Directory containing CycloneDX JSON documents")
+    parser.add_argument(
+        "--source",
+        choices=["synthetic", "cyclonedx", "spdx", "estate", "finos-github"],
+        default="synthetic",
+    )
+    parser.add_argument("--sbom-dir", type=Path, help="Directory or file containing CycloneDX/SPDX/inventory documents")
+    parser.add_argument(
+        "--estate-input",
+        type=Path,
+        action="append",
+        default=[],
+        help="One or more directories or files (CycloneDX, SPDX, or company inventory JSON/CSV)",
+    )
     parser.add_argument("--github-org", default=DEFAULT_GITHUB_ORG)
     parser.add_argument("--github-token", default="", help="Optional GitHub token; falls back to gh auth token when available")
     parser.add_argument("--github-api-base", default=DEFAULT_GITHUB_API)
@@ -1368,10 +1428,13 @@ def main() -> int:
 
     if args.source == "synthetic":
         stats = extract_synthetic(args.scope, args.db, args.raw_root)
-    elif args.source == "cyclonedx":
-        if not args.sbom_dir:
-            raise SystemExit("--sbom-dir is required for --source cyclonedx")
-        stats = extract_from_cyclonedx(args.scope, args.sbom_dir, args.db, args.raw_root)
+    elif args.source in {"cyclonedx", "spdx", "estate"}:
+        inputs = list(args.estate_input or [])
+        if args.sbom_dir:
+            inputs.insert(0, args.sbom_dir)
+        if not inputs:
+            raise SystemExit(f"--sbom-dir or --estate-input is required for --source {args.source}")
+        stats = extract_from_estate(args.scope, inputs, args.db, args.raw_root)
     else:
         stats = extract_finos_github_org(
             scope=args.scope,

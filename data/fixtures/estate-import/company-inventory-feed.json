@@ -1,0 +1,66 @@
+{
+  "schema_version": "osera-company-inventory-feed/v1",
+  "observed_at": "2026-10-24T12:00:00Z",
+  "applications": [
+    {
+      "app_id": "github|acme|payments-engine|main",
+      "name": "payments-engine",
+      "group": "acme",
+      "version": "main",
+      "build_id": "build-102",
+      "deployment_id": "deploy-dr-us-central",
+      "environment": "dr",
+      "region": "us-central-1",
+      "cluster": "eks-dr-01",
+      "department": "Payments & Clearing",
+      "has_dependency_graph": true,
+      "components": [
+        {
+          "purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+          "direct": true,
+          "scope": "required",
+          "dependency_path": [
+            "github|acme|payments-engine|main",
+            "maven|org.springframework|spring-web|5.3.20"
+          ]
+        },
+        {
+          "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3",
+          "direct": false,
+          "parent_id": "maven|org.springframework|spring-web|5.3.20",
+          "scope": "required",
+          "dependency_path": [
+            "github|acme|payments-engine|main",
+            "maven|org.springframework|spring-web|5.3.20",
+            "maven|com.fasterxml.jackson.core|jackson-databind|2.13.3"
+          ]
+        }
+      ]
+    },
+    {
+      "app_id": "github|acme|treasury-portal|main",
+      "name": "treasury-portal",
+      "group": "acme",
+      "version": "main",
+      "build_id": "build-tp-401",
+      "deployment_id": "deploy-tp-prod",
+      "environment": "production",
+      "region": "us-east-1",
+      "department": "Treasury & Liquidity",
+      "has_dependency_graph": false,
+      "components": [
+        {
+          "purl": "pkg:maven/org.yaml/snakeyaml@1.30",
+          "scope": "required"
+        },
+        {
+          "purl": "pkg:generic/libcrypto@1.1.1k",
+          "scope": "required"
+        },
+        {
+          "name": "mystery-native-blob-without-version"
+        }
+      ]
+    }
+  ]
+}

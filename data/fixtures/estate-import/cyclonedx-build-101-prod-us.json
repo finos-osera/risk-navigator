@@ -1,0 +1,104 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:11111111-2222-3333-4444-555555550101",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-10-20T10:00:00Z",
+    "properties": [
+      { "name": "osera:app_id", "value": "github|acme|payments-engine|main" },
+      { "name": "osera:build_id", "value": "build-101" },
+      { "name": "osera:deployment_id", "value": "deploy-prod-us-east" },
+      { "name": "osera:environment", "value": "production" },
+      { "name": "osera:region", "value": "us-east-1" },
+      { "name": "osera:cluster", "value": "eks-prod-01" },
+      { "name": "osera:commit_sha", "value": "a1b2c3d4e5f60101" },
+      { "name": "osera:department", "value": "Payments & Clearing" }
+    ],
+    "component": {
+      "type": "application",
+      "bom-ref": "app-payments-engine",
+      "group": "acme",
+      "name": "payments-engine",
+      "version": "main",
+      "externalReferences": [
+        { "type": "vcs", "url": "https://github.com/acme/payments-engine.git" }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "group": "org.springframework",
+      "name": "spring-web",
+      "version": "5.3.20",
+      "purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "scope": "required",
+      "hashes": [
+        { "alg": "SHA-256", "content": "8f3c2a1b9e0d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3",
+      "group": "com.fasterxml.jackson.core",
+      "name": "jackson-databind",
+      "version": "2.13.3",
+      "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3",
+      "scope": "required",
+      "hashes": [
+        { "alg": "SHA-256", "content": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3-acme-internal-1",
+      "group": "com.fasterxml.jackson.core",
+      "name": "jackson-databind",
+      "version": "2.13.3-acme-internal-1",
+      "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3-acme-internal-1?classifier=shaded&repository_url=https://nexus.corp.acme.internal/maven-releases",
+      "scope": "required",
+      "hashes": [
+        { "alg": "SHA-256", "content": "9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:rpm/redhat/openssl-libs@3.0.7-24.el9",
+      "group": "redhat",
+      "name": "openssl-libs",
+      "version": "3.0.7-24.el9",
+      "purl": "pkg:rpm/redhat/openssl-libs@3.0.7-24.el9?arch=x86_64&distro=rhel-9.3",
+      "scope": "required",
+      "hashes": [
+        { "alg": "SHA-256", "content": "4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f" }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "unmapped-legacy-jar",
+      "name": "legacy-unlabeled-jar"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "app-payments-engine",
+      "dependsOn": [
+        "pkg:maven/org.springframework/spring-web@5.3.20",
+        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3-acme-internal-1",
+        "pkg:rpm/redhat/openssl-libs@3.0.7-24.el9"
+      ]
+    },
+    {
+      "ref": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "dependsOn": [
+        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3"
+      ]
+    },
+    {
+      "ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3",
+      "dependsOn": []
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "schema_version": "osera-company-overlay/v1",
+  "defaults": {
+    "criticality": "medium",
+    "environment": "production",
+    "exposure": "internal"
+  },
+  "applications": {
+    "github|acme|payments-engine|main": {
+      "ownership": {
+        "team": "Global Clearing Engineering",
+        "owner_email": "clearing-eng@acme.internal",
+        "cost_center": "CC-9010",
+        "department": "Tier-0 Clearing & Settlement"
+      },
+      "criticality": "tier_0",
+      "environment": "production",
+      "exposure": "external",
+      "runtime_constraints": {
+        "jdk": "11",
+        "major_upgrade_blocked": true,
+        "pinned_runtime": true,
+        "notes": "Regulatory freeze on JDK 17+ migration until Q2 change window"
+      },
+      "change_windows": [
+        {
+          "id": "cw-weekend-clearing",
+          "schedule": "Sun 02:00-06:00 UTC",
+          "freeze_until": "2026-12-01T00:00:00Z"
+        }
+      ]
+    },
+    "github|acme|settlement-worker|main": {
+      "ownership": {
+        "team": "Settlement Platform",
+        "owner_email": "settlement-ops@acme.internal",
+        "cost_center": "CC-9025",
+        "department": "Post-Trade Settlement"
+      },
+      "criticality": "high",
+      "environment": "staging",
+      "exposure": "partner_facing",
+      "runtime_constraints": {
+        "jdk": "17",
+        "major_upgrade_blocked": false
+      },
+      "change_windows": [
+        {
+          "id": "cw-weekday-post-close",
+          "schedule": "Tue/Thu 22:00-23:59 UTC"
+        }
+      ]
+    },
+    "github|acme|legacy-batch-ledger|main": {
+      "ownership": {
+        "team": "Core Ledger Maintenance",
+        "owner_email": "ledger-maint@acme.internal",
+        "cost_center": "CC-4100",
+        "department": "Core Banking Ledger"
+      },
+      "criticality": "low",
+      "environment": "production",
+      "exposure": "isolated",
+      "runtime_constraints": {
+        "jdk": "8",
+        "backpatch_only": true
+      },
+      "change_windows": [
+        {
+          "id": "cw-monthly-ledger",
+          "schedule": "First Sunday 01:00-05:00 UTC"
+        }
+      ]
+    }
+  }
+}
