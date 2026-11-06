@@ -1,0 +1,143 @@
+{
+  "metadata": {
+    "source_repo": "https://github.com/finos-osera-forks/backlog",
+    "source_commit": "9b8a7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b",
+    "source_tag": "backlog-2026-10-27",
+    "book_version": "2026.10.27",
+    "view": "pinned_and_latest",
+    "commit_timestamp": "2026-10-27T20:00:00Z",
+    "ingested_at": "2026-10-28T01:00:00Z",
+    "component_commits": {
+      "supported-lines.csv": "9b8a7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b",
+      "root-graph.json": "9b8a7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b",
+      "pinned-graph.json": "9b8a7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"
+    }
+  },
+  "supported_lines_csv": "ecosystem,group_id,artifact_id,line_id,maintenance_line,pinned_baseline,latest_patch,consume,consumption_bom,status\nmaven,org.apache.tomcat.embed,tomcat-embed-core,tomcat-embed-core:9.0.x,9.0.x,9.0.70,9.0.85-osera-00001,org.apache.tomcat.embed:tomcat-embed-core:9.0.85-osera-00001,org.apache.tomcat:tomcat-bom:9.0.85-osera-00001,active\nmaven,io.netty,netty-handler,netty-handler:4.1.x,4.1.x,4.1.100.Final,4.1.108.Final-osera-00001,,io.netty:netty-bom:4.1.108.Final-osera-00001,active\n",
+  "exclusions": [
+    {
+      "ecosystem": "maven",
+      "library": "org.apache.tomcat.embed:tomcat-embed-core",
+      "maintenance_line": "9.0.x",
+      "advisory_id": "CVE-2023-46589",
+      "reason": "Excluded from current OSERA wave; tracked under separate architectural review",
+      "approved_by": "osera-steering-committee",
+      "excluded_at": "2026-10-15T00:00:00Z"
+    }
+  ],
+  "consumption_boms": [
+    {
+      "line_id": "tomcat-embed-core:9.0.x",
+      "bom_coordinate": "pkg:maven/org.apache.tomcat/tomcat-bom@9.0.85-osera-00001",
+      "released_with": [
+        "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.85-osera-00001",
+        "pkg:maven/org.apache.tomcat.embed/tomcat-embed-el@9.0.85-osera-00001",
+        "pkg:maven/org.apache.tomcat.embed/tomcat-embed-websocket@9.0.85-osera-00001"
+      ],
+      "members": [
+        {
+          "purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.85-osera-00001",
+          "role": "primary"
+        },
+        {
+          "purl": "pkg:maven/org.apache.tomcat/tomcat-bom@9.0.85-osera-00001",
+          "role": "bom"
+        },
+        {
+          "purl": "pkg:maven/org.apache.tomcat/tomcat-parent@9.0.85-osera-00001",
+          "role": "parent"
+        },
+        {
+          "purl": "pkg:maven/org.apache.tomcat.maven/tomcat9-maven-plugin@9.0.85-osera-00001",
+          "role": "plugin"
+        },
+        {
+          "purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-el@9.0.85-osera-00001",
+          "role": "companion"
+        }
+      ]
+    }
+  ],
+  "unexpected_artifacts": [
+    {
+      "purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-jasper@9.0.99-untracked",
+      "reason": "Published in staging directory without a matching supported-lines.csv entry"
+    }
+  ],
+  "backlog_items": [
+    {
+      "item_id": "tomcat-cve-2024-24549",
+      "line_id": "tomcat-embed-core:9.0.x",
+      "ecosystem": "maven",
+      "library": "org.apache.tomcat.embed:tomcat-embed-core",
+      "advisory_id": "CVE-2024-24549",
+      "aliases": ["GHSA-tomcat-24549"],
+      "status": "fixed",
+      "fixed_by": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.85-osera-00001",
+      "consume_coordinate": "org.apache.tomcat.embed:tomcat-embed-core:9.0.85-osera-00001",
+      "released_with": [
+        "pkg:maven/org.apache.tomcat/tomcat-bom@9.0.85-osera-00001"
+      ]
+    },
+    {
+      "item_id": "tomcat-cve-2024-24549-duplicate-alias",
+      "line_id": "tomcat-embed-core:9.0.x",
+      "ecosystem": "maven",
+      "library": "org.apache.tomcat.embed:tomcat-embed-core",
+      "advisory_id": "GHSA-tomcat-24549",
+      "aliases": ["CVE-2024-24549"],
+      "status": "fixed",
+      "fixed_by": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.85-osera-00001",
+      "consume_coordinate": "org.apache.tomcat.embed:tomcat-embed-core:9.0.85-osera-00001"
+    },
+    {
+      "item_id": "tomcat-cve-2024-23672-in-progress",
+      "line_id": "tomcat-embed-core:9.0.x",
+      "ecosystem": "maven",
+      "library": "org.apache.tomcat.embed:tomcat-embed-core",
+      "advisory_id": "CVE-2024-23672",
+      "status": "in_progress"
+    },
+    {
+      "item_id": "tomcat-cve-2024-50379-open",
+      "line_id": "tomcat-embed-core:9.0.x",
+      "ecosystem": "maven",
+      "library": "org.apache.tomcat.embed:tomcat-embed-core",
+      "advisory_id": "CVE-2024-50379",
+      "status": "open"
+    },
+    {
+      "item_id": "tomcat-cve-2022-99999-not-remediable",
+      "line_id": "tomcat-embed-core:9.0.x",
+      "ecosystem": "maven",
+      "library": "org.apache.tomcat.embed:tomcat-embed-core",
+      "advisory_id": "CVE-2022-99999",
+      "status": "not_remediable"
+    },
+    {
+      "item_id": "tomcat-cve-2023-46589-excluded",
+      "line_id": "tomcat-embed-core:9.0.x",
+      "ecosystem": "maven",
+      "library": "org.apache.tomcat.embed:tomcat-embed-core",
+      "advisory_id": "CVE-2023-46589",
+      "status": "excluded"
+    },
+    {
+      "item_id": "tomcat-cve-2024-00001-missing-fixed-by",
+      "line_id": "tomcat-embed-core:9.0.x",
+      "ecosystem": "maven",
+      "library": "org.apache.tomcat.embed:tomcat-embed-core",
+      "advisory_id": "CVE-2024-00001",
+      "status": "fixed"
+    },
+    {
+      "item_id": "netty-cve-2024-29025-empty-consume",
+      "line_id": "netty-handler:4.1.x",
+      "ecosystem": "maven",
+      "library": "io.netty:netty-handler",
+      "advisory_id": "CVE-2024-29025",
+      "status": "fixed",
+      "fixed_by": "pkg:maven/io.netty/netty-handler@4.1.108.Final-osera-00001"
+    }
+  ]
+}

@@ -82,3 +82,48 @@ test('imports the provider catalog contract from main without losing provenance 
   const lib={namespace:'maven',meta:'at.yawk.lz4',proj:'lz4-java',release:'1.8.1.1-osera-00001',consumer_project_ids:['a'],cves:[]};
   assert.equal(analyze({libraries:[lib]},[feed,conflict]).observed,0);
 });
+
+import { parseCatalogCsv, comparePatchOptions, ingestOseraBacklogSnapshot, reconcileBacklogWithEstate } from '../tool/patches/catalog.mjs';
+
+test('compares upstream, OSERA and commercial options through common catalog and blocks unready options (#23)', () => {
+  const catalogDoc = JSON.parse(readFileSync(new URL('../data/fixtures/patch-catalog-backlog/common-catalog-upstream-osera-commercial.json', import.meta.url), 'utf8'));
+  const overlayDoc = JSON.parse(readFileSync(new URL('../data/fixtures/patch-catalog-backlog/member-catalog-overlay.json', import.meta.url), 'utf8'));
+  const csvText = readFileSync(new URL('../data/fixtures/patch-catalog-backlog/common-catalog-commercial.csv', import.meta.url), 'utf8');
+  const parsedCsv = parseCatalogCsv(csvText, { feed_id: 'csv-feed' });
+  assert.equal(parsedCsv.patches.length, 2);
+
+  const cmp = comparePatchOptions(
+    { purl: 'pkg:maven/org.springframework/spring-web@5.3.20', advisories: ['GHSA-22243-spring', 'CVE-2024-22259', 'CVE-2024-22262'] },
+    [catalogDoc],
+    overlayDoc,
+    '2026-10-28T00:00:00Z'
+  );
+  assert.deepEqual(cmp.providers_represented, ['commercial', 'osera', 'upstream']);
+  assert.equal(cmp.ready_options.length, 3);
+  const byId = Object.fromEntries(cmp.options.map(o => [o.patch_id, o]));
+  assert.equal(byId['osera-coverage-commitment-without-release'].ready, false);
+  assert.equal(byId['osera-future-delayed-availability'].ready, false);
+  assert.equal(byId['commercial-expired-entitlement-herodevs'].ready, false);
+  assert.equal(byId['osera-withdrawn-artifact-00001'].ready, false);
+  assert.equal(byId['commercial-unentitled-fork-vendor'].ready, false);
+  assert.equal(byId['commercial-missing-vendor-mapping'].ready, false);
+});
+
+test('ingests OSERA backlog snapshot and keeps deployed Tomcat distinct from latest-patch graph (#24)', () => {
+  const rawSnapshot = JSON.parse(readFileSync(new URL('../data/fixtures/patch-catalog-backlog/osera-backlog-tomcat-snapshot.json', import.meta.url), 'utf8'));
+  const ingested = ingestOseraBacklogSnapshot(rawSnapshot);
+  assert.equal(ingested.metadata.snapshot_consistent, true);
+  const tomcatLine = ingested.supported_lines.find(l => l.line_id === 'tomcat-embed-core:9.0.x');
+  assert.equal(tomcatLine.coverage_state, 'partial_coverage');
+  assert.equal(tomcatLine.unique_vulnerability_fix_count, 1);
+  assert.equal(tomcatLine.companion_artifact_count, 4);
+
+  const reconciled = reconcileBacklogWithEstate(ingested, [
+    { application_id: 'app-1', purl: 'pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.50', advisories: ['CVE-2024-24549', 'CVE-2023-46589'] }
+  ]);
+  assert.equal(reconciled.rows[0].deployed_version, '9.0.50');
+  assert.equal(reconciled.rows[0].pinned_baseline, '9.0.70');
+  assert.equal(reconciled.rows[0].latest_patch_resolution, '9.0.85-osera-00001');
+  assert.equal(reconciled.rows[0].deployed_findings_cleared_by_reference_graph, false);
+  assert.deepEqual(reconciled.rows[0].active_deployed_findings, ['CVE-2024-24549', 'CVE-2023-46589']);
+});
