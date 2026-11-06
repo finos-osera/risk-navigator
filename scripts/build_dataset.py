@@ -132,6 +132,37 @@ def load_cve_metadata_map(vuln_db: Path, external_dir: Path) -> Tuple[Dict[str, 
         stats["overlay_entries"] = len(out)
 
     if vuln_db.exists():
+        if vuln_db.suffix.lower() == ".json":
+            payload = read_json(vuln_db, {})
+            entry_count = 0
+            if isinstance(payload, dict):
+                for pkg_obj in payload.values():
+                    if not isinstance(pkg_obj, dict):
+                        continue
+                    for rel_obj in pkg_obj.get("releases") or []:
+                        if not isinstance(rel_obj, dict):
+                            continue
+                        rel_date = str(rel_obj.get("release_date") or "").strip()
+                        for cve in rel_obj.get("cves") or []:
+                            if not isinstance(cve, dict):
+                                continue
+                            cve_id = str(cve.get("cve_id") or "").strip()
+                            if not cve_id:
+                                continue
+                            entry_count += 1
+                            row_meta = {
+                                "title": str(cve.get("title") or cve.get("summary") or "").strip(),
+                                "summary": str(cve.get("summary") or "").strip(),
+                                "description": str(cve.get("description") or cve.get("summary") or "").strip(),
+                                "published": str(cve.get("published") or rel_date or "").strip(),
+                                "modified": str(cve.get("modified") or rel_date or "").strip(),
+                                "source": "json-vuln-db",
+                            }
+                            out[cve_id] = merge_cve_metadata(out.get(cve_id, {}), row_meta, "json-vuln-db")
+            stats["db_loaded"] = True
+            stats["db_entries"] = entry_count
+            return out, stats
+
         conn = sqlite3.connect(vuln_db)
         conn.row_factory = sqlite3.Row
         try:
@@ -664,8 +695,10 @@ def sanitize_sortable_cves(cves: Sequence[Dict[str, object]]) -> List[Dict[str, 
     return out[:50]
 
 
-def load_raw_scope(raw_root: Path, scope: str) -> Dict[str, List[Dict[str, str]]]:
+def load_raw_scope(raw_root: Path, scope: str) -> Dict[str, object]:
     scope_dir = raw_root / scope
+    estate_contract_path = scope_dir / "07-estate-contract.json"
+    estate_contract = read_json(estate_contract_path, None) if estate_contract_path.exists() else None
     return {
         "projects": read_csv(scope_dir / "01-consumer-projects.csv"),
         "dep_edges": read_csv(scope_dir / "02-dep-edges.csv"),
@@ -673,6 +706,7 @@ def load_raw_scope(raw_root: Path, scope: str) -> Dict[str, List[Dict[str, str]]
         "version_chain": read_csv(scope_dir / "04-version-chain.csv"),
         "amplifiers": read_csv(scope_dir / "05-amplifiers.csv"),
         "cve_edges": read_csv(scope_dir / "06-cve-edges.csv"),
+        "estate_contract": estate_contract if isinstance(estate_contract, dict) else None,
     }
 
 
@@ -691,12 +725,23 @@ def build_dataset(
     enrich_cve_metadata_online: bool = True,
     amplifiers_preaggregated: bool = False,
     meta_overlay: Optional[Dict[str, object]] = None,
+    company_overlay: Optional[Dict[str, object]] = None,
 ) -> Dict[str, object]:
     raw = load_raw_scope(raw_root, scope)
     excluded_ns = {ns.strip().lower() for ns in (exclude_library_namespaces or []) if ns and ns.strip()}
 
-    projects = raw["projects"]
-    dep_edges_all = raw["dep_edges"]
+    projects = raw["projects"]  # type: ignore[assignment]
+    dep_edges_all = raw["dep_edges"]  # type: ignore[assignment]
+    estate_contract = raw.get("estate_contract") if isinstance(raw.get("estate_contract"), dict) else None
+    estate_components_by_id: Dict[str, Dict[str, object]] = {}
+    estate_apps_by_id: Dict[str, Dict[str, object]] = {}
+    if isinstance(estate_contract, dict):
+        for comp in estate_contract.get("components", []) if isinstance(estate_contract.get("components"), list) else []:
+            if isinstance(comp, dict) and comp.get("library_id"):
+                estate_components_by_id[canonical_library_id(str(comp["library_id"]))] = comp
+        for app in estate_contract.get("applications", []) if isinstance(estate_contract.get("applications"), list) else []:
+            if isinstance(app, dict) and app.get("id"):
+                estate_apps_by_id[str(app["id"])] = app
     dep_edges = [edge for edge in dep_edges_all if edge.get("qualifier", "").strip().lower() not in TOOLING_QUALIFIERS]
     if excluded_ns:
         dep_edges = [
@@ -899,10 +944,30 @@ def build_dataset(
                 if e.get("consumer_id", "") and str(e.get("direct", "0")) == "1"
             }
         )
+        consumers_unknown = sorted(
+            {
+                e.get("consumer_id", "")
+                for e in lib_edges
+                if e.get("consumer_id", "")
+                and str(e.get("direct", "0")).strip().lower() in {"unknown", "-1", "none", ""}
+                and e.get("consumer_id", "") not in consumers_direct
+            }
+        )
 
         total_consumer_count = len(consumers_all)
         direct_count = len(consumers_direct)
-        transitive_count = max(0, total_consumer_count - direct_count)
+        unknown_count = len(consumers_unknown)
+        transitive_count = max(0, total_consumer_count - direct_count - unknown_count)
+        if direct_count > 0 and transitive_count == 0 and unknown_count == 0:
+            dep_classification = "direct"
+        elif transitive_count > 0 and direct_count == 0 and unknown_count == 0:
+            dep_classification = "transitive"
+        elif unknown_count > 0 and direct_count == 0 and transitive_count == 0:
+            dep_classification = "unknown"
+        elif total_consumer_count == 0:
+            dep_classification = "unknown"
+        else:
+            dep_classification = "mixed"
 
         cves = sanitize_sortable_cves(cves_by_lib.get(lid, []))
         kev_ids = [row["cve_id"] for row in cves if row.get("kev")]
@@ -958,6 +1023,9 @@ def build_dataset(
             "direct_consumer_project_ids": consumers_direct,
             "direct_consumer_count": direct_count,
             "transitive_consumer_count": transitive_count,
+            "unknown_consumer_project_ids": consumers_unknown,
+            "unknown_consumer_count": unknown_count,
+            "dependency_classification": dep_classification,
             "total_consumer_count": total_consumer_count,
             "transitive_heaviness_ratio": round(transitive_count / total_consumer_count, 6) if total_consumer_count else 0.0,
             "top_amplifier": {
@@ -997,6 +1065,18 @@ def build_dataset(
             ),
             "frameworks": framework_memberships({"namespace": namespace, "meta": meta, "proj": proj}),
         }
+        estate_comp = estate_components_by_id.get(lid)
+        if isinstance(estate_comp, dict):
+            lib_obj["observed_purls"] = estate_comp.get("observed_purls", [])
+            lib_obj["qualifiers"] = estate_comp.get("qualifiers", {})
+            lib_obj["subpaths"] = estate_comp.get("subpaths", [])
+            lib_obj["digests"] = estate_comp.get("digests", [])
+            lib_obj["dependency_paths"] = estate_comp.get("dependency_paths", [])
+            lib_obj["scopes"] = estate_comp.get("scopes", [])
+            lib_obj["observed_at"] = estate_comp.get("observed_at")
+            lib_obj["identity_status"] = estate_comp.get("identity_status", "exact")
+            lib_obj["is_repackaged"] = bool(estate_comp.get("is_repackaged", False))
+            lib_obj["uncertain_match_reasons"] = estate_comp.get("uncertain_match_reasons", [])
 
         effort_counts[effort_class] += 1
         libraries.append(lib_obj)
@@ -1070,36 +1150,53 @@ def build_dataset(
         direct_vuln_ids = sorted(
             {e.get("library_id", "") for e in pedges if e.get("library_id", "") in vulnerable_library_ids and str(e.get("direct", "0")) == "1"}
         )
-        project_rollups.append(
+        unknown_vuln_ids = sorted(
             {
-                "id": pid,
-                "namespace": proj.get("namespace", ""),
-                "meta": proj.get("meta", ""),
-                "proj": proj.get("proj", ""),
-                "release": proj.get("release", ""),
-                "project_ref": (proj.get("project_ref", "") or f"{proj.get('namespace','')}/{proj.get('meta','')}/{proj.get('proj','')}"),
-                "aliases": parse_aliases_field(proj.get("aliases", "")),
-                "eonid": proj.get("eonid", ""),
-                "department": proj.get("department", "Unknown"),
-                "tai_system": proj.get("tai_system", ""),
-                "vulnerable_library_ids": vuln_ids,
-                "vulnerable_library_count": len(vuln_ids),
-                "direct_vulnerable_library_count": len(direct_vuln_ids),
-                "transitive_vulnerable_library_count": max(0, len(vuln_ids) - len(direct_vuln_ids)),
-                "max_cvss": max((next((lib["max_cvss"] for lib in libraries if lib["id"] == lid), 0.0) for lid in vuln_ids), default=0.0),
-                "kev_vulnerability_count": sum(
-                    1
-                    for lid in vuln_ids
-                    for lib in libraries
-                    if lib["id"] == lid and lib.get("is_kev_listed")
-                ),
+                e.get("library_id", "")
+                for e in pedges
+                if e.get("library_id", "") in vulnerable_library_ids
+                and str(e.get("direct", "0")).strip().lower() in {"unknown", "-1", "none", ""}
+                and e.get("library_id", "") not in direct_vuln_ids
             }
         )
+        rollup_obj: Dict[str, object] = {
+            "id": pid,
+            "namespace": proj.get("namespace", ""),
+            "meta": proj.get("meta", ""),
+            "proj": proj.get("proj", ""),
+            "release": proj.get("release", ""),
+            "project_ref": (proj.get("project_ref", "") or f"{proj.get('namespace','')}/{proj.get('meta','')}/{proj.get('proj','')}"),
+            "aliases": parse_aliases_field(proj.get("aliases", "")),
+            "eonid": proj.get("eonid", ""),
+            "department": proj.get("department", "Unknown"),
+            "tai_system": proj.get("tai_system", ""),
+            "vulnerable_library_ids": vuln_ids,
+            "vulnerable_library_count": len(vuln_ids),
+            "direct_vulnerable_library_count": len(direct_vuln_ids),
+            "transitive_vulnerable_library_count": max(0, len(vuln_ids) - len(direct_vuln_ids) - len(unknown_vuln_ids)),
+            "unknown_vulnerable_library_count": len(unknown_vuln_ids),
+            "max_cvss": max((next((lib["max_cvss"] for lib in libraries if lib["id"] == lid), 0.0) for lid in vuln_ids), default=0.0),
+            "kev_vulnerability_count": sum(
+                1
+                for lid in vuln_ids
+                for lib in libraries
+                if lib["id"] == lid and lib.get("is_kev_listed")
+            ),
+        }
+        estate_app = estate_apps_by_id.get(pid)
+        if isinstance(estate_app, dict):
+            rollup_obj["build_count"] = estate_app.get("build_count", 1)
+            rollup_obj["deployment_count"] = estate_app.get("deployment_count", 0)
+            rollup_obj["environments"] = estate_app.get("environments", [])
+            rollup_obj["builds"] = estate_app.get("builds", [])
+            rollup_obj["deployments"] = estate_app.get("deployments", [])
+        project_rollups.append(rollup_obj)
 
     project_rollups.sort(key=lambda x: (-x["vulnerable_library_count"], -x["max_cvss"], x["id"]))
 
     dataset = {
         "meta": {
+            "schema_version": "risk-navigator-scope/v1",
             "scope_type": "department",
             "scope_name": scope,
             "scope_label": "OSERA Demo Data" if scope == "finos-sample-platform" else scope,
@@ -1150,10 +1247,25 @@ def build_dataset(
         "libraries": libraries,
         "amplifier_clusters": amplifier_clusters,
     }
+    if isinstance(estate_contract, dict):
+        dataset_meta = dataset.get("meta")
+        if isinstance(dataset_meta, dict):
+            dataset_meta["estate_import"] = {
+                "schema_version": estate_contract.get("schema_version", "osera-estate-contract/v1"),
+                "compatibility": estate_contract.get("compatibility", {}),
+                "completeness": estate_contract.get("completeness", {}),
+                "builds_count": len(estate_contract.get("builds", [])) if isinstance(estate_contract.get("builds"), list) else 0,
+                "deployments_count": len(estate_contract.get("deployments", [])) if isinstance(estate_contract.get("deployments"), list) else 0,
+                "unmapped_records_count": len(estate_contract.get("unmapped_records", [])) if isinstance(estate_contract.get("unmapped_records"), list) else 0,
+            }
+            dataset["unmapped_records"] = estate_contract.get("unmapped_records", [])
     if isinstance(meta_overlay, dict):
         dataset_meta = dataset.get("meta")
         if isinstance(dataset_meta, dict):
             dataset_meta.update(meta_overlay)
+    if isinstance(company_overlay, dict) and company_overlay:
+        from estate_import import apply_company_overlay
+        dataset = apply_company_overlay(dataset, company_overlay)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     out_file = output_dir / f"{scope}.json"
@@ -1196,6 +1308,12 @@ def parse_args() -> argparse.Namespace:
         help="Optional JSON file merged shallowly into dataset.meta at build time.",
     )
     parser.add_argument(
+        "--company-overlay",
+        type=Path,
+        default=None,
+        help="Optional private company overlay JSON file (ownership, criticality, environment, exposure, runtime constraints, change windows).",
+    )
+    parser.add_argument(
         "--amplifiers-preaggregated",
         action="store_true",
         help="Prefer 05-amplifiers.csv root_projects_affected hints when parent_id-level edge attribution is sparse.",
@@ -1207,6 +1325,7 @@ def main() -> int:
     args = parse_args()
     excluded = [x.strip() for x in str(args.exclude_library_namespaces or "").split(",") if x.strip()]
     meta_overlay = read_json(args.meta_overlay, {}) if args.meta_overlay else None
+    company_overlay = read_json(args.company_overlay, {}) if args.company_overlay else None
     dataset = build_dataset(
         args.scope,
         args.raw_root,
@@ -1222,6 +1341,7 @@ def main() -> int:
         enrich_cve_metadata_online=not bool(args.no_enrich_cve_metadata_online),
         amplifiers_preaggregated=bool(args.amplifiers_preaggregated),
         meta_overlay=meta_overlay if isinstance(meta_overlay, dict) else None,
+        company_overlay=company_overlay if isinstance(company_overlay, dict) else None,
     )
     counts = dataset.get("meta", {}).get("counts", {})
     print(json.dumps(counts, indent=2))
