@@ -143,12 +143,96 @@ def test_unsupported_ecosystem_rejection_and_authenticated_intake_deduplication_
     assert "member-bank-alpha" not in json.dumps(intake)
 
 
+def test_multi_occurrence_reconciliation_order_independence_staging_isolation_and_scoped_plans():
+    """Verify multi-region/environment/timestamp deployment occurrences are preserved deterministically (#28)."""
+    eu_patched = {
+        "application_id": "payments-gateway",
+        "deployment_id": "prod-eu",
+        "environment": "production",
+        "observed_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00002",
+        "observed_at": "2026-10-28T10:00:00Z",
+        "validation_status": "passed",
+    }
+    us_unpatched = {
+        "application_id": "payments-gateway",
+        "deployment_id": "prod-us",
+        "environment": "production",
+        "observed_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+        "observed_at": "2026-10-28T10:05:00Z",
+        "validation_status": "pending",
+    }
+    staging_unpatched = {
+        "application_id": "payments-gateway",
+        "deployment_id": "staging-1",
+        "environment": "staging",
+        "observed_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+        "observed_at": "2026-10-29T00:00:00Z",
+        "validation_status": "failed",
+    }
+    eu_older_unpatched = {
+        "application_id": "payments-gateway",
+        "deployment_id": "prod-eu",
+        "environment": "production",
+        "observed_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+        "observed_at": "2026-10-25T08:00:00Z",
+        "validation_status": "pending",
+    }
+
+    whole_prod_plan = {
+        "plan_id": "plan-whole-prod",
+        "opportunity_id": "opp-spring-web",
+        "current_stage": "deployed",
+        "source_artifact_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+        "selected_artifact_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00002",
+        "required_environment": "production",
+        "target_applications": ["payments-gateway"],
+        "expected_fixed_advisories": ["CVE-2024-22243"],
+    }
+    eu_scoped_plan = {
+        "plan_id": "plan-eu-only",
+        "opportunity_id": "opp-spring-web-eu",
+        "current_stage": "deployed",
+        "source_artifact_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+        "selected_artifact_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00002",
+        "required_environment": "production",
+        "target_applications": ["payments-gateway"],
+        "target_deployments": ["prod-eu"],
+        "expected_fixed_advisories": ["CVE-2024-22243"],
+    }
+
+    obs_list = [eu_patched, us_unpatched, staging_unpatched, eu_older_unpatched]
+    rep_forward = reconcile_patch_plans_with_observations(
+        {"deployment_observations": obs_list, "plans": [whole_prod_plan, eu_scoped_plan]}
+    )
+    rep_reverse = reconcile_patch_plans_with_observations(
+        {"deployment_observations": list(reversed(obs_list)), "plans": [whole_prod_plan, eu_scoped_plan]}
+    )
+    assert rep_forward == rep_reverse
+
+    by_id = {p["plan_id"]: p for p in rep_forward["plans"]}
+    # Whole-production plan reports partial_rollout (never verified!) because prod-us is still unpatched
+    whole = by_id["plan-whole-prod"]
+    assert whole["reconciled_stage"] == "partial_rollout"
+    assert whole["observed_remediated_exposures"] == []
+    assert whole["residual_exposures"] == ["payments-gateway|CVE-2024-22243"]
+    assert whole["occurrence_breakdown"]["verified_occurrences"] == ["payments-gateway@prod-eu"]
+    assert whole["occurrence_breakdown"]["unpatched_occurrences"] == ["payments-gateway@prod-us"]
+
+    # EU-scoped plan verifies for prod-eu while recording prod-us as out_of_scope_unpatched_occurrences
+    eu_only = by_id["plan-eu-only"]
+    assert eu_only["reconciled_stage"] == "verified"
+    assert eu_only["observed_remediated_exposures"] == ["payments-gateway@prod-eu|CVE-2024-22243"]
+    assert eu_only["residual_exposures"] == []
+    assert eu_only["occurrence_breakdown"]["out_of_scope_unpatched_occurrences"] == ["payments-gateway@prod-us"]
+
+
 class PatchVerificationAndRequestsTestCase(unittest.TestCase):
     def test_all(self):
         test_closed_ticket_recipe_or_osera_issue_without_deployment_cannot_verify_remediation()
         test_partial_rollout_stale_inventory_failed_validation_rollback_withdrawal_and_scope_drift()
         test_privacy_preserving_request_export_broad_major_precision_and_co_release_mapping()
         test_unsupported_ecosystem_rejection_and_authenticated_intake_deduplication_with_rare_request_privacy()
+        test_multi_occurrence_reconciliation_order_independence_staging_isolation_and_scoped_plans()
 
 
 if __name__ == "__main__":

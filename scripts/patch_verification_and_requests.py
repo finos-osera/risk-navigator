@@ -96,14 +96,41 @@ def reconcile_patch_plans_with_observations(
     withdrawn_purls = set(str(x) for x in (payload.get("withdrawn_artifacts") or []) if str(x).strip())
     invalidated_advisories = set(str(x) for x in (payload.get("invalidated_advisory_claims") or []) if str(x).strip())
 
-    # Index latest deployment observations by (application_id, environment, library)
-    observations_by_app: dict[str, dict[str, Any]] = {}
+    # Index latest deployment observations by (application_id, environment, deployment_id, library_coord)
+    # Deterministically select the latest observation per occurrence by (observed_at, canonical_json)
+    observations_by_occ: dict[tuple[str, str, str, str], dict[str, Any]] = {}
     for obs in payload.get("deployment_observations") or []:
         if not isinstance(obs, dict):
             continue
         app_id = str(obs.get("application_id") or "").strip()
-        if app_id:
-            observations_by_app[app_id] = obs
+        if not app_id:
+            continue
+        obs_env = str(obs.get("environment") or "production").strip().lower()
+        dep_id = str(
+            obs.get("deployment_id")
+            or obs.get("region")
+            or obs.get("cluster")
+            or obs.get("instance_id")
+            or "default"
+        ).strip()
+        obs_purl = str(obs.get("observed_purl") or "").strip()
+        parsed_obs = parse_purl(obs_purl) if obs_purl else {"valid": False, "library": ""}
+        lib_coord = str(obs.get("library") or (parsed_obs["library"] if parsed_obs.get("valid") else "") or "*").strip()
+        occ_key = (app_id, obs_env, dep_id, lib_coord)
+        candidate_sort_key = (
+            str(obs.get("observed_at") or ""),
+            json.dumps(obs, sort_keys=True, separators=(",", ":"), default=str),
+        )
+        existing = observations_by_occ.get(occ_key)
+        if existing is None:
+            observations_by_occ[occ_key] = obs
+        else:
+            existing_sort_key = (
+                str(existing.get("observed_at") or ""),
+                json.dumps(existing, sort_keys=True, separators=(",", ":"), default=str),
+            )
+            if candidate_sort_key > existing_sort_key:
+                observations_by_occ[occ_key] = obs
 
     reconciled_plans: list[dict[str, Any]] = []
     total_planned_benefit = 0
@@ -122,10 +149,33 @@ def reconcile_patch_plans_with_observations(
         selected_digest = str(plan.get("selected_artifact_digest") or "").strip() or None
         source_purl = str(plan.get("source_artifact_purl") or "").strip()
         required_env = str(plan.get("required_environment") or "production").strip().lower()
+        parsed_sel = parse_purl(selected_purl) if selected_purl else {"valid": False, "library": ""}
+        parsed_src = parse_purl(source_purl) if source_purl else {"valid": False, "library": ""}
+        plan_lib_coord = str(
+            plan.get("library")
+            or (parsed_sel["library"] if parsed_sel.get("valid") else "")
+            or (parsed_src["library"] if parsed_src.get("valid") else "")
+            or ""
+        ).strip()
+        target_deployments = sorted(
+            {
+                str(d).strip()
+                for d in (plan.get("target_deployments") or plan.get("target_regions") or [])
+                if str(d).strip()
+            }
+        )
 
         target_apps = [str(a).strip() for a in (plan.get("target_applications") or []) if str(a).strip()]
         expected_advisories = [str(a).strip() for a in (plan.get("expected_fixed_advisories") or []) if str(a).strip()]
-        planned_exposures = [f"{app}|{adv}" for app in target_apps for adv in expected_advisories]
+        if target_deployments:
+            planned_exposures = [
+                f"{app}@{dep}|{adv}"
+                for app in target_apps
+                for dep in target_deployments
+                for adv in expected_advisories
+            ]
+        else:
+            planned_exposures = [f"{app}|{adv}" for app in target_apps for adv in expected_advisories]
         total_planned_benefit += len(planned_exposures)
 
         # Non-evidence signals that MUST NEVER be credited as deployment remediation (#28)
@@ -197,50 +247,119 @@ def reconcile_patch_plans_with_observations(
         unpatched_apps: list[str] = []
         scope_drift_apps: list[str] = []
 
+        verified_occurrences: list[str] = []
+        deployed_unverified_occurrences: list[str] = []
+        failed_validation_occurrences: list[str] = []
+        rolled_back_occurrences: list[str] = []
+        stale_inventory_occurrences: list[str] = []
+        unpatched_occurrences: list[str] = []
+        out_of_scope_unpatched_occurrences: list[str] = []
+
         for app_id in target_apps:
-            obs = observations_by_app.get(app_id)
-            if obs is None or bool(obs.get("removed_from_scope", False)):
+            app_env_occs = [
+                (occ_key, obs)
+                for occ_key, obs in sorted(observations_by_occ.items(), key=lambda kv: kv[0])
+                if occ_key[0] == app_id
+                and occ_key[1] == required_env
+                and (not plan_lib_coord or occ_key[3] in (plan_lib_coord, "*"))
+            ]
+            if target_deployments:
+                in_scope_occs = [(k, o) for k, o in app_env_occs if k[2] in target_deployments]
+                out_scope_occs = [(k, o) for k, o in app_env_occs if k[2] not in target_deployments]
+                for k_out, o_out in out_scope_occs:
+                    if str(o_out.get("observed_purl") or "").strip() != selected_purl:
+                        out_of_scope_unpatched_occurrences.append(f"{app_id}@{k_out[2]}")
+            else:
+                in_scope_occs = app_env_occs
+
+            active_occs = [(k, o) for k, o in in_scope_occs if not bool(o.get("removed_from_scope", False))]
+            if not active_occs:
                 # Missing from inventory / decommissioned scope drift — NEVER credit as observed remediation!
                 scope_drift_apps.append(app_id)
                 continue
 
-            obs_purl = str(obs.get("observed_purl") or "").strip()
-            obs_digest = str(obs.get("observed_artifact_digest") or "").strip() or None
-            obs_env = str(obs.get("environment") or "production").strip().lower()
-            obs_ts = str(obs.get("observed_at") or "")
-            validation_status = str(obs.get("validation_status") or "pending").strip().lower()
-            previously_deployed = bool(obs.get("previously_deployed_target", False)) or prior_stage == "verified"
+            app_ver_count = 0
+            app_dep_unver_count = 0
+            app_fail_count = 0
+            app_rb_count = 0
+            app_stale_count = 0
+            app_unpatched_count = 0
 
-            is_stale = bool(obs_ts and obs_ts < stale_cutoff)
-            if is_stale:
+            for occ_key, obs in active_occs:
+                dep_id = occ_key[2]
+                occ_label = f"{app_id}@{dep_id}" if (target_deployments or dep_id != "default" or len(active_occs) > 1) else app_id
+                obs_purl = str(obs.get("observed_purl") or "").strip()
+                obs_digest = str(obs.get("observed_artifact_digest") or "").strip() or None
+                obs_env = str(obs.get("environment") or "production").strip().lower()
+                obs_ts = str(obs.get("observed_at") or "")
+                validation_status = str(obs.get("validation_status") or "pending").strip().lower()
+                previously_deployed = bool(obs.get("previously_deployed_target", False)) or prior_stage == "verified"
+
+                is_stale = bool(obs_ts and obs_ts < stale_cutoff)
+                if is_stale:
+                    app_stale_count += 1
+                    stale_inventory_occurrences.append(occ_label)
+
+                identity_matches = (
+                    obs_purl == selected_purl
+                    and obs_env == required_env
+                    and (selected_digest is None or obs_digest == selected_digest)
+                )
+
+                if identity_matches:
+                    if validation_status == "failed":
+                        app_fail_count += 1
+                        failed_validation_occurrences.append(occ_label)
+                    elif validation_status == "passed" and not is_stale:
+                        app_ver_count += 1
+                        verified_occurrences.append(occ_label)
+                    else:
+                        app_dep_unver_count += 1
+                        deployed_unverified_occurrences.append(occ_label)
+                else:
+                    if previously_deployed and obs_purl == source_purl:
+                        app_rb_count += 1
+                        rolled_back_occurrences.append(occ_label)
+                    else:
+                        app_unpatched_count += 1
+                        unpatched_occurrences.append(occ_label)
+
+            if app_stale_count > 0:
                 stale_inventory_apps.append(app_id)
-
-            identity_matches = (
-                obs_purl == selected_purl
-                and obs_env == required_env
-                and (selected_digest is None or obs_digest == selected_digest)
-            )
-
-            if identity_matches:
-                if validation_status == "failed":
-                    failed_validation_apps.append(app_id)
-                elif validation_status == "passed" and not is_stale:
-                    verified_apps.append(app_id)
-                else:
-                    deployed_unverified_apps.append(app_id)
-            else:
-                if previously_deployed and obs_purl == source_purl:
-                    rolled_back_apps.append(app_id)
-                else:
+            if app_rb_count > 0:
+                rolled_back_apps.append(app_id)
+            elif app_fail_count > 0:
+                failed_validation_apps.append(app_id)
+            elif app_ver_count == len(active_occs) and app_stale_count == 0:
+                verified_apps.append(app_id)
+            elif app_ver_count > 0 or app_dep_unver_count > 0:
+                deployed_unverified_apps.append(app_id)
+                if app_unpatched_count > 0:
                     unpatched_apps.append(app_id)
+            else:
+                unpatched_apps.append(app_id)
 
-        observed_remediated = [
-            f"{app}|{adv}"
-            for app in verified_apps
-            for adv in expected_advisories
-            if adv not in invalidated_advisories
-        ]
-        drift_exposures = [f"{app}|{adv}" for app in scope_drift_apps for adv in expected_advisories]
+        if target_deployments:
+            observed_remediated = [
+                f"{occ_label}|{adv}"
+                for occ_label in verified_occurrences
+                for adv in expected_advisories
+                if adv not in invalidated_advisories
+            ]
+            drift_exposures = [
+                f"{app}@{dep}|{adv}"
+                for app in scope_drift_apps
+                for dep in target_deployments
+                for adv in expected_advisories
+            ]
+        else:
+            observed_remediated = [
+                f"{app}|{adv}"
+                for app in verified_apps
+                for adv in expected_advisories
+                if adv not in invalidated_advisories
+            ]
+            drift_exposures = [f"{app}|{adv}" for app in scope_drift_apps for adv in expected_advisories]
         residual_exposures = [
             exp for exp in planned_exposures if exp not in set(observed_remediated) and exp not in set(drift_exposures)
         ]
@@ -266,8 +385,12 @@ def reconcile_patch_plans_with_observations(
             )
         elif verified_apps and len(verified_apps) == len(target_apps) and not residual_exposures:
             reconciled_stage = "verified"
-        elif verified_apps or deployed_unverified_apps:
-            if len(verified_apps) + len(deployed_unverified_apps) < len(target_apps) - len(scope_drift_apps):
+        elif verified_apps or deployed_unverified_apps or verified_occurrences or deployed_unverified_occurrences:
+            has_partial = (
+                len(verified_apps) < len(target_apps) - len(scope_drift_apps)
+                or len(unpatched_occurrences) > 0
+            )
+            if has_partial:
                 reconciled_stage = (
                     "partial_rollout_with_stale_inventory" if stale_inventory_apps else "partial_rollout"
                 )
@@ -302,6 +425,15 @@ def reconcile_patch_plans_with_observations(
                     "stale_inventory_applications": stale_inventory_apps,
                     "unpatched_applications": unpatched_apps,
                     "scope_drift_applications": scope_drift_apps,
+                },
+                "occurrence_breakdown": {
+                    "verified_occurrences": verified_occurrences,
+                    "deployed_unverified_occurrences": deployed_unverified_occurrences,
+                    "failed_validation_occurrences": failed_validation_occurrences,
+                    "rolled_back_occurrences": rolled_back_occurrences,
+                    "stale_inventory_occurrences": stale_inventory_occurrences,
+                    "unpatched_occurrences": unpatched_occurrences,
+                    "out_of_scope_unpatched_occurrences": out_of_scope_unpatched_occurrences,
                 },
                 "planned_benefit_exposures": planned_exposures,
                 "observed_remediated_exposures": observed_remediated,

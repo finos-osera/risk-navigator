@@ -9,11 +9,43 @@ const PRIVATE_KEYS = new Set([
   'contract_id', 'pricing', 'internal_repository_url', 'scope_name',
 ]);
 
+const extractLibCoord = rawPurl => {
+  const parsed = rawPurl ? purl(rawPurl) : null;
+  if (!parsed) return '';
+  return parsed.type === 'maven' ? parsed.name.replace('/', ':') : parsed.name;
+};
+
+const canonicalJson = val => {
+  if (val === null || typeof val !== 'object') return JSON.stringify(val);
+  if (Array.isArray(val)) return `[${val.map(canonicalJson).join(',')}]`;
+  const keys = Object.keys(val).sort();
+  return `{${keys.map(k => `${JSON.stringify(k)}:${canonicalJson(val[k])}`).join(',')}}`;
+};
+
 export function reconcilePatchPlansWithObservations(bundle) {
   const staleCutoff = String(bundle.stale_inventory_cutoff || '2026-10-20T00:00:00Z');
   const withdrawnPurls = new Set(bundle.withdrawn_artifacts || []);
   const invalidatedAdvisories = new Set(bundle.invalidated_advisory_claims || []);
-  const obsByApp = new Map((bundle.deployment_observations || []).map(o => [o.application_id, o]));
+
+  // Index latest deployment observations by (application_id, environment, deployment_id, library_coord)
+  const obsByOcc = new Map();
+  for (const obs of bundle.deployment_observations || []) {
+    if (!obs || typeof obs !== 'object') continue;
+    const appId = String(obs.application_id || '').trim();
+    if (!appId) continue;
+    const obsEnv = String(obs.environment || 'production').trim().toLowerCase();
+    const depId = String(obs.deployment_id || obs.region || obs.cluster || obs.instance_id || 'default').trim();
+    const libCoord = String(obs.library || extractLibCoord(obs.observed_purl) || '*').trim();
+    const occKey = `${appId}|||${obsEnv}|||${depId}|||${libCoord}`;
+    const candKey = `${String(obs.observed_at || '')}|||${canonicalJson(obs)}`;
+    const existing = obsByOcc.get(occKey);
+    if (!existing || candKey > existing.sortKey) {
+      obsByOcc.set(occKey, { appId, obsEnv, depId, libCoord, sortKey: candKey, obs });
+    }
+  }
+  const sortedOccEntries = [...obsByOcc.values()].sort((a, b) =>
+    a.appId.localeCompare(b.appId) || a.obsEnv.localeCompare(b.obsEnv) || a.depId.localeCompare(b.depId) || a.libCoord.localeCompare(b.libCoord)
+  );
 
   let totalPlanned = 0, totalObserved = 0, totalDrift = 0;
 
@@ -25,9 +57,13 @@ export function reconcilePatchPlansWithObservations(bundle) {
     const selectedDigest = plan.selected_artifact_digest || null;
     const sourcePurl = String(plan.source_artifact_purl || '');
     const requiredEnv = String(plan.required_environment || 'production').toLowerCase();
+    const planLibCoord = String(plan.library || extractLibCoord(selectedPurl) || extractLibCoord(sourcePurl) || '').trim();
+    const targetDeployments = unique((plan.target_deployments || plan.target_regions || []).map(d => String(d).trim()).filter(Boolean)).sort();
     const targetApps = plan.target_applications || [];
     const expectedAdvs = plan.expected_fixed_advisories || [];
-    const plannedExposures = targetApps.flatMap(app => expectedAdvs.map(adv => `${app}|${adv}`));
+    const plannedExposures = targetDeployments.length
+      ? targetApps.flatMap(app => targetDeployments.flatMap(dep => expectedAdvs.map(adv => `${app}@${dep}|${adv}`)))
+      : targetApps.flatMap(app => expectedAdvs.map(adv => `${app}|${adv}`));
     totalPlanned += plannedExposures.length;
 
     const ignoredSignals = {
@@ -59,27 +95,80 @@ export function reconcilePatchPlansWithObservations(bundle) {
     }
 
     const verifiedApps = [], deployedUnverified = [], failedValidation = [], rolledBack = [], staleApps = [], unpatched = [], driftApps = [];
+    const verifiedOccurrences = [], deployedUnverifiedOccurrences = [], failedValidationOccurrences = [],
+      rolledBackOccurrences = [], staleInventoryOccurrences = [], unpatchedOccurrences = [], outOfScopeUnpatchedOccurrences = [];
+
     for (const app of targetApps) {
-      const obs = obsByApp.get(app);
-      if (!obs || obs.removed_from_scope === true) { driftApps.push(app); continue; }
-      const isStale = Boolean(obs.observed_at && obs.observed_at < staleCutoff);
-      if (isStale) staleApps.push(app);
-      const matches = obs.observed_purl === selectedPurl &&
-        String(obs.environment || 'production').toLowerCase() === requiredEnv &&
-        (!selectedDigest || obs.observed_artifact_digest === selectedDigest);
-      if (matches) {
-        if (obs.validation_status === 'failed') failedValidation.push(app);
-        else if (obs.validation_status === 'passed' && !isStale) verifiedApps.push(app);
-        else deployedUnverified.push(app);
-      } else if ((obs.previously_deployed_target || priorStage === 'verified') && obs.observed_purl === sourcePurl) {
-        rolledBack.push(app);
+      const appEnvOccs = sortedOccEntries.filter(e =>
+        e.appId === app &&
+        e.obsEnv === requiredEnv &&
+        (!planLibCoord || e.libCoord === planLibCoord || e.libCoord === '*')
+      );
+      let inScopeOccs = appEnvOccs;
+      if (targetDeployments.length) {
+        inScopeOccs = appEnvOccs.filter(e => targetDeployments.includes(e.depId));
+        for (const outE of appEnvOccs.filter(e => !targetDeployments.includes(e.depId))) {
+          if (String(outE.obs.observed_purl || '').trim() !== selectedPurl) {
+            outOfScopeUnpatchedOccurrences.push(`${app}@${outE.depId}`);
+          }
+        }
+      }
+      const activeOccs = inScopeOccs.filter(e => e.obs.removed_from_scope !== true);
+      if (!activeOccs.length) {
+        driftApps.push(app);
+        continue;
+      }
+
+      let appVerCount = 0, appDepUnverCount = 0, appFailCount = 0, appRbCount = 0, appStaleCount = 0, appUnpatchedCount = 0;
+      for (const entry of activeOccs) {
+        const { depId, obs } = entry;
+        const occLabel = (targetDeployments.length || depId !== 'default' || activeOccs.length > 1) ? `${app}@${depId}` : app;
+        const isStale = Boolean(obs.observed_at && obs.observed_at < staleCutoff);
+        if (isStale) {
+          appStaleCount++;
+          staleInventoryOccurrences.push(occLabel);
+        }
+        const matches = obs.observed_purl === selectedPurl &&
+          String(obs.environment || 'production').toLowerCase() === requiredEnv &&
+          (!selectedDigest || obs.observed_artifact_digest === selectedDigest);
+        if (matches) {
+          if (obs.validation_status === 'failed') {
+            appFailCount++;
+            failedValidationOccurrences.push(occLabel);
+          } else if (obs.validation_status === 'passed' && !isStale) {
+            appVerCount++;
+            verifiedOccurrences.push(occLabel);
+          } else {
+            appDepUnverCount++;
+            deployedUnverifiedOccurrences.push(occLabel);
+          }
+        } else if ((obs.previously_deployed_target || priorStage === 'verified') && obs.observed_purl === sourcePurl) {
+          appRbCount++;
+          rolledBackOccurrences.push(occLabel);
+        } else {
+          appUnpatchedCount++;
+          unpatchedOccurrences.push(occLabel);
+        }
+      }
+
+      if (appStaleCount > 0) staleApps.push(app);
+      if (appRbCount > 0) rolledBack.push(app);
+      else if (appFailCount > 0) failedValidation.push(app);
+      else if (appVerCount === activeOccs.length && appStaleCount === 0) verifiedApps.push(app);
+      else if (appVerCount > 0 || appDepUnverCount > 0) {
+        deployedUnverified.push(app);
+        if (appUnpatchedCount > 0) unpatched.push(app);
       } else {
         unpatched.push(app);
       }
     }
 
-    const observedRemediated = verifiedApps.flatMap(app => expectedAdvs.filter(a => !invalidatedAdvisories.has(a)).map(a => `${app}|${a}`));
-    const driftExposures = driftApps.flatMap(app => expectedAdvs.map(a => `${app}|${a}`));
+    const observedRemediated = targetDeployments.length
+      ? verifiedOccurrences.flatMap(occLabel => expectedAdvs.filter(a => !invalidatedAdvisories.has(a)).map(a => `${occLabel}|${a}`))
+      : verifiedApps.flatMap(app => expectedAdvs.filter(a => !invalidatedAdvisories.has(a)).map(a => `${app}|${a}`));
+    const driftExposures = targetDeployments.length
+      ? driftApps.flatMap(app => targetDeployments.flatMap(dep => expectedAdvs.map(a => `${app}@${dep}|${a}`)))
+      : driftApps.flatMap(app => expectedAdvs.map(a => `${app}|${a}`));
     const residualExposures = plannedExposures.filter(e => !observedRemediated.includes(e) && !driftExposures.includes(e));
     totalObserved += observedRemediated.length;
     totalDrift += driftExposures.length;
@@ -93,8 +182,9 @@ export function reconcilePatchPlansWithObservations(bundle) {
       reopenedReason = `Post-deployment validation failed on ${failedValidation.join(', ')}.`;
     } else if (verifiedApps.length === targetApps.length && !residualExposures.length) {
       reconciledStage = 'verified';
-    } else if (verifiedApps.length || deployedUnverified.length) {
-      reconciledStage = (staleApps.length || (verifiedApps.length + deployedUnverified.length < targetApps.length - driftApps.length))
+    } else if (verifiedApps.length || deployedUnverified.length || verifiedOccurrences.length || deployedUnverifiedOccurrences.length) {
+      const hasPartial = (verifiedApps.length < targetApps.length - driftApps.length) || unpatchedOccurrences.length > 0;
+      reconciledStage = (staleApps.length || hasPartial)
         ? (staleApps.length ? 'partial_rollout_with_stale_inventory' : 'partial_rollout')
         : 'deployed';
     } else if (driftApps.length === targetApps.length) {
@@ -106,7 +196,26 @@ export function reconcilePatchPlansWithObservations(bundle) {
     return {
       plan_id: planId, opportunity_id: oppId, selected_artifact_purl: selectedPurl,
       prior_stage: priorStage, reconciled_stage: reconciledStage, opportunity_reopened: reopened,
-      reopened_reason: reopenedReason, planned_benefit_exposures: plannedExposures,
+      reopened_reason: reopenedReason,
+      application_breakdown: {
+        verified_applications: verifiedApps,
+        deployed_unverified_applications: deployedUnverified,
+        failed_validation_applications: failedValidation,
+        rolled_back_applications: rolledBack,
+        stale_inventory_applications: staleApps,
+        unpatched_applications: unpatched,
+        scope_drift_applications: driftApps,
+      },
+      occurrence_breakdown: {
+        verified_occurrences: verifiedOccurrences,
+        deployed_unverified_occurrences: deployedUnverifiedOccurrences,
+        failed_validation_occurrences: failedValidationOccurrences,
+        rolled_back_occurrences: rolledBackOccurrences,
+        stale_inventory_occurrences: staleInventoryOccurrences,
+        unpatched_occurrences: unpatchedOccurrences,
+        out_of_scope_unpatched_occurrences: outOfScopeUnpatchedOccurrences,
+      },
+      planned_benefit_exposures: plannedExposures,
       observed_remediated_exposures: observedRemediated, residual_exposures: residualExposures,
       inventory_or_scope_drift_exposures: driftExposures, non_deployment_signals_ignored: ignoredSignals,
     };

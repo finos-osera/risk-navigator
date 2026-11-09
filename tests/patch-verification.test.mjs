@@ -50,3 +50,77 @@ test('exports privacy-preserving requests, preserves broad-major precision, and 
   assert.equal(spring.duplicate_submissions_collapsed, 1);
   assert.equal(commons.rare_request_privacy_redacted, true);
 });
+
+test('preserves multi-occurrence deployment observations deterministically across regions, environments, and timestamps (#28)', () => {
+  const obsList = [
+    {
+      application_id: 'payments-gateway',
+      deployment_id: 'prod-eu',
+      environment: 'production',
+      observed_purl: 'pkg:maven/org.springframework/spring-web@5.3.20-osera-00002',
+      observed_at: '2026-10-28T10:00:00Z',
+      validation_status: 'passed',
+    },
+    {
+      application_id: 'payments-gateway',
+      deployment_id: 'prod-us',
+      environment: 'production',
+      observed_purl: 'pkg:maven/org.springframework/spring-web@5.3.20',
+      observed_at: '2026-10-28T10:05:00Z',
+      validation_status: 'pending',
+    },
+    {
+      application_id: 'payments-gateway',
+      deployment_id: 'staging-1',
+      environment: 'staging',
+      observed_purl: 'pkg:maven/org.springframework/spring-web@5.3.20',
+      observed_at: '2026-10-29T00:00:00Z',
+      validation_status: 'failed',
+    },
+    {
+      application_id: 'payments-gateway',
+      deployment_id: 'prod-eu',
+      environment: 'production',
+      observed_purl: 'pkg:maven/org.springframework/spring-web@5.3.20',
+      observed_at: '2026-10-25T08:00:00Z',
+      validation_status: 'pending',
+    },
+  ];
+  const plans = [
+    {
+      plan_id: 'plan-whole-prod',
+      opportunity_id: 'opp-spring-web',
+      current_stage: 'deployed',
+      source_artifact_purl: 'pkg:maven/org.springframework/spring-web@5.3.20',
+      selected_artifact_purl: 'pkg:maven/org.springframework/spring-web@5.3.20-osera-00002',
+      required_environment: 'production',
+      target_applications: ['payments-gateway'],
+      expected_fixed_advisories: ['CVE-2024-22243'],
+    },
+    {
+      plan_id: 'plan-eu-only',
+      opportunity_id: 'opp-spring-web-eu',
+      current_stage: 'deployed',
+      source_artifact_purl: 'pkg:maven/org.springframework/spring-web@5.3.20',
+      selected_artifact_purl: 'pkg:maven/org.springframework/spring-web@5.3.20-osera-00002',
+      required_environment: 'production',
+      target_applications: ['payments-gateway'],
+      target_deployments: ['prod-eu'],
+      expected_fixed_advisories: ['CVE-2024-22243'],
+    },
+  ];
+
+  const repForward = reconcilePatchPlansWithObservations({ deployment_observations: obsList, plans });
+  const repReverse = reconcilePatchPlansWithObservations({ deployment_observations: [...obsList].reverse(), plans });
+  assert.deepEqual(repForward, repReverse);
+
+  const byId = Object.fromEntries(repForward.plans.map(p => [p.plan_id, p]));
+  assert.equal(byId['plan-whole-prod'].reconciled_stage, 'partial_rollout');
+  assert.deepEqual(byId['plan-whole-prod'].residual_exposures, ['payments-gateway|CVE-2024-22243']);
+  assert.deepEqual(byId['plan-whole-prod'].occurrence_breakdown.verified_occurrences, ['payments-gateway@prod-eu']);
+  assert.deepEqual(byId['plan-whole-prod'].occurrence_breakdown.unpatched_occurrences, ['payments-gateway@prod-us']);
+
+  assert.equal(byId['plan-eu-only'].reconciled_stage, 'verified');
+  assert.deepEqual(byId['plan-eu-only'].observed_remediated_exposures, ['payments-gateway@prod-eu|CVE-2024-22243']);
+  assert.deepEqual(byId['plan-eu-only'].occurrence_breakdown.out_of_scope_unpatched_occurrences, ['payments-gateway@prod-us']);
+});
