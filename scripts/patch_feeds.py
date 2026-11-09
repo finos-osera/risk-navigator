@@ -449,8 +449,13 @@ def normalize_catalog_feed(feed_config: dict[str, Any], document: dict[str, Any]
                     str(a).strip() for a in (item.get("residual_advisories") or []) if str(a).strip()
                 ],
                 "release_state": release_state,
+                "available_from": _parse_iso_timestamp(item.get("available_from")),
                 "withdrawn": withdrawn,
                 "superseded_by": item.get("superseded_by"),
+                "original_purl": item.get("original_purl"),
+                "runtime_constraints": copy.deepcopy(item.get("runtime_constraints")) if isinstance(item.get("runtime_constraints"), dict) else {},
+                "support_dates": copy.deepcopy(item.get("support_dates")) if isinstance(item.get("support_dates"), dict) else {},
+                "vendor_version_mapping": copy.deepcopy(item.get("vendor_version_mapping")) if isinstance(item.get("vendor_version_mapping"), dict) else None,
                 "required_companions": list(item.get("required_companions") or []),
                 "evidence_links": list(item.get("evidence_links") or [{"kind": "catalog", "url": source_url}]),
                 "published_at": _parse_iso_timestamp(item.get("published_at")) or last_refresh or "",
@@ -522,8 +527,14 @@ def load_patch_feeds(feeds_bundle: list[dict[str, Any]]) -> dict[str, Any]:
         doc = raw_feed.get("document") if isinstance(raw_feed.get("document"), dict) else raw_feed
         adapter = str(feed_cfg.get("adapter") or doc.get("adapter") or "provider_catalog").strip().lower()
 
-        if adapter == "osera_openvex" or "statements" in doc:
+        if adapter == "osera_openvex" or (isinstance(doc, dict) and "statements" in doc):
             normalized = normalize_openvex_feed(feed_cfg, doc)
+        elif adapter == "catalog_csv" or isinstance(raw_feed.get("csv"), (str, Path)):
+            from osera_backlog import parse_catalog_csv as _parse_catalog_csv
+
+            csv_payload = raw_feed.get("csv") or doc.get("csv") or doc.get("source_url") or feed_cfg.get("source_url") or ""
+            csv_doc = _parse_catalog_csv(csv_payload, feed_cfg)
+            normalized = normalize_catalog_feed(feed_cfg, csv_doc)
         else:
             normalized = normalize_catalog_feed(feed_cfg, doc)
 
@@ -1447,6 +1458,26 @@ def export_uncovered_demand_cart(
             if reason and reason not in item["BlockedReasons"]:
                 item["BlockedReasons"].append(reason)
     return list(by_coord.values())
+
+
+try:
+    from osera_backlog import (  # noqa: E402
+        compare_patch_options,
+        ingest_osera_backlog_snapshot,
+        normalize_common_catalog_entry,
+        parse_catalog_csv,
+        parse_supported_lines_csv,
+        reconcile_backlog_with_estate,
+    )
+except ImportError:
+    from scripts.osera_backlog import (  # noqa: E402
+        compare_patch_options,
+        ingest_osera_backlog_snapshot,
+        normalize_common_catalog_entry,
+        parse_catalog_csv,
+        parse_supported_lines_csv,
+        reconcile_backlog_with_estate,
+    )
 
 
 def main() -> int:
