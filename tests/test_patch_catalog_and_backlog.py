@@ -212,6 +212,145 @@ def test_partial_line_coverage_empty_consume_coordinate_companion_boms_and_data_
     assert any(d["kind"] == "inconsistent_snapshot" for d in inconsistent_ingested["data_quality_issues"])
 
 
+def test_omitted_evaluation_time_defaults_to_current_utc():
+    """Omitted evaluation_time uses current UTC timestamp for entitlement and support expiry (#23)."""
+    catalog_doc = {
+        "schema_version": "osera-patch-catalog/v1",
+        "feed_id": "test-default-eval-time",
+        "provider": "HeroDevs",
+        "provider_kind": "commercial",
+        "patches": [
+            {
+                "patch_id": "expired-past",
+                "provider": "HeroDevs",
+                "provider_kind": "commercial",
+                "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.39-herodevs-1",
+                "applicable_versions": ["5.3.20"],
+                "fixed_advisories": ["CVE-2024-22259"],
+                "release_state": "released",
+                "evidence_links": [{"kind": "attestation", "url": "https://example.test/ev1"}],
+                "vendor_version_mapping": {
+                    "vendor_backport_base": "5.3.20",
+                    "upstream_equivalent_version": "5.3.34",
+                    "fix_evidence": "https://example.test/ev1",
+                },
+            },
+            {
+                "patch_id": "active-future",
+                "provider": "HeroDevs",
+                "provider_kind": "commercial",
+                "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.39-herodevs-2",
+                "applicable_versions": ["5.3.20"],
+                "fixed_advisories": ["CVE-2024-22259"],
+                "release_state": "released",
+                "evidence_links": [{"kind": "attestation", "url": "https://example.test/ev2"}],
+                "vendor_version_mapping": {
+                    "vendor_backport_base": "5.3.20",
+                    "upstream_equivalent_version": "5.3.34",
+                    "fix_evidence": "https://example.test/ev2",
+                },
+            },
+        ],
+    }
+    overlay_doc = {
+        "entitlements": [
+            {"patch_id": "expired-past", "provider": "HeroDevs", "status": "entitled", "expires_at": "2020-01-01T00:00:00Z"},
+            {"patch_id": "active-future", "provider": "HeroDevs", "status": "entitled", "expires_at": "2099-01-01T00:00:00Z"},
+        ],
+        "approvals": {"HeroDevs": "approved"},
+    }
+    comparison = compare_patch_options(
+        component={"purl": "pkg:maven/org.springframework/spring-web@5.3.20", "advisories": ["CVE-2024-22259"]},
+        catalog_sources=[catalog_doc],
+        member_overlay=overlay_doc,
+    )
+    by_id = {opt["patch_id"]: opt for opt in comparison["options"]}
+    assert by_id["expired-past"]["ready"] is False
+    assert "expired_entitlement" in by_id["expired-past"]["blocked_reasons"]
+    assert by_id["active-future"]["ready"] is True
+
+
+def test_reconcile_backlog_enforces_deployed_maintenance_line_matching():
+    """Unsupported maintenance lines are not matched to another line, and multi-line backlogs stay line-isolated (#24)."""
+    raw_snapshot = json.loads(OSERA_BACKLOG_SNAPSHOT_PATH.read_text(encoding="utf-8"))
+
+    # 1. Tomcat 10.1.0 against a 9.0.x-only backlog must be unsupported_maintenance_line with no in-line fixes
+    unsupported = reconcile_backlog_with_estate(
+        raw_snapshot,
+        [
+            {
+                "application_id": "app-tomcat-10",
+                "purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@10.1.0",
+                "advisories": ["CVE-2024-24549"],
+            }
+        ],
+    )
+    row_10 = unsupported["rows"][0]
+    assert row_10["deployed_maintenance_line"] == "10.1.x"
+    assert row_10["matched_line_id"] is None
+    assert row_10["coverage_status"] == "unsupported_maintenance_line"
+    assert row_10["pinned_baseline"] is None
+    assert row_10["latest_patch_resolution"] is None
+    assert row_10["consume_coordinate"] is None
+    assert row_10["consumption_bom"] is None
+    assert row_10["available_fixes"] == []
+    assert row_10["member_deployment_state"] == "deployed_vulnerable_unsupported_line"
+    assert row_10["active_deployed_findings"] == ["CVE-2024-24549"]
+    assert len(row_10["cross_line_migration_options"]) == 1
+    assert row_10["cross_line_migration_options"][0]["maintenance_line"] == "9.0.x"
+
+    # 2. Multi-line backlog (9.0.x and 10.1.x both present with the same CVE) must isolate each line deterministically
+    multi_line_raw = json.loads(json.dumps(raw_snapshot))
+    multi_line_raw["supported_lines_csv"] += (
+        "maven,org.apache.tomcat.embed,tomcat-embed-core,tomcat-embed-core:10.1.x,10.1.x,"
+        "10.1.18,10.1.20-osera-00001,org.apache.tomcat.embed:tomcat-embed-core:10.1.20-osera-00001,"
+        "org.apache.tomcat:tomcat-bom:10.1.20-osera-00001,active\n"
+    )
+    multi_line_raw["backlog_items"].append(
+        {
+            "item_id": "tomcat-10-cve-2024-24549",
+            "line_id": "tomcat-embed-core:10.1.x",
+            "library": "org.apache.tomcat.embed:tomcat-embed-core",
+            "maintenance_line": "10.1.x",
+            "advisory_id": "CVE-2024-24549",
+            "status": "fixed",
+            "fixed_by": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@10.1.20-osera-00001",
+            "consume_coordinate": "pkg:maven/org.apache.tomcat/tomcat-bom@10.1.20-osera-00001?type=pom",
+        }
+    )
+    multi_line_snapshot = ingest_osera_backlog_snapshot(multi_line_raw)
+    observations = [
+        {
+            "application_id": "app-9",
+            "purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.50",
+            "advisories": ["CVE-2024-24549"],
+        },
+        {
+            "application_id": "app-10",
+            "purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@10.1.10",
+            "advisories": ["CVE-2024-24549"],
+        },
+    ]
+    forward = reconcile_backlog_with_estate(multi_line_snapshot, observations)
+    reversed_snapshot = json.loads(json.dumps(multi_line_snapshot))
+    reversed_snapshot["supported_lines"].reverse()
+    reversed_snapshot["backlog_items"].reverse()
+    backward = reconcile_backlog_with_estate(reversed_snapshot, observations)
+
+    assert forward["rows"] == backward["rows"]
+    by_app = {r["application_id"]: r for r in forward["rows"]}
+    assert by_app["app-9"]["pinned_baseline"] == "9.0.70"
+    assert by_app["app-9"]["latest_patch_resolution"] == "9.0.85-osera-00001"
+    assert [f["fixed_by"] for f in by_app["app-9"]["available_fixes"]] == [
+        "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.85-osera-00001"
+    ]
+    assert by_app["app-10"]["pinned_baseline"] == "10.1.18"
+    assert by_app["app-10"]["latest_patch_resolution"] == "10.1.20-osera-00001"
+    assert [f["fixed_by"] for f in by_app["app-10"]["available_fixes"]] == [
+        "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@10.1.20-osera-00001"
+    ]
+
+
 class PatchCatalogAndBacklogTestCase(unittest.TestCase):
     def test_all(self):
         test_common_catalog_represents_upstream_osera_and_commercial_with_provenance()
@@ -219,6 +358,8 @@ class PatchCatalogAndBacklogTestCase(unittest.TestCase):
         test_csv_catalog_import_and_provider_artifact_separation()
         test_osera_backlog_distinguishes_deployed_tomcat_from_latest_patch_and_preserves_states()
         test_partial_line_coverage_empty_consume_coordinate_companion_boms_and_data_quality_issues()
+        test_omitted_evaluation_time_defaults_to_current_utc()
+        test_reconcile_backlog_enforces_deployed_maintenance_line_matching()
 
 
 if __name__ == "__main__":

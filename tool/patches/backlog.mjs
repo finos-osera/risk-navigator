@@ -89,7 +89,7 @@ export function parseCatalogCsv(csvText, config = {}) {
   };
 }
 
-export function normalizeCommonCatalogEntry(raw, feedMeta = {}, memberOverlay = null, evaluationTime = '2026-10-28T00:00:00Z') {
+export function normalizeCommonCatalogEntry(raw, feedMeta = {}, memberOverlay = null, evaluationTime = null) {
   const evalTs = evaluationTime || new Date().toISOString();
   const replacementPurl = String(raw.replacement_purl || raw.target || '').trim();
   const parsedRep = purl(replacementPurl);
@@ -129,8 +129,9 @@ export function normalizeCommonCatalogEntry(raw, feedMeta = {}, memberOverlay = 
 
   if (memberOverlay && typeof memberOverlay === 'object') {
     const matchedEnt = (memberOverlay.entitlements || []).find(ent =>
-      (ent.patch_id && ent.patch_id === patchId) ||
-      (ent.provider && ent.provider.toLowerCase() === provider.toLowerCase() && ['*', libraryCoord].includes(ent.library || ent.package || '*'))
+      ent.patch_id
+        ? ent.patch_id === patchId
+        : (ent.provider && ent.provider.toLowerCase() === provider.toLowerCase() && ['*', libraryCoord].includes(ent.library || ent.package || '*'))
     );
     if (matchedEnt) {
       entitlementExpiresAt = matchedEnt.expires_at || null;
@@ -206,7 +207,8 @@ export function normalizeCommonCatalogEntry(raw, feedMeta = {}, memberOverlay = 
   };
 }
 
-export function comparePatchOptions(component, catalogSources, memberOverlay = null, evaluationTime = '2026-10-28T00:00:00Z') {
+export function comparePatchOptions(component, catalogSources, memberOverlay = null, evaluationTime = null) {
+  const evalTs = evaluationTime || new Date().toISOString();
   const compPurl = purl(component.purl || '');
   const sourceVersion = compPurl?.version || component.version || '';
   const libraryCoord = compPurl ? compPurl.name.replace('/', ':') : (component.library || '');
@@ -224,7 +226,7 @@ export function comparePatchOptions(component, catalogSources, memberOverlay = n
       as_of: cfg.last_refresh || doc.as_of || doc.generated_at || doc.timestamp,
     };
     for (const p of doc.patches || []) {
-      normalizedAll.push(normalizeCommonCatalogEntry(p, meta, memberOverlay, evaluationTime));
+      normalizedAll.push(normalizeCommonCatalogEntry(p, meta, memberOverlay, evalTs));
     }
   }
 
@@ -271,7 +273,7 @@ export function comparePatchOptions(component, catalogSources, memberOverlay = n
 
   return {
     schema_version: 'osera-patch-catalog/v1',
-    evaluated_at: evaluationTime,
+    evaluated_at: evalTs,
     component: { library: libraryCoord, source_version: sourceVersion, observed_advisories: observedAdvisories },
     options,
     ready_options: options.filter(o => o.ready),
@@ -392,13 +394,16 @@ export function ingestOseraBacklogSnapshot(snapshot) {
         availabilityGranted = true;
       }
     }
+    const fixedByPurl = fixedBy ? purl(fixedBy) : null;
     backlogItems.push({
-      line_id: lineId,
+      line_id: lineId || lineInfo?.line_id || `${lib}:default`,
       library: lib,
+      maintenance_line: item.maintenance_line || lineInfo?.maintenance_line || (fixedByPurl?.version ? deriveMinorLine(fixedByPurl.version) : ''),
       advisory_id: adv,
       aliases: splitList(item.aliases),
       status,
       fixed_by: fixedBy,
+      fixed_by_version: fixedByPurl?.version || null,
       consume_coordinate: consumeCoord,
       availability_granted: availabilityGranted,
       data_quality_state: qualityState,
@@ -415,6 +420,7 @@ export function ingestOseraBacklogSnapshot(snapshot) {
       coverage_state: avail.length && unresolved.length ? 'partial_coverage' : avail.length ? 'full_known_coverage' : 'no_available_fix',
       available_fixes: avail,
       remaining_findings: unresolved,
+      consumption_bom_details: bom,
       unique_vulnerability_fix_count: unique(avail.map(a => a.advisory_id)).length,
       companion_artifact_count: bom ? bom.companion_artifacts.length : 0,
     };
@@ -444,21 +450,100 @@ export function reconcileBacklogWithEstate(snapshot, estateObservations) {
     const parsed = purl(obs.purl || '');
     const lib = parsed ? parsed.name.replace('/', ':') : obs.library;
     const deployedVersion = parsed?.version || obs.version || '';
-    const line = ingested.supported_lines.find(l => l.library === lib) || null;
-    const items = ingested.backlog_items.filter(i => i.library === lib);
+    const deployedMinor = deriveMinorLine(deployedVersion);
+    const candidateLines = ingested.supported_lines.filter(l => l.library === lib);
+    const matchedLine = candidateLines.find(l => l.maintenance_line === deployedMinor) || null;
+    const coordItems = ingested.backlog_items.filter(i => i.library === lib);
     const cves = splitList(obs.advisories || obs.cves);
-    const isPatched = deployedVersion.includes('-osera-') && items.some(i => i.availability_granted && String(i.fixed_by).endsWith(`@${deployedVersion}`));
+
+    const itemMinorLine = item => item.maintenance_line || (item.fixed_by_version ? deriveMinorLine(item.fixed_by_version) : (item.fixed_by ? deriveMinorLine(purl(item.fixed_by)?.version) : ''));
+    const isSameLineItem = item => {
+      if (!matchedLine) return false;
+      if (item.line_id && matchedLine.line_id && item.line_id === matchedLine.line_id) {
+        const minor = itemMinorLine(item);
+        return !minor || minor === deployedMinor;
+      }
+      return itemMinorLine(item) === deployedMinor;
+    };
+
+    const lineItems = coordItems.filter(isSameLineItem);
+    const otherLineItems = coordItems.filter(i => !isSameLineItem(i));
+    const matchesObservedCves = item => !cves.length || cves.includes(item.advisory_id) || (item.aliases || []).some(a => cves.includes(a));
+
+    const exactPatchedItems = lineItems.filter(i =>
+      i.availability_granted && (i.fixed_by_version === deployedVersion || String(i.fixed_by).endsWith(`@${deployedVersion}`))
+    );
+    const isPatched = deployedVersion.includes('-osera-') && exactPatchedItems.length > 0;
+
+    let activeFindings = [...cves];
+    const availableFixes = [];
+    for (const item of lineItems) {
+      if (!matchesObservedCves(item)) continue;
+      if (item.status === 'fixed' && item.availability_granted) {
+        if (isPatched && (item.fixed_by_version === deployedVersion || String(item.fixed_by).endsWith(`@${deployedVersion}`))) {
+          activeFindings = activeFindings.filter(c => c !== item.advisory_id && !(item.aliases || []).includes(c));
+        } else {
+          availableFixes.push({
+            advisory_id: item.advisory_id,
+            backlog_status: 'fixed',
+            maintenance_line: itemMinorLine(item) || deployedMinor,
+            fixed_by: item.fixed_by,
+            consume_coordinate: item.consume_coordinate,
+          });
+        }
+      }
+    }
+
+    const crossLineMigrationOptions = otherLineItems
+      .filter(i => matchesObservedCves(i) && i.status === 'fixed' && i.availability_granted)
+      .map(i => ({
+        advisory_id: i.advisory_id,
+        maintenance_line: itemMinorLine(i),
+        line_id: i.line_id,
+        fixed_by: i.fixed_by,
+        consume_coordinate: i.consume_coordinate,
+      }))
+      .sort((a, b) => String(a.maintenance_line || '').localeCompare(String(b.maintenance_line || '')) ||
+        String(a.advisory_id || '').localeCompare(String(b.advisory_id || '')) ||
+        String(a.fixed_by || '').localeCompare(String(b.fixed_by || '')));
+
+    availableFixes.sort((a, b) => String(a.advisory_id || '').localeCompare(String(b.advisory_id || '')) ||
+      String(a.fixed_by || '').localeCompare(String(b.fixed_by || '')));
+
+    const coverageStatus = matchedLine ? 'supported_maintenance_line' : 'unsupported_maintenance_line';
+    let memberDeploymentState;
+    if (!matchedLine) {
+      memberDeploymentState = activeFindings.length ? 'deployed_vulnerable_unsupported_line' : 'deployed_unsupported_line';
+    } else if (isPatched && !activeFindings.length) {
+      memberDeploymentState = 'observed_patched';
+    } else if (isPatched && activeFindings.length) {
+      memberDeploymentState = 'partially_patched_with_residual_findings';
+    } else if (availableFixes.length) {
+      memberDeploymentState = 'deployed_vulnerable_fix_available';
+    } else {
+      memberDeploymentState = 'deployed_vulnerable_no_available_fix';
+    }
+
     return {
       application_id: obs.application_id || obs.project || 'app',
       library: lib,
       deployed_version: deployedVersion,
-      pinned_baseline: line?.pinned_baseline || null,
-      latest_patch_resolution: line?.latest_patch || null,
-      member_deployment_state: isPatched ? 'observed_patched' : (items.some(i => i.availability_granted) ? 'deployed_vulnerable_fix_available' : 'deployed_vulnerable_no_available_fix'),
+      deployed_maintenance_line: deployedMinor,
+      matched_line_id: matchedLine?.line_id || null,
+      coverage_status: coverageStatus,
+      pinned_baseline: matchedLine?.pinned_baseline || null,
+      latest_patch_resolution: matchedLine?.latest_patch || null,
+      consume_coordinate: matchedLine?.consume_coordinate || null,
+      consumption_bom: matchedLine?.consumption_bom_details || null,
+      member_deployment_state: memberDeploymentState,
       deployed_findings_cleared_by_reference_graph: false,
-      active_deployed_findings: isPatched ? [] : cves,
-      available_fixes: isPatched ? [] : items.filter(i => i.availability_granted),
-      excluded_findings: items.filter(i => i.status === 'excluded').map(i => ({ advisory_id: i.advisory_id, remediated_in_estate: false })),
+      active_deployed_findings: activeFindings,
+      available_fixes: availableFixes,
+      cross_line_migration_options: crossLineMigrationOptions,
+      excluded_findings: lineItems
+        .filter(i => i.status === 'excluded')
+        .map(i => ({ advisory_id: i.advisory_id, remediated_in_estate: false }))
+        .sort((a, b) => String(a.advisory_id || '').localeCompare(String(b.advisory_id || ''))),
     };
   });
   return { schema_version: 'osera-backlog-snapshot/v1', rows, data_quality_issues: ingested.data_quality_issues };

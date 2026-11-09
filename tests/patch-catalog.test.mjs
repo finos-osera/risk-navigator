@@ -127,3 +127,102 @@ test('ingests OSERA backlog snapshot and keeps deployed Tomcat distinct from lat
   assert.equal(reconciled.rows[0].deployed_findings_cleared_by_reference_graph, false);
   assert.deepEqual(reconciled.rows[0].active_deployed_findings, ['CVE-2024-24549', 'CVE-2023-46589']);
 });
+
+test('omitted evaluationTime defaults to current UTC timestamp for entitlement and support expiry (#23)', () => {
+  const catalogDoc = {
+    schema_version: 'osera-patch-catalog/v1',
+    feed_id: 'default-eval-time',
+    provider: 'HeroDevs',
+    provider_kind: 'commercial',
+    patches: [
+      {
+        patch_id: 'expired-past',
+        provider: 'HeroDevs',
+        provider_kind: 'commercial',
+        replacement_purl: 'pkg:maven/org.springframework/spring-web@5.3.39-herodevs-1',
+        applicable_versions: ['5.3.20'],
+        fixed_advisories: ['CVE-2024-22259'],
+        release_state: 'released',
+        evidence_links: [{ kind: 'attestation', url: 'https://example.test/ev1' }],
+        vendor_version_mapping: { vendor_backport_base: '5.3.20', upstream_equivalent_version: '5.3.34', fix_evidence: 'https://example.test/ev1' },
+      },
+      {
+        patch_id: 'active-future',
+        provider: 'HeroDevs',
+        provider_kind: 'commercial',
+        replacement_purl: 'pkg:maven/org.springframework/spring-web@5.3.39-herodevs-2',
+        applicable_versions: ['5.3.20'],
+        fixed_advisories: ['CVE-2024-22259'],
+        release_state: 'released',
+        evidence_links: [{ kind: 'attestation', url: 'https://example.test/ev2' }],
+        vendor_version_mapping: { vendor_backport_base: '5.3.20', upstream_equivalent_version: '5.3.34', fix_evidence: 'https://example.test/ev2' },
+      },
+    ],
+  };
+  const overlayDoc = {
+    entitlements: [
+      { patch_id: 'expired-past', provider: 'HeroDevs', status: 'entitled', expires_at: '2020-01-01T00:00:00Z' },
+      { patch_id: 'active-future', provider: 'HeroDevs', status: 'entitled', expires_at: '2099-01-01T00:00:00Z' },
+    ],
+    approvals: { HeroDevs: 'approved' },
+  };
+  const cmp = comparePatchOptions(
+    { purl: 'pkg:maven/org.springframework/spring-web@5.3.20', advisories: ['CVE-2024-22259'] },
+    [catalogDoc],
+    overlayDoc
+  );
+  const byId = Object.fromEntries(cmp.options.map(o => [o.patch_id, o]));
+  assert.equal(byId['expired-past'].ready, false);
+  assert.ok(byId['expired-past'].blocked_reasons.includes('expired_entitlement'));
+  assert.equal(byId['active-future'].ready, true);
+});
+
+test('reconcileBacklogWithEstate matches fixes strictly to deployed maintenance line and is order-independent (#24)', () => {
+  const rawSnapshot = JSON.parse(readFileSync(new URL('../data/fixtures/patch-catalog-backlog/osera-backlog-tomcat-snapshot.json', import.meta.url), 'utf8'));
+
+  const unsupported = reconcileBacklogWithEstate(rawSnapshot, [
+    { application_id: 'app-10', purl: 'pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@10.1.0', advisories: ['CVE-2024-24549'] }
+  ]);
+  const row10 = unsupported.rows[0];
+  assert.equal(row10.deployed_maintenance_line, '10.1.x');
+  assert.equal(row10.matched_line_id, null);
+  assert.equal(row10.coverage_status, 'unsupported_maintenance_line');
+  assert.equal(row10.pinned_baseline, null);
+  assert.equal(row10.latest_patch_resolution, null);
+  assert.equal(row10.consume_coordinate, null);
+  assert.equal(row10.consumption_bom, null);
+  assert.deepEqual(row10.available_fixes, []);
+  assert.equal(row10.member_deployment_state, 'deployed_vulnerable_unsupported_line');
+  assert.equal(row10.cross_line_migration_options.length, 1);
+  assert.equal(row10.cross_line_migration_options[0].maintenance_line, '9.0.x');
+
+  const multiLineRaw = structuredClone(rawSnapshot);
+  multiLineRaw.supported_lines_csv += 'maven,org.apache.tomcat.embed,tomcat-embed-core,tomcat-embed-core:10.1.x,10.1.x,10.1.18,10.1.20-osera-00001,org.apache.tomcat.embed:tomcat-embed-core:10.1.20-osera-00001,org.apache.tomcat:tomcat-bom:10.1.20-osera-00001,active\n';
+  multiLineRaw.backlog_items.push({
+    item_id: 'tomcat-10-cve-2024-24549',
+    line_id: 'tomcat-embed-core:10.1.x',
+    library: 'org.apache.tomcat.embed:tomcat-embed-core',
+    maintenance_line: '10.1.x',
+    advisory_id: 'CVE-2024-24549',
+    status: 'fixed',
+    fixed_by: 'pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@10.1.20-osera-00001',
+    consume_coordinate: 'pkg:maven/org.apache.tomcat/tomcat-bom@10.1.20-osera-00001?type=pom',
+  });
+  const multiLineSnapshot = ingestOseraBacklogSnapshot(multiLineRaw);
+  const observations = [
+    { application_id: 'app-9', purl: 'pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.50', advisories: ['CVE-2024-24549'] },
+    { application_id: 'app-10', purl: 'pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@10.1.10', advisories: ['CVE-2024-24549'] },
+  ];
+  const forward = reconcileBacklogWithEstate(multiLineSnapshot, observations);
+  const reversedSnapshot = structuredClone(multiLineSnapshot);
+  reversedSnapshot.supported_lines.reverse();
+  reversedSnapshot.backlog_items.reverse();
+  const backward = reconcileBacklogWithEstate(reversedSnapshot, observations);
+
+  assert.deepEqual(forward.rows, backward.rows);
+  const byApp = Object.fromEntries(forward.rows.map(r => [r.application_id, r]));
+  assert.equal(byApp['app-9'].pinned_baseline, '9.0.70');
+  assert.deepEqual(byApp['app-9'].available_fixes.map(f => f.fixed_by), ['pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.85-osera-00001']);
+  assert.equal(byApp['app-10'].pinned_baseline, '10.1.18');
+  assert.deepEqual(byApp['app-10'].available_fixes.map(f => f.fixed_by), ['pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@10.1.20-osera-00001']);
+});

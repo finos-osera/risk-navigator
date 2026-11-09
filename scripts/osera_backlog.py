@@ -355,9 +355,11 @@ def normalize_common_catalog_entry(
             ent_patch_id = str(ent.get("patch_id") or "").strip()
             ent_provider = str(ent.get("provider") or "").strip()
             ent_lib = str(ent.get("library") or ent.get("package") or "*").strip()
-            if ent_patch_id and ent_patch_id == patch_id:
-                matched_ent = ent
-                break
+            if ent_patch_id:
+                if ent_patch_id == patch_id:
+                    matched_ent = ent
+                    break
+                continue
             if ent_provider and ent_provider.lower() == provider.lower() and ent_lib in ("*", lib_coord):
                 matched_ent = ent
                 break
@@ -1089,40 +1091,63 @@ def reconcile_backlog_with_estate(
 
         candidate_lines = lines_by_coord.get(coord_key, [])
         matched_line = next(
-            (ln for ln in candidate_lines if ln["maintenance_line"] == deployed_minor),
-            candidate_lines[0] if candidate_lines else None,
+            (ln for ln in candidate_lines if ln.get("maintenance_line") == deployed_minor),
+            None,
         )
 
         coord_items = items_by_coord.get(coord_key, [])
         observed_cves = _split_list_field(obs.get("advisories") or obs.get("cves"))
 
-        # Check if the deployed artifact is ALREADY the exact OSERA patched version
+        def _item_minor_line(item: dict[str, Any]) -> str:
+            if item.get("maintenance_line"):
+                return str(item["maintenance_line"])
+            if item.get("fixed_by_version"):
+                return _derive_minor_line(str(item["fixed_by_version"]))
+            return ""
+
+        def _is_same_line_item(item: dict[str, Any]) -> bool:
+            if matched_line is None:
+                return False
+            item_lid = str(item.get("line_id") or "")
+            if item_lid and matched_line.get("line_id") and item_lid == matched_line["line_id"]:
+                item_minor = _item_minor_line(item)
+                return not item_minor or item_minor == deployed_minor
+            return _item_minor_line(item) == deployed_minor
+
+        line_items = [it for it in coord_items if _is_same_line_item(it)]
+        other_line_items = [it for it in coord_items if not _is_same_line_item(it)]
+
+        # Check if the deployed artifact is ALREADY the exact OSERA patched version on its own maintenance line
         exact_patched_items = [
             it
-            for it in coord_items
+            for it in line_items
             if it["availability_granted"]
             and (it["fixed_by_version"] == deployed_version or it["fixed_by"] == parsed["purl"])
         ]
         is_deployed_patched = len(exact_patched_items) > 0 and "-osera-" in deployed_version
 
         available_fixes: list[dict[str, Any]] = []
+        cross_line_migration_options: list[dict[str, Any]] = []
         future_or_open_work: list[dict[str, Any]] = []
         not_remediable_findings: list[dict[str, Any]] = []
         excluded_findings: list[dict[str, Any]] = []
         active_deployed_findings: list[str] = list(observed_cves)
 
-        for it in coord_items:
+        for it in line_items:
             if observed_cves and it["advisory_id"] not in observed_cves and not (set(it.get("aliases") or []) & set(observed_cves)):
                 continue
             st = it["status"]
             if st == "fixed" and it["availability_granted"]:
                 if is_deployed_patched and (it["fixed_by_version"] == deployed_version or it["fixed_by"] == parsed["purl"]):
-                    active_deployed_findings = [c for c in active_deployed_findings if c != it["advisory_id"]]
+                    active_deployed_findings = [
+                        c for c in active_deployed_findings if c != it["advisory_id"] and c not in set(it.get("aliases") or [])
+                    ]
                 else:
                     available_fixes.append(
                         {
                             "advisory_id": it["advisory_id"],
                             "backlog_status": "fixed",
+                            "maintenance_line": _item_minor_line(it) or deployed_minor,
                             "fixed_by": it["fixed_by"],
                             "consume_coordinate": it["consume_coordinate"],
                         }
@@ -1152,13 +1177,44 @@ def reconcile_backlog_with_estate(
                     }
                 )
 
-        if is_deployed_patched and not active_deployed_findings:
+        for it in other_line_items:
+            if observed_cves and it["advisory_id"] not in observed_cves and not (set(it.get("aliases") or []) & set(observed_cves)):
+                continue
+            if it["status"] == "fixed" and it["availability_granted"]:
+                cross_line_migration_options.append(
+                    {
+                        "advisory_id": it["advisory_id"],
+                        "maintenance_line": _item_minor_line(it),
+                        "line_id": it.get("line_id"),
+                        "fixed_by": it["fixed_by"],
+                        "consume_coordinate": it["consume_coordinate"],
+                    }
+                )
+
+        available_fixes.sort(key=lambda x: (str(x.get("advisory_id") or ""), str(x.get("fixed_by") or "")))
+        cross_line_migration_options.sort(
+            key=lambda x: (str(x.get("maintenance_line") or ""), str(x.get("advisory_id") or ""), str(x.get("fixed_by") or ""))
+        )
+        future_or_open_work.sort(key=lambda x: (str(x.get("advisory_id") or ""), str(x.get("backlog_status") or "")))
+        not_remediable_findings.sort(key=lambda x: str(x.get("advisory_id") or ""))
+        excluded_findings.sort(key=lambda x: str(x.get("advisory_id") or ""))
+
+        if matched_line is None:
+            coverage_status = "unsupported_maintenance_line"
+            member_deployment_state = (
+                "deployed_vulnerable_unsupported_line" if active_deployed_findings else "deployed_unsupported_line"
+            )
+        elif is_deployed_patched and not active_deployed_findings:
+            coverage_status = "supported_maintenance_line"
             member_deployment_state = "observed_patched"
         elif is_deployed_patched and active_deployed_findings:
+            coverage_status = "supported_maintenance_line"
             member_deployment_state = "partially_patched_with_residual_findings"
         elif available_fixes:
+            coverage_status = "supported_maintenance_line"
             member_deployment_state = "deployed_vulnerable_fix_available"
         else:
+            coverage_status = "supported_maintenance_line"
             member_deployment_state = "deployed_vulnerable_no_available_fix"
 
         reconciled_rows.append(
@@ -1167,6 +1223,9 @@ def reconcile_backlog_with_estate(
                 "deployed_purl": parsed["purl"],
                 "library": parsed["library"],
                 "deployed_version": deployed_version,
+                "deployed_maintenance_line": deployed_minor,
+                "matched_line_id": matched_line["line_id"] if matched_line else None,
+                "coverage_status": coverage_status,
                 "pinned_baseline": matched_line["pinned_baseline"] if matched_line else None,
                 "latest_patch_resolution": matched_line["latest_patch"] if matched_line else None,
                 "consume_coordinate": matched_line["consume_coordinate"] if matched_line else None,
@@ -1175,6 +1234,7 @@ def reconcile_backlog_with_estate(
                 "deployed_findings_cleared_by_reference_graph": False,
                 "active_deployed_findings": active_deployed_findings,
                 "available_fixes": available_fixes,
+                "cross_line_migration_options": cross_line_migration_options,
                 "future_or_open_work": future_or_open_work,
                 "not_remediable_findings": not_remediable_findings,
                 "excluded_findings": excluded_findings,
