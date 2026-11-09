@@ -1,46 +1,46 @@
 {
-  "generated_at": "2026-11-03T01:14:01Z",
-  "inventory_started_at": "2026-11-03T01:08:08Z",
-  "inventory_completed_at": "2026-11-03T01:08:27Z",
-  "repositories": 135,
+  "generated_at": "2026-11-09T05:32:32Z",
+  "inventory_started_at": "2026-11-09T05:27:53Z",
+  "inventory_completed_at": "2026-11-09T05:28:16Z",
+  "repositories": 137,
   "repositories_with_dependencies": 105,
   "repositories_failed": 0,
   "status_counts": {
-    "no_supported_dependencies": 30,
-    "extracted": 94,
-    "partial": 11
+    "no_supported_dependencies": 32,
+    "extracted": 95,
+    "partial": 10
   },
-  "dependency_edges": 14575,
+  "dependency_edges": 14441,
   "resolved_lockfiles": 8,
-  "distinct_package_versions": 6904,
-  "runtime_transitive_edges": 8919,
-  "vulnerable_library_versions": 206,
-  "unique_cves": 519,
+  "distinct_package_versions": 6833,
+  "runtime_transitive_edges": 8841,
+  "vulnerable_library_versions": 200,
+  "unique_cves": 509,
   "sources": {
     "osv_exact_versions": {
-      "queried_at": "2026-11-03T01:13:52Z",
-      "queried_package_versions": 5286,
-      "matched_advisories": 849,
+      "queried_at": "2026-11-09T05:32:05Z",
+      "queried_package_versions": 5237,
+      "matched_advisories": 832,
       "method": "OSV querybatch exact-version matching, including range-only records",
       "limitations": "The viewer is CVE-based; advisories without a CVE alias are not shown as CVE findings."
     },
-    "osv_ingested_at": "2026-11-03T01:12:27Z",
-    "osv_sha256": "34e9f945da339a5c9441e5d5226f03de12941bfe6018dcc4fc4f226f1d3d0132",
+    "osv_ingested_at": "2026-11-09T05:31:48Z",
+    "osv_sha256": "5b579f2d0001e50fa2e814ac21305485dcb70093bd390d0475979b0642c58a2c",
     "osv": {
       "url": "https://storage.googleapis.com/osv-vulnerabilities/all.zip",
-      "etag": "\"15e63659b402a227d205f931e6c5fd16\"",
-      "last_modified": "Tue, 03 Nov 2026 01:04:05 GMT",
-      "content_length": 2861552832,
-      "fetched_at": "2026-11-03T01:09:33Z"
+      "etag": "\"ce48a1ae8141e508334be41c359592ba\"",
+      "last_modified": "Mon, 09 Nov 2026 05:03:46 GMT",
+      "content_length": 2930010083,
+      "fetched_at": "2026-11-09T05:28:29Z"
     },
-    "kev_fetched_at": "2026-11-03T01:13:58Z",
-    "epss_fetched_at": "2026-11-03T01:14:01Z"
+    "kev_fetched_at": "2026-11-09T05:32:11Z",
+    "epss_fetched_at": "2026-11-09T05:32:14Z"
   },
   "repository_details": [
     {
       "repository": "finos/.github",
       "commit": "586fa8cf45d4c070e55e34dc4c426363d49f549c",
-      "scanned_at": "2026-11-03T01:08:22Z",
+      "scanned_at": "2026-11-09T05:28:12Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -53,7 +53,7 @@
     {
       "repository": "finos/5-spot",
       "commit": "9f381acbecf6298ced9b526890615bcdaf38006e",
-      "scanned_at": "2026-11-03T01:08:12Z",
+      "scanned_at": "2026-11-09T05:28:06Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -65,8 +65,8 @@
     },
     {
       "repository": "finos/FDC3",
-      "commit": "463509f38db3554c2605aed3299e03bc9d97ff8d",
-      "scanned_at": "2026-11-03T01:08:11Z",
+      "commit": "667376bf5db366e129a8d6ba5d09f8f100792bb3",
+      "scanned_at": "2026-11-09T05:28:04Z",
       "manifests_found": 15,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -89,7 +89,7 @@
     {
       "repository": "finos/FDC3-Sail",
       "commit": "328764ee32afc45e1800911ef16a2144d7d70845",
-      "scanned_at": "2026-11-03T01:08:12Z",
+      "scanned_at": "2026-11-09T05:27:59Z",
       "manifests_found": 12,
       "manifests_read": 12,
       "manifest_limit_reached": false,
@@ -102,7 +102,7 @@
     {
       "repository": "finos/InnerSource",
       "commit": "b06cdb344b15c27cdcf75f4c2e77b133c4c6b2fe",
-      "scanned_at": "2026-11-03T01:08:21Z",
+      "scanned_at": "2026-11-09T05:28:10Z",
       "manifests_found": 3,
       "manifests_read": 3,
       "manifest_limit_reached": false,
@@ -115,7 +115,7 @@
     {
       "repository": "finos/OpenMAMA",
       "commit": "ce4167feec18ad93b0e098e336ef39f7e5f4e86e",
-      "scanned_at": "2026-11-03T01:08:21Z",
+      "scanned_at": "2026-11-09T05:28:11Z",
       "manifests_found": 9,
       "manifests_read": 9,
       "manifest_limit_reached": false,
@@ -128,7 +128,7 @@
     {
       "repository": "finos/OpenMAMA-testdata",
       "commit": "a52ce5d4cece4b4f784716580b67d17dc7b8d88d",
-      "scanned_at": "2026-11-03T01:08:23Z",
+      "scanned_at": "2026-11-09T05:28:13Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -141,7 +141,7 @@
     {
       "repository": "finos/ScreenShareIndicatorFrame",
       "commit": "52bc6af20c377623c4d876e48febea65717f9fcc",
-      "scanned_at": "2026-11-03T01:08:23Z",
+      "scanned_at": "2026-11-09T05:28:12Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -154,7 +154,7 @@
     {
       "repository": "finos/ScreenSnippet2",
       "commit": "89eec0b397e5e975c2018680ab09f66874651641",
-      "scanned_at": "2026-11-03T01:08:23Z",
+      "scanned_at": "2026-11-09T05:28:12Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -166,8 +166,8 @@
     },
     {
       "repository": "finos/SymphonyElectron",
-      "commit": "75f36ced1f83e8c4a6ca77e6d48e8376ba532a80",
-      "scanned_at": "2026-11-03T01:08:13Z",
+      "commit": "365c112b93b4b9e6a1cc310b4912b7068c9c8e78",
+      "scanned_at": "2026-11-09T05:28:08Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -180,7 +180,7 @@
     {
       "repository": "finos/SymphonyMediaBridge",
       "commit": "a914a35a0212bfe419e0d0994fbd38bb6e420a9e",
-      "scanned_at": "2026-11-03T01:08:21Z",
+      "scanned_at": "2026-11-09T05:28:11Z",
       "manifests_found": 6,
       "manifests_read": 6,
       "manifest_limit_reached": false,
@@ -193,7 +193,7 @@
     {
       "repository": "finos/SymphonyWindowsHwndHelper",
       "commit": "bf0a838d523407a79b78b4100ef53d36a869ff69",
-      "scanned_at": "2026-11-03T01:08:23Z",
+      "scanned_at": "2026-11-09T05:28:12Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -206,7 +206,7 @@
     {
       "repository": "finos/TimeBase-CE",
       "commit": "ea4323d93f2b18396dcd7b072028755dff5878b1",
-      "scanned_at": "2026-11-03T01:08:22Z",
+      "scanned_at": "2026-11-09T05:28:11Z",
       "manifests_found": 25,
       "manifests_read": 25,
       "manifest_limit_reached": false,
@@ -219,7 +219,7 @@
     {
       "repository": "finos/a11y-theme-builder",
       "commit": "94ae6567d94f293bbe718c93e65461a8778a021f",
-      "scanned_at": "2026-11-03T01:08:17Z",
+      "scanned_at": "2026-11-09T05:28:09Z",
       "manifests_found": 3,
       "manifests_read": 3,
       "manifest_limit_reached": false,
@@ -232,7 +232,7 @@
     {
       "repository": "finos/a11y-theme-builder-sdk",
       "commit": "8001c336aa24b87fe8e0d5d38c894e11b89d8903",
-      "scanned_at": "2026-11-03T01:08:17Z",
+      "scanned_at": "2026-11-09T05:27:56Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -245,7 +245,7 @@
     {
       "repository": "finos/ai-governance-framework",
       "commit": "67b8c3257695d5ede09d262798bf28a0e58d4740",
-      "scanned_at": "2026-11-03T01:08:12Z",
+      "scanned_at": "2026-11-09T05:28:06Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -258,7 +258,7 @@
     {
       "repository": "finos/ai-readiness",
       "commit": "c78576fc5058b1c9eb8e7c3756b346603d082b6f",
-      "scanned_at": "2026-11-03T01:08:26Z",
+      "scanned_at": "2026-11-09T05:28:16Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -271,7 +271,7 @@
     {
       "repository": "finos/ai-reference-architecture-library",
       "commit": "bb8ed13f69ec42842e598cbe57b95ba3476f5384",
-      "scanned_at": "2026-11-03T01:08:26Z",
+      "scanned_at": "2026-11-09T05:28:16Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -284,7 +284,7 @@
     {
       "repository": "finos/aigf-mcp-server",
       "commit": "6d9c6c97264fd36d4b239d58f82cddd812d9d2a9",
-      "scanned_at": "2026-11-03T01:08:26Z",
+      "scanned_at": "2026-11-09T05:28:16Z",
       "manifests_found": 5,
       "manifests_read": 5,
       "manifest_limit_reached": false,
@@ -297,7 +297,7 @@
     {
       "repository": "finos/ambassadors",
       "commit": "d8884445b6791341aa42a971d9c747906f94f194",
-      "scanned_at": "2026-11-03T01:08:22Z",
+      "scanned_at": "2026-11-09T05:28:11Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -309,27 +309,27 @@
     },
     {
       "repository": "finos/architecture-as-code",
-      "commit": "c7ce7fe1a22d40071474fd713817afee57377d69",
-      "scanned_at": "2026-11-03T01:08:08Z",
-      "manifests_found": 37,
-      "manifests_read": 13,
+      "commit": "ae174251590fbef79a4a99689f2c76a21605f553",
+      "scanned_at": "2026-11-09T05:27:54Z",
+      "manifests_found": 36,
+      "manifests_read": 14,
       "manifest_limit_reached": true,
       "tree_truncated": false,
       "lockfiles": [
         {
           "path": "package-lock.json",
-          "runtime_edges": 4736
+          "runtime_edges": 4647
         }
       ],
       "errors": [],
       "lockfile_limit_reached": false,
-      "dependency_edges": 4791,
+      "dependency_edges": 4713,
       "status": "partial"
     },
     {
       "repository": "finos/backplane",
       "commit": "d8fb66a0230bff8d2d2bb5b33f2e55d67562f381",
-      "scanned_at": "2026-11-03T01:08:23Z",
+      "scanned_at": "2026-11-09T05:28:12Z",
       "manifests_found": 4,
       "manifests_read": 4,
       "manifest_limit_reached": false,
@@ -341,8 +341,8 @@
     },
     {
       "repository": "finos/branding",
-      "commit": "70741423e80233dc7d51ad7f6aa30b24f69016cf",
-      "scanned_at": "2026-11-03T01:08:22Z",
+      "commit": "3243b0c1499ee3e761c162a878629d59b115b12f",
+      "scanned_at": "2026-11-09T05:28:09Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -355,7 +355,7 @@
     {
       "repository": "finos/calendar",
       "commit": "ad9554178209286a20dfe1ee82de92fcbc48425f",
-      "scanned_at": "2026-11-03T01:08:08Z",
+      "scanned_at": "2026-11-09T05:28:03Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -368,7 +368,7 @@
     {
       "repository": "finos/calm-governance",
       "commit": "5903e6adcdc60573c8e3578d4d2566df81ec18f9",
-      "scanned_at": "2026-11-03T01:08:19Z",
+      "scanned_at": "2026-11-09T05:28:09Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -380,8 +380,8 @@
     },
     {
       "repository": "finos/calm-schema",
-      "commit": "d160c7c4a23e1409b938a8eeff92956e447fd519",
-      "scanned_at": "2026-11-03T01:08:19Z",
+      "commit": "720610881c2cb4f56b02b13a2ebb7ad632b6a14d",
+      "scanned_at": "2026-11-09T05:27:55Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -394,7 +394,7 @@
     {
       "repository": "finos/ccc-managed-k8s",
       "commit": "5e6255bfdaa7359e35a4f03718eacc9640b1ca6d",
-      "scanned_at": "2026-11-03T01:08:26Z",
+      "scanned_at": "2026-11-09T05:28:16Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -406,8 +406,8 @@
     },
     {
       "repository": "finos/cdm-object-builder",
-      "commit": "b8bbfeabfe789517d80a8d07801660e950369ffd",
-      "scanned_at": "2026-11-03T01:08:13Z",
+      "commit": "3ae68e8a49848a1bd158e10ab0ba5bdfa5efa950",
+      "scanned_at": "2026-11-09T05:28:08Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -419,8 +419,8 @@
     },
     {
       "repository": "finos/common-cloud-controls",
-      "commit": "f36872f7ff09bd4db6670f560707107bc3c0a548",
-      "scanned_at": "2026-11-03T01:08:09Z",
+      "commit": "00bb0a8ffb8c6894968d25e46e0bbe03f14c3919",
+      "scanned_at": "2026-11-09T05:28:03Z",
       "manifests_found": 4,
       "manifests_read": 4,
       "manifest_limit_reached": false,
@@ -432,8 +432,8 @@
     },
     {
       "repository": "finos/common-domain-model",
-      "commit": "96d50fc2efd34faa0feeb35b2f85aa4ad312d57e",
-      "scanned_at": "2026-11-03T01:08:10Z",
+      "commit": "3865246388d045f96dfa7a8ce1c0672efe6fa8cf",
+      "scanned_at": "2026-11-09T05:28:01Z",
       "manifests_found": 4,
       "manifests_read": 4,
       "manifest_limit_reached": false,
@@ -445,8 +445,8 @@
     },
     {
       "repository": "finos/community",
-      "commit": "e8cddf03d52e7d1a5e6fab6c1ab616b3a85f42c3",
-      "scanned_at": "2026-11-03T01:08:18Z",
+      "commit": "b0b0c48035a74d3ccfebc9bbc48bd6bafa6db39f",
+      "scanned_at": "2026-11-09T05:28:04Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -459,7 +459,7 @@
     {
       "repository": "finos/contrib-toolbox",
       "commit": "8ba70da9a3103e791391156355096721089c751a",
-      "scanned_at": "2026-11-03T01:08:26Z",
+      "scanned_at": "2026-11-09T05:28:15Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -472,7 +472,7 @@
     {
       "repository": "finos/cucumber-testing-steps",
       "commit": "c73f9618e7a6cdfe769915135ccc3ce58077aeb1",
-      "scanned_at": "2026-11-03T01:08:21Z",
+      "scanned_at": "2026-11-09T05:28:11Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -485,7 +485,7 @@
     {
       "repository": "finos/curref-data",
       "commit": "63d3af97de1c1e0885af4e378d5ec11ebf346042",
-      "scanned_at": "2026-11-03T01:08:26Z",
+      "scanned_at": "2026-11-09T05:28:15Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -498,7 +498,7 @@
     {
       "repository": "finos/devops-automation",
       "commit": "1fcdd89ffb765561ae85689da8afd525cbc924d7",
-      "scanned_at": "2026-11-03T01:08:25Z",
+      "scanned_at": "2026-11-09T05:28:15Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -511,7 +511,7 @@
     {
       "repository": "finos/fdc3-dotnet",
       "commit": "8ecbe1adc88fda975228be0cec5246989a843127",
-      "scanned_at": "2026-11-03T01:08:11Z",
+      "scanned_at": "2026-11-09T05:28:08Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -524,7 +524,7 @@
     {
       "repository": "finos/fin-ocr",
       "commit": "9986cfaf5c6de14132d97f5e7acee4c8309062ca",
-      "scanned_at": "2026-11-03T01:08:26Z",
+      "scanned_at": "2026-11-09T05:28:16Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -537,7 +537,7 @@
     {
       "repository": "finos/fin-ocr-browser",
       "commit": "0e60c7401b8e4eba516d485b4a058178121c70cd",
-      "scanned_at": "2026-11-03T01:08:25Z",
+      "scanned_at": "2026-11-09T05:28:15Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -550,7 +550,7 @@
     {
       "repository": "finos/fin-ocr-cli",
       "commit": "b45006ccdfbc28a9d69207a10fd8dbc7dab1d681",
-      "scanned_at": "2026-11-03T01:08:27Z",
+      "scanned_at": "2026-11-09T05:28:16Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -563,7 +563,7 @@
     {
       "repository": "finos/fin-ocr-rest",
       "commit": "77c440de1ce2f7e07065a08e464a859ae48cbb0d",
-      "scanned_at": "2026-11-03T01:08:25Z",
+      "scanned_at": "2026-11-09T05:28:15Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -576,7 +576,7 @@
     {
       "repository": "finos/fin-ocr-sdk",
       "commit": "ee8cc39be5ea4650a4c01c1b44a42cebcd13db09",
-      "scanned_at": "2026-11-03T01:08:25Z",
+      "scanned_at": "2026-11-09T05:28:15Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -589,7 +589,7 @@
     {
       "repository": "finos/fin-ocr-train",
       "commit": "a8cf69c97751df8c26e6e3117ca2b4cfcdb20c09",
-      "scanned_at": "2026-11-03T01:08:25Z",
+      "scanned_at": "2026-11-09T05:28:15Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -602,7 +602,7 @@
     {
       "repository": "finos/financial-objects",
       "commit": "484cba7dfc83235a718f0e93f44a547f97274689",
-      "scanned_at": "2026-11-03T01:08:25Z",
+      "scanned_at": "2026-11-09T05:28:15Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -615,7 +615,7 @@
     {
       "repository": "finos/finos-landscape",
       "commit": "e926c0ba0e77896a0718eb29b4f33ba5c210f335",
-      "scanned_at": "2026-11-03T01:08:20Z",
+      "scanned_at": "2026-11-09T05:28:10Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -628,7 +628,7 @@
     {
       "repository": "finos/finos-parent-pom",
       "commit": "8723d60739b6a10f08b6d0ca062dd50a72e09630",
-      "scanned_at": "2026-11-03T01:08:17Z",
+      "scanned_at": "2026-11-09T05:28:09Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -641,7 +641,7 @@
     {
       "repository": "finos/fluxnova-ai",
       "commit": "962699fefe38cb09a59eee0eb3547236fac76f7e",
-      "scanned_at": "2026-11-03T01:08:18Z",
+      "scanned_at": "2026-11-09T05:28:09Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -653,8 +653,8 @@
     },
     {
       "repository": "finos/fluxnova-bpm-platform",
-      "commit": "2ef57981459e88077b2bd2326ae426681be71d10",
-      "scanned_at": "2026-11-03T01:08:19Z",
+      "commit": "6a0bf7f412022877109c22c72127138d94effb77",
+      "scanned_at": "2026-11-09T05:27:59Z",
       "manifests_found": 161,
       "manifests_read": 32,
       "manifest_limit_reached": true,
@@ -667,7 +667,7 @@
     {
       "repository": "finos/fluxnova-bpm-release-parent",
       "commit": "592d66d6c42fdda45b1cad1aad767de43e0b0c8a",
-      "scanned_at": "2026-11-03T01:08:08Z",
+      "scanned_at": "2026-11-09T05:27:59Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -679,8 +679,8 @@
     },
     {
       "repository": "finos/fluxnova-control-center",
-      "commit": "687111ff35ec0cff73c9d33b3353b4443ef7ed52",
-      "scanned_at": "2026-11-03T01:08:08Z",
+      "commit": "7b81feb406a5abfb22f6ce2d1ac6c15b99f2fc2e",
+      "scanned_at": "2026-11-09T05:27:59Z",
       "manifests_found": 3,
       "manifests_read": 3,
       "manifest_limit_reached": false,
@@ -693,7 +693,7 @@
     {
       "repository": "finos/fluxnova-deploy",
       "commit": "42be49c59aafb69c238b94e0e5f51ef1851d39a0",
-      "scanned_at": "2026-11-03T01:08:20Z",
+      "scanned_at": "2026-11-09T05:28:10Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -705,8 +705,8 @@
     },
     {
       "repository": "finos/fluxnova-docs-manual",
-      "commit": "de424d1d5d4536f8c1cb405590cc35a21a901f0f",
-      "scanned_at": "2026-11-03T01:08:18Z",
+      "commit": "cb0a3e7ead967484c1cb5b1d0c0b7da0bc582042",
+      "scanned_at": "2026-11-09T05:28:02Z",
       "manifests_found": 3,
       "manifests_read": 3,
       "manifest_limit_reached": false,
@@ -718,8 +718,8 @@
     },
     {
       "repository": "finos/fluxnova-docs-theme",
-      "commit": "8d387254283a0dfd020574903376eb94d37ec39b",
-      "scanned_at": "2026-11-03T01:08:08Z",
+      "commit": "880d93e1bb535b25d8d0bfcf0758f4dd87a441e3",
+      "scanned_at": "2026-11-09T05:28:02Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -731,8 +731,8 @@
     },
     {
       "repository": "finos/fluxnova-examples",
-      "commit": "3c95b60d9f74aa7e6268037cd60395171c5f96a9",
-      "scanned_at": "2026-11-03T01:08:19Z",
+      "commit": "a444fead493011710f4574f4b34254ce9fdb7959",
+      "scanned_at": "2026-11-09T05:27:57Z",
       "manifests_found": 8,
       "manifests_read": 8,
       "manifest_limit_reached": false,
@@ -744,8 +744,8 @@
     },
     {
       "repository": "finos/fluxnova-feel-scala",
-      "commit": "5a7d0e4d1ad066dc242acd51e1e7dc9ab998d2fb",
-      "scanned_at": "2026-11-03T01:08:18Z",
+      "commit": "1abaec7da1c6d4d84a08199950ada932ef40cc20",
+      "scanned_at": "2026-11-09T05:28:07Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -757,8 +757,8 @@
     },
     {
       "repository": "finos/fluxnova-modeler",
-      "commit": "cbcda80bd030cc99b8f64e464751897d8461a664",
-      "scanned_at": "2026-11-03T01:08:08Z",
+      "commit": "ebe7ef7b5552f7a88cd9f59cef4a5416bcf06087",
+      "scanned_at": "2026-11-09T05:28:03Z",
       "manifests_found": 9,
       "manifests_read": 9,
       "manifest_limit_reached": false,
@@ -770,8 +770,8 @@
     },
     {
       "repository": "finos/fluxnova-modeler-plugins",
-      "commit": "14cc9dc7a3ccbb7ba8855715377d75deaa17602b",
-      "scanned_at": "2026-11-03T01:08:17Z",
+      "commit": "cb5a5ac3ca0cc44ff5d8113ae0ba35ee461203c8",
+      "scanned_at": "2026-11-09T05:27:58Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -783,8 +783,8 @@
     },
     {
       "repository": "finos/fluxnova-plugins",
-      "commit": "4db661c8f7a2a64dbc11543b7e0cd3cdca992f16",
-      "scanned_at": "2026-11-03T01:08:17Z",
+      "commit": "dc002952cb814f54f6c74c05be8d131527ec9687",
+      "scanned_at": "2026-11-09T05:27:57Z",
       "manifests_found": 17,
       "manifests_read": 17,
       "manifest_limit_reached": false,
@@ -797,7 +797,7 @@
     {
       "repository": "finos/fluxnova-release-parent",
       "commit": "9d8c9b434a71f4c90ac37f7986ac32090a598836",
-      "scanned_at": "2026-11-03T01:08:20Z",
+      "scanned_at": "2026-11-09T05:28:10Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -809,8 +809,8 @@
     },
     {
       "repository": "finos/fluxnova-testing-framework",
-      "commit": "c6b151d3c300571d215bbf172ab354bd166e35c2",
-      "scanned_at": "2026-11-03T01:08:17Z",
+      "commit": "b5bcfae2e22f95515a0f49e753361ceecb238f46",
+      "scanned_at": "2026-11-09T05:27:57Z",
       "manifests_found": 12,
       "manifests_read": 12,
       "manifest_limit_reached": false,
@@ -822,8 +822,8 @@
     },
     {
       "repository": "finos/fluxnova-website",
-      "commit": "409c2e2094c8e040877633ac2b53f331a1d8eade",
-      "scanned_at": "2026-11-03T01:08:08Z",
+      "commit": "97b2889d21b3551c7b352b5916086ba2d739ab13",
+      "scanned_at": "2026-11-09T05:28:01Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -836,7 +836,7 @@
     {
       "repository": "finos/generator-symphony",
       "commit": "49e4112553724081fad7183de200cbf72f72eb56",
-      "scanned_at": "2026-11-03T01:08:25Z",
+      "scanned_at": "2026-11-09T05:28:15Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -848,21 +848,21 @@
     },
     {
       "repository": "finos/git-proxy",
-      "commit": "23dbf00f36616edfb19ef58b8a6945dd960c62cc",
-      "scanned_at": "2026-11-03T01:08:08Z",
+      "commit": "a53153eda1045a163af80e0362f578b2da114f32",
+      "scanned_at": "2026-11-09T05:27:55Z",
       "manifests_found": 5,
       "manifests_read": 5,
       "manifest_limit_reached": false,
       "tree_truncated": false,
       "lockfiles": [],
       "errors": [],
-      "dependency_edges": 123,
+      "dependency_edges": 124,
       "status": "extracted"
     },
     {
       "repository": "finos/htc-grid",
       "commit": "5bd848c2d97ab63a3dc1c48bdcc88d67239986ee",
-      "scanned_at": "2026-11-03T01:08:26Z",
+      "scanned_at": "2026-11-09T05:28:16Z",
       "manifests_found": 15,
       "manifests_read": 15,
       "manifest_limit_reached": false,
@@ -875,7 +875,7 @@
     {
       "repository": "finos/ipyregulartable",
       "commit": "64e617d6dbbb9e5702b57f660fd349e2f92ef003",
-      "scanned_at": "2026-11-03T01:08:16Z",
+      "scanned_at": "2026-11-09T05:28:09Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -888,7 +888,7 @@
     {
       "repository": "finos/jupyterlab_templates",
       "commit": "6cd87ffec2d1d245f6bc0d1d27885228ba856f9f",
-      "scanned_at": "2026-11-03T01:08:16Z",
+      "scanned_at": "2026-11-09T05:28:09Z",
       "manifests_found": 3,
       "manifests_read": 3,
       "manifest_limit_reached": false,
@@ -901,7 +901,7 @@
     {
       "repository": "finos/kdb",
       "commit": "e54032a57fd4d9c1288ef4807f2c9f7c22d1c290",
-      "scanned_at": "2026-11-03T01:08:26Z",
+      "scanned_at": "2026-11-09T05:28:16Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -913,8 +913,8 @@
     },
     {
       "repository": "finos/legend",
-      "commit": "e7c7b4c3979174405a9f763c7eec3732dc3605dc",
-      "scanned_at": "2026-11-03T01:08:09Z",
+      "commit": "fd689468aca4e592773cbe53b0316c82e2608c95",
+      "scanned_at": "2026-11-09T05:27:56Z",
       "manifests_found": 10,
       "manifests_read": 10,
       "manifest_limit_reached": false,
@@ -927,7 +927,7 @@
     {
       "repository": "finos/legend-community-delta",
       "commit": "6e7e83c26fed6b3499af103675a08340f9864cc2",
-      "scanned_at": "2026-11-03T01:08:25Z",
+      "scanned_at": "2026-11-09T05:28:15Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -939,8 +939,8 @@
     },
     {
       "repository": "finos/legend-depot",
-      "commit": "705a88f3657aa2a545b8d349ff51d85aed50b7d5",
-      "scanned_at": "2026-11-03T01:08:18Z",
+      "commit": "4226dc012ffca95733f73d348ff871d64a6605d9",
+      "scanned_at": "2026-11-09T05:28:05Z",
       "manifests_found": 37,
       "manifests_read": 32,
       "manifest_limit_reached": true,
@@ -952,21 +952,21 @@
     },
     {
       "repository": "finos/legend-engine",
-      "commit": "92413fd47b3e0c4b01bcdb0283059946f2ee2957",
-      "scanned_at": "2026-11-03T01:08:10Z",
-      "manifests_found": 619,
+      "commit": "b9cd1ebb5eb82674e47db829541b909f5b72a211",
+      "scanned_at": "2026-11-09T05:28:00Z",
+      "manifests_found": 626,
       "manifests_read": 32,
       "manifest_limit_reached": true,
       "tree_truncated": false,
       "lockfiles": [],
       "errors": [],
-      "dependency_edges": 727,
+      "dependency_edges": 733,
       "status": "partial"
     },
     {
       "repository": "finos/legend-engine-ide-client-vscode",
       "commit": "63214ba916e53ffd02fab1c3ba511a02c4481aa9",
-      "scanned_at": "2026-11-03T01:08:25Z",
+      "scanned_at": "2026-11-09T05:28:15Z",
       "manifests_found": 5,
       "manifests_read": 5,
       "manifest_limit_reached": false,
@@ -979,7 +979,7 @@
     {
       "repository": "finos/legend-engine-ide-lsp",
       "commit": "0e0be4af90878a32f197fe8314164239181b6d63",
-      "scanned_at": "2026-11-03T01:08:19Z",
+      "scanned_at": "2026-11-09T05:28:10Z",
       "manifests_found": 8,
       "manifests_read": 8,
       "manifest_limit_reached": false,
@@ -992,7 +992,7 @@
     {
       "repository": "finos/legend-integration-juju",
       "commit": "25f1228b9e4b29cd9e7489b096fff23a324d3d52",
-      "scanned_at": "2026-11-03T01:08:25Z",
+      "scanned_at": "2026-11-09T05:28:14Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -1005,7 +1005,7 @@
     {
       "repository": "finos/legend-integration-morphir",
       "commit": "715b621cae01adc4ed226bc384f12c241a6739c3",
-      "scanned_at": "2026-11-03T01:08:25Z",
+      "scanned_at": "2026-11-09T05:28:14Z",
       "manifests_found": 8,
       "manifests_read": 8,
       "manifest_limit_reached": false,
@@ -1018,7 +1018,7 @@
     {
       "repository": "finos/legend-juju-bundle",
       "commit": "f452cf36811592ab90768b77c7de7ca369e114f6",
-      "scanned_at": "2026-11-03T01:08:25Z",
+      "scanned_at": "2026-11-09T05:28:14Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -1031,7 +1031,7 @@
     {
       "repository": "finos/legend-juju-db-operator",
       "commit": "475773c9f9163bc2bc1d26616fd532dfb647fed3",
-      "scanned_at": "2026-11-03T01:08:25Z",
+      "scanned_at": "2026-11-09T05:28:14Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -1044,7 +1044,7 @@
     {
       "repository": "finos/legend-juju-engine-server-operator",
       "commit": "f1bd21d388f56aa6ffb969efdc90f5828c452a0d",
-      "scanned_at": "2026-11-03T01:08:24Z",
+      "scanned_at": "2026-11-09T05:28:14Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -1057,7 +1057,7 @@
     {
       "repository": "finos/legend-juju-gitlab-integrator",
       "commit": "7e6c90c52465a9b6fa712d1c742943edffac0571",
-      "scanned_at": "2026-11-03T01:08:24Z",
+      "scanned_at": "2026-11-09T05:28:14Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -1070,7 +1070,7 @@
     {
       "repository": "finos/legend-juju-libs",
       "commit": "79970903dde5174f0fbd38d5f6312d263e3ac7c4",
-      "scanned_at": "2026-11-03T01:08:24Z",
+      "scanned_at": "2026-11-09T05:28:13Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -1083,7 +1083,7 @@
     {
       "repository": "finos/legend-juju-sdlc-server-operator",
       "commit": "13722b5b25dc987f8a61696750ccb19acf8c7e9d",
-      "scanned_at": "2026-11-03T01:08:24Z",
+      "scanned_at": "2026-11-09T05:28:13Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -1096,7 +1096,7 @@
     {
       "repository": "finos/legend-juju-studio-operator",
       "commit": "98365891bfb25fbcb9a548ce13f59ccc34b25f2e",
-      "scanned_at": "2026-11-03T01:08:24Z",
+      "scanned_at": "2026-11-09T05:28:13Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -1108,8 +1108,8 @@
     },
     {
       "repository": "finos/legend-pure",
-      "commit": "ed155a2b7dd2e7fa701dc3ed2a013b3a9264af28",
-      "scanned_at": "2026-11-03T01:08:12Z",
+      "commit": "b188229ee122feb2275034aa6534bd6260d6bb9a",
+      "scanned_at": "2026-11-09T05:27:59Z",
       "manifests_found": 57,
       "manifests_read": 32,
       "manifest_limit_reached": true,
@@ -1121,21 +1121,21 @@
     },
     {
       "repository": "finos/legend-pure-next",
-      "commit": "e09d8fffc0eb642c4622e4495ae040a47843636b",
-      "scanned_at": "2026-11-03T01:08:10Z",
-      "manifests_found": 33,
-      "manifests_read": 32,
-      "manifest_limit_reached": true,
+      "commit": "1f477733121ca894431b27f543482c744a6c30d8",
+      "scanned_at": "2026-11-09T05:27:54Z",
+      "manifests_found": 3,
+      "manifests_read": 3,
+      "manifest_limit_reached": false,
       "tree_truncated": false,
       "lockfiles": [],
       "errors": [],
-      "dependency_edges": 66,
-      "status": "partial"
+      "dependency_edges": 4,
+      "status": "extracted"
     },
     {
       "repository": "finos/legend-sdlc",
-      "commit": "ebf1f2043dea8bcaa869c4a895e2ba529b9ea08d",
-      "scanned_at": "2026-11-03T01:08:18Z",
+      "commit": "71876bfcfabe444631f77316a3a8e8238810d84b",
+      "scanned_at": "2026-11-09T05:28:01Z",
       "manifests_found": 34,
       "manifests_read": 32,
       "manifest_limit_reached": true,
@@ -1147,8 +1147,8 @@
     },
     {
       "repository": "finos/legend-shared",
-      "commit": "8a3d94bab5241600c212333ab47d7e42b6844d2c",
-      "scanned_at": "2026-11-03T01:08:18Z",
+      "commit": "83b9c007110d47bf0b5b2a293e17cffb09a3c201",
+      "scanned_at": "2026-11-09T05:27:53Z",
       "manifests_found": 12,
       "manifests_read": 12,
       "manifest_limit_reached": false,
@@ -1160,8 +1160,8 @@
     },
     {
       "repository": "finos/legend-studio",
-      "commit": "cbee1a14fe48ed87e4fa720649d8fc0f3a778c2c",
-      "scanned_at": "2026-11-03T01:08:10Z",
+      "commit": "42b9c93f0edcf3c4f238574f08b309e0acf36bf3",
+      "scanned_at": "2026-11-09T05:27:59Z",
       "manifests_found": 68,
       "manifests_read": 32,
       "manifest_limit_reached": true,
@@ -1175,7 +1175,7 @@
     {
       "repository": "finos/messageml-utils",
       "commit": "e05d25319a53b5fb0e740fbde357b0818a556e87",
-      "scanned_at": "2026-11-03T01:08:08Z",
+      "scanned_at": "2026-11-09T05:27:55Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -1187,8 +1187,8 @@
     },
     {
       "repository": "finos/morphir",
-      "commit": "cde7722eb35987042a49dc646a846d693b0bd7f6",
-      "scanned_at": "2026-11-03T01:08:12Z",
+      "commit": "ecb3c781c3cc334821588392cf81ee1346455090",
+      "scanned_at": "2026-11-09T05:27:54Z",
       "manifests_found": 3,
       "manifests_read": 3,
       "manifest_limit_reached": false,
@@ -1200,8 +1200,8 @@
     },
     {
       "repository": "finos/morphir-dotnet",
-      "commit": "890aacb61df601f2876112a2cdd4d9d6f5757ca6",
-      "scanned_at": "2026-11-03T01:08:08Z",
+      "commit": "f0aafa6418203fabc9c55bff3fb167ee9055aa52",
+      "scanned_at": "2026-11-09T05:27:54Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -1214,7 +1214,7 @@
     {
       "repository": "finos/morphir-elm",
       "commit": "acb127e0b3fa2b841b45f15ea82444c4fab650b9",
-      "scanned_at": "2026-11-03T01:08:15Z",
+      "scanned_at": "2026-11-09T05:27:56Z",
       "manifests_found": 11,
       "manifests_read": 11,
       "manifest_limit_reached": false,
@@ -1226,8 +1226,8 @@
     },
     {
       "repository": "finos/morphir-examples",
-      "commit": "ee6106b66535ec87dd0a1acd92c03e743089c032",
-      "scanned_at": "2026-11-03T01:08:08Z",
+      "commit": "9bcb27066839fd9bc708a1a846f97b5c5de04fa0",
+      "scanned_at": "2026-11-09T05:27:56Z",
       "manifests_found": 4,
       "manifests_read": 4,
       "manifest_limit_reached": false,
@@ -1239,8 +1239,8 @@
     },
     {
       "repository": "finos/morphir-extensions",
-      "commit": "14842a91fee27a0d097e10680468a0666ff12a67",
-      "scanned_at": "2026-11-03T01:08:16Z",
+      "commit": "dae4ac629393f78b0d1d3681a5ebd4fef0b0ca31",
+      "scanned_at": "2026-11-09T05:27:56Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -1252,8 +1252,8 @@
     },
     {
       "repository": "finos/morphir-gleam",
-      "commit": "dcfa73c218276dd8e172bbc0a2b579110bce8e46",
-      "scanned_at": "2026-11-03T01:08:16Z",
+      "commit": "a529addfcae2a50b36c238786be4d279a1bb525c",
+      "scanned_at": "2026-11-09T05:27:57Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -1265,8 +1265,8 @@
     },
     {
       "repository": "finos/morphir-go",
-      "commit": "34fa1a79bf2810f1917931ac4462bc454855c74c",
-      "scanned_at": "2026-11-03T01:08:14Z",
+      "commit": "4970c32e8c144d5cf6ddb785f290f760ce454859",
+      "scanned_at": "2026-11-09T05:27:54Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -1278,8 +1278,8 @@
     },
     {
       "repository": "finos/morphir-jvm",
-      "commit": "a131f0990311df3b8ce6b46c6c7011a7e9b94bed",
-      "scanned_at": "2026-11-03T01:08:22Z",
+      "commit": "9f06ed205b49a8fd317067dbadde12e08712b9ce",
+      "scanned_at": "2026-11-09T05:27:59Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -1291,8 +1291,8 @@
     },
     {
       "repository": "finos/morphir-moonbit",
-      "commit": "10732eaf2f05b10ca6e94a78121e2753c814acd8",
-      "scanned_at": "2026-11-03T01:08:14Z",
+      "commit": "28271c61379523f28312f1989baed4f368722bcd",
+      "scanned_at": "2026-11-09T05:27:54Z",
       "manifests_found": 7,
       "manifests_read": 7,
       "manifest_limit_reached": false,
@@ -1304,8 +1304,8 @@
     },
     {
       "repository": "finos/morphir-python",
-      "commit": "560a6503b8ffcab87ea667391579b747757bec0d",
-      "scanned_at": "2026-11-03T01:08:15Z",
+      "commit": "098e3de63e522db2b096171db8e904ccf40590a3",
+      "scanned_at": "2026-11-09T05:27:53Z",
       "manifests_found": 5,
       "manifests_read": 5,
       "manifest_limit_reached": false,
@@ -1318,7 +1318,7 @@
     {
       "repository": "finos/morphir-rust",
       "commit": "99c0b67637afcdae011cd7c9e93b9fd13bddd9cb",
-      "scanned_at": "2026-11-03T01:08:15Z",
+      "scanned_at": "2026-11-09T05:27:53Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -1330,8 +1330,8 @@
     },
     {
       "repository": "finos/morphir-scala",
-      "commit": "fede23893cd18db8bdb3d7e6cc6bb607a80dcfd7",
-      "scanned_at": "2026-11-03T01:08:13Z",
+      "commit": "28b577c59b90823d6701636df00175f3bf4390b3",
+      "scanned_at": "2026-11-09T05:27:57Z",
       "manifests_found": 4,
       "manifests_read": 4,
       "manifest_limit_reached": false,
@@ -1344,7 +1344,7 @@
     {
       "repository": "finos/morphir-service",
       "commit": "942bff7300ba346a312467d47644a3d773ceabdd",
-      "scanned_at": "2026-11-03T01:08:24Z",
+      "scanned_at": "2026-11-09T05:28:13Z",
       "manifests_found": 4,
       "manifests_read": 4,
       "manifest_limit_reached": false,
@@ -1356,8 +1356,8 @@
     },
     {
       "repository": "finos/morphir-typescript",
-      "commit": "3b1af761d34f518b0bb2c6dd376d6276777d204b",
-      "scanned_at": "2026-11-03T01:08:16Z",
+      "commit": "49c23824310e6df806e5a02537b90f0393d2ff4d",
+      "scanned_at": "2026-11-09T05:27:57Z",
       "manifests_found": 4,
       "manifests_read": 4,
       "manifest_limit_reached": false,
@@ -1370,7 +1370,7 @@
     {
       "repository": "finos/morphir-ui",
       "commit": "907839e2cbf4027b0227cc7e126123388da10999",
-      "scanned_at": "2026-11-03T01:08:14Z",
+      "scanned_at": "2026-11-09T05:28:03Z",
       "manifests_found": 8,
       "manifests_read": 8,
       "manifest_limit_reached": false,
@@ -1382,8 +1382,8 @@
     },
     {
       "repository": "finos/morphir-zig",
-      "commit": "f5b5d0c8f93d0b5b6e6c6fd966d9559709556fa0",
-      "scanned_at": "2026-11-03T01:08:16Z",
+      "commit": "e685ee380ba6807114e95dbe524555cb40a9bc40",
+      "scanned_at": "2026-11-09T05:27:55Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -1396,7 +1396,7 @@
     {
       "repository": "finos/open-reg-tech-us-lcr",
       "commit": "4fdc68d7b3d8e6735596f1898cbb9df4c1157f51",
-      "scanned_at": "2026-11-03T01:08:18Z",
+      "scanned_at": "2026-11-09T05:28:09Z",
       "manifests_found": 3,
       "manifests_read": 3,
       "manifest_limit_reached": false,
@@ -1409,7 +1409,7 @@
     {
       "repository": "finos/open-regtech-sig",
       "commit": "21c9fc92e4435c48bc0602142d36f1b5b9a39196",
-      "scanned_at": "2026-11-03T01:08:24Z",
+      "scanned_at": "2026-11-09T05:28:13Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -1421,10 +1421,10 @@
     },
     {
       "repository": "finos/open-resource-broker",
-      "commit": "d07df4729f33e8993b160fce42ba68a0a0e3cab0",
-      "scanned_at": "2026-11-03T01:08:16Z",
-      "manifests_found": 8,
-      "manifests_read": 7,
+      "commit": "c6f80db7e19beeb8e7242577db1bf5e0122467f5",
+      "scanned_at": "2026-11-09T05:27:55Z",
+      "manifests_found": 9,
+      "manifests_read": 8,
       "manifest_limit_reached": false,
       "tree_truncated": false,
       "lockfiles": [
@@ -1435,13 +1435,13 @@
       ],
       "errors": [],
       "lockfile_limit_reached": false,
-      "dependency_edges": 330,
+      "dependency_edges": 332,
       "status": "extracted"
     },
     {
       "repository": "finos/open-source-readiness",
       "commit": "98a28fdd7e18427d07208640063f40205b6b59e9",
-      "scanned_at": "2026-11-03T01:08:11Z",
+      "scanned_at": "2026-11-09T05:28:08Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -1454,7 +1454,7 @@
     {
       "repository": "finos/open-source-talent-acceleration",
       "commit": "74479a76d836d9cdb957700659c23e03576d0367",
-      "scanned_at": "2026-11-03T01:08:24Z",
+      "scanned_at": "2026-11-09T05:28:13Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -1467,7 +1467,7 @@
     {
       "repository": "finos/opengris",
       "commit": "b1e4c8f3e46af3ee487d7883b45a2ffd11747a4b",
-      "scanned_at": "2026-11-03T01:08:24Z",
+      "scanned_at": "2026-11-09T05:28:13Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -1480,7 +1480,7 @@
     {
       "repository": "finos/opengris-parfun",
       "commit": "36c2bead06e3f5b119d20668e5f9ace21017458c",
-      "scanned_at": "2026-11-03T01:08:22Z",
+      "scanned_at": "2026-11-09T05:28:11Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -1493,7 +1493,7 @@
     {
       "repository": "finos/opengris-pargraph",
       "commit": "700e6c8fc2e77e3ad008520884a529949b15d3d9",
-      "scanned_at": "2026-11-03T01:08:24Z",
+      "scanned_at": "2026-11-09T05:28:13Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -1505,8 +1505,8 @@
     },
     {
       "repository": "finos/opengris-scaler",
-      "commit": "c46d551a2e5313f7de49ac7f107af7ec66058ab0",
-      "scanned_at": "2026-11-03T01:08:09Z",
+      "commit": "5815d14a477e37c24833b4f0b382bbe421ae6ff8",
+      "scanned_at": "2026-11-09T05:28:00Z",
       "manifests_found": 8,
       "manifests_read": 8,
       "manifest_limit_reached": false,
@@ -1519,7 +1519,7 @@
     {
       "repository": "finos/openmama.github.io",
       "commit": "06235142d1c3e217b1c7dcf413f01dadbe975801",
-      "scanned_at": "2026-11-03T01:08:24Z",
+      "scanned_at": "2026-11-09T05:28:13Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -1532,7 +1532,7 @@
     {
       "repository": "finos/pylegend",
       "commit": "06b7723b7c597f032821a03dd73b635b0ad6b4d9",
-      "scanned_at": "2026-11-03T01:08:19Z",
+      "scanned_at": "2026-11-09T05:28:08Z",
       "manifests_found": 3,
       "manifests_read": 3,
       "manifest_limit_reached": false,
@@ -1545,7 +1545,7 @@
     {
       "repository": "finos/regular-table",
       "commit": "52e86bf8b74fc5948bb0047afbc8bb9207dd933c",
-      "scanned_at": "2026-11-03T01:08:20Z",
+      "scanned_at": "2026-11-09T05:28:03Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -1557,8 +1557,8 @@
     },
     {
       "repository": "finos/rune-common",
-      "commit": "c0055bc017c728d15c36ec403a56d145a1ec1594",
-      "scanned_at": "2026-11-03T01:08:12Z",
+      "commit": "9a49b304a5c3a5a60b077dbd3168b1ce4d3e84cc",
+      "scanned_at": "2026-11-09T05:28:00Z",
       "manifests_found": 3,
       "manifests_read": 3,
       "manifest_limit_reached": false,
@@ -1569,9 +1569,35 @@
       "status": "extracted"
     },
     {
+      "repository": "finos/rune-csharp-generator",
+      "commit": "5457590a0b32c4e0546466021dcb66a9d90e0654",
+      "scanned_at": "2026-11-09T05:28:05Z",
+      "manifests_found": 0,
+      "manifests_read": 0,
+      "manifest_limit_reached": false,
+      "tree_truncated": false,
+      "lockfiles": [],
+      "errors": [],
+      "dependency_edges": 0,
+      "status": "no_supported_dependencies"
+    },
+    {
+      "repository": "finos/rune-csharp-runtime",
+      "commit": "53208089d1b3fc8cf0845eaf18610dad3a0cc186",
+      "scanned_at": "2026-11-09T05:28:06Z",
+      "manifests_found": 0,
+      "manifests_read": 0,
+      "manifest_limit_reached": false,
+      "tree_truncated": false,
+      "lockfiles": [],
+      "errors": [],
+      "dependency_edges": 0,
+      "status": "no_supported_dependencies"
+    },
+    {
       "repository": "finos/rune-dsl",
-      "commit": "765ed1d63ecb345c8cb1ce067c482d7de98d080d",
-      "scanned_at": "2026-11-03T01:08:13Z",
+      "commit": "8fca6d7db743c3c3ac169fde84d1859ef09721d7",
+      "scanned_at": "2026-11-09T05:28:05Z",
       "manifests_found": 13,
       "manifests_read": 13,
       "manifest_limit_reached": false,
@@ -1583,8 +1609,8 @@
     },
     {
       "repository": "finos/rune-python-generator",
-      "commit": "8c91621482752c096e5255f75e69f3ce7551b491",
-      "scanned_at": "2026-11-03T01:08:17Z",
+      "commit": "c8eea0185e50e6e580fdaef28046a75d307fd03d",
+      "scanned_at": "2026-11-09T05:27:53Z",
       "manifests_found": 3,
       "manifests_read": 3,
       "manifest_limit_reached": false,
@@ -1597,7 +1623,7 @@
     {
       "repository": "finos/rune-python-runtime",
       "commit": "8b7cdf82f3cad819de191cfe59ff18c664ce487f",
-      "scanned_at": "2026-11-03T01:08:18Z",
+      "scanned_at": "2026-11-09T05:28:06Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -1609,8 +1635,8 @@
     },
     {
       "repository": "finos/rune-testing",
-      "commit": "aa528369681ab1baa32359437e960d1beee168be",
-      "scanned_at": "2026-11-03T01:08:12Z",
+      "commit": "967172033eeec002b3d2a554b04724372c094e0f",
+      "scanned_at": "2026-11-09T05:28:00Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -1623,7 +1649,7 @@
     {
       "repository": "finos/sdlc-common-controls",
       "commit": "732c1aaf6b6e8a1b9ac8fb5d19e0fa76891a8e38",
-      "scanned_at": "2026-11-03T01:08:18Z",
+      "scanned_at": "2026-11-09T05:28:07Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -1635,8 +1661,8 @@
     },
     {
       "repository": "finos/software-project-blueprint",
-      "commit": "cafb5139b9c02f6a25c01c0332b19314adbbd634",
-      "scanned_at": "2026-11-03T01:08:08Z",
+      "commit": "e98282ef60b14daa4a44e3d372df5ede14f4812a",
+      "scanned_at": "2026-11-09T05:28:02Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -1649,7 +1675,7 @@
     {
       "repository": "finos/spring-bot",
       "commit": "39eeb10645a53e9532e7f07aef7036019dfe2e4f",
-      "scanned_at": "2026-11-03T01:08:21Z",
+      "scanned_at": "2026-11-09T05:28:10Z",
       "manifests_found": 16,
       "manifests_read": 16,
       "manifest_limit_reached": false,
@@ -1661,8 +1687,8 @@
     },
     {
       "repository": "finos/symphony-api-spec",
-      "commit": "a0b152881a0405b7510cfc7e3a9698e8cb8c566c",
-      "scanned_at": "2026-11-03T01:08:20Z",
+      "commit": "8aeca61d3724e040a93fbf4e4ddb13800174d6ea",
+      "scanned_at": "2026-11-09T05:28:08Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
@@ -1675,7 +1701,7 @@
     {
       "repository": "finos/symphony-bdk-java",
       "commit": "6208d19969544008be958944a2844068a3174ef3",
-      "scanned_at": "2026-11-03T01:08:19Z",
+      "scanned_at": "2026-11-09T05:28:04Z",
       "manifests_found": 32,
       "manifests_read": 32,
       "manifest_limit_reached": false,
@@ -1689,7 +1715,7 @@
     {
       "repository": "finos/symphony-bdk-python",
       "commit": "82d5dd053cc7506bb0dfb0283448ed7acdcfc7fb",
-      "scanned_at": "2026-11-03T01:08:17Z",
+      "scanned_at": "2026-11-09T05:28:09Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -1701,8 +1727,8 @@
     },
     {
       "repository": "finos/technical-oversight-committee",
-      "commit": "5eae95948d2f65c643c3e40d5ef1fdfc20a1bae4",
-      "scanned_at": "2026-11-03T01:08:20Z",
+      "commit": "b36c9ca7c1af64e3d8aad75fbeda3e50fd2b2237",
+      "scanned_at": "2026-11-09T05:28:07Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -1715,7 +1741,7 @@
     {
       "repository": "finos/terraform-azurerm-cfi-postgresql",
       "commit": "6ce7b971d6ba7e43830cba12b57bff8e201b6360",
-      "scanned_at": "2026-11-03T01:08:19Z",
+      "scanned_at": "2026-11-09T05:27:55Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -1727,8 +1753,8 @@
     },
     {
       "repository": "finos/tracdap",
-      "commit": "ef29bf8df55110f263b71ea8701c601e10d255e6",
-      "scanned_at": "2026-11-03T01:08:09Z",
+      "commit": "46674a402712397b01b4b5438102e4c2a698d830",
+      "scanned_at": "2026-11-09T05:28:03Z",
       "manifests_found": 36,
       "manifests_read": 32,
       "manifest_limit_reached": true,
@@ -1741,7 +1767,7 @@
     {
       "repository": "finos/traderX",
       "commit": "f3e72266d8e9cb8bdd1693fff8b58e20767b0d65",
-      "scanned_at": "2026-11-03T01:08:09Z",
+      "scanned_at": "2026-11-09T05:27:54Z",
       "manifests_found": 17,
       "manifests_read": 13,
       "manifest_limit_reached": false,
@@ -1771,21 +1797,21 @@
     },
     {
       "repository": "finos/vuu",
-      "commit": "ef57ced453f8b8828230af0b0dac2cb742ced99c",
-      "scanned_at": "2026-11-03T01:08:10Z",
-      "manifests_found": 66,
+      "commit": "b509f3e1c93638aa6ee20288d1c969aa60d92ba0",
+      "scanned_at": "2026-11-09T05:27:53Z",
+      "manifests_found": 65,
       "manifests_read": 32,
       "manifest_limit_reached": true,
       "tree_truncated": false,
       "lockfiles": [],
       "errors": [],
-      "dependency_edges": 119,
+      "dependency_edges": 116,
       "status": "partial"
     },
     {
       "repository": "finos/waltz",
       "commit": "f0af61fe3b7ba79454983b56fd948cae4bb551b6",
-      "scanned_at": "2026-11-03T01:08:21Z",
+      "scanned_at": "2026-11-09T05:28:11Z",
       "manifests_found": 17,
       "manifests_read": 17,
       "manifest_limit_reached": false,
@@ -1799,7 +1825,7 @@
     {
       "repository": "finos/waltz-integration-juju",
       "commit": "2c0773e14bc2ecea330b664f94a7fdfa46181cc2",
-      "scanned_at": "2026-11-03T01:08:23Z",
+      "scanned_at": "2026-11-09T05:28:12Z",
       "manifests_found": 2,
       "manifests_read": 2,
       "manifest_limit_reached": false,
@@ -1812,7 +1838,7 @@
     {
       "repository": "finos/waltz-juju-bundle",
       "commit": "f4cce23b33352289e930f850382554e8596edcb1",
-      "scanned_at": "2026-11-03T01:08:26Z",
+      "scanned_at": "2026-11-09T05:28:16Z",
       "manifests_found": 0,
       "manifests_read": 0,
       "manifest_limit_reached": false,
@@ -1825,7 +1851,7 @@
     {
       "repository": "finos/zenith",
       "commit": "bce0dd90d16f4a03a90d4184740d94a722d17f72",
-      "scanned_at": "2026-11-03T01:08:16Z",
+      "scanned_at": "2026-11-09T05:28:09Z",
       "manifests_found": 1,
       "manifests_read": 1,
       "manifest_limit_reached": false,
