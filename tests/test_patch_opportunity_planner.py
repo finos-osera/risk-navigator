@@ -8,8 +8,12 @@ from patch_opportunity_planner import (
     QUEUE_READY_TO_PLAN,
     QUEUE_REQUEST_COVERAGE,
     assemble_portfolio_plan,
+    detect_plan_snapshot_drift,
     evaluate_osera_priority,
     export_owner_change_package,
+    export_owner_change_package_csv,
+    export_owner_change_package_cyclonedx,
+    export_owner_change_package_markdown,
     rank_patch_opportunities,
 )
 
@@ -169,6 +173,101 @@ def test_recipe_suppression_comparison_drawer_owner_export_and_empty_data_states
     assert ranked["data_completeness_state"] == "incomplete_signals"
 
 
+def test_pipe_delimited_app_ids_independent_occurrences_target_residuals_and_drift_exports():
+    """Verify pipe-containing app IDs, independent occurrences, target-version residuals, drift detection, and exports (#26, #27)."""
+    payload = {
+        "opportunities": [
+            {
+                "opportunity_id": "opp-spring-module-a",
+                "action_kind": "library_patch",
+                "library": "org.springframework:spring-web",
+                "deployed_purl": "pkg:maven/org.springframework/spring-web@5.3.18",
+                "framework_or_runtime": "spring-5.3",
+                "owner": "team-payments",
+                "change_window": "standard_weekly",
+                "identity_status": "confirmed",
+                "dependency_scope": "direct",
+                "affected_applications": ["github|acme|payments|main"],
+                "advisories": [{"id": "CVE-2024-22243", "kev": True, "cvss_score": 8.1, "epss_probability": 0.42}],
+                "options": [
+                    {
+                        "patch_id": "spring-5.3.18-osera-1",
+                        "provider": "OSERA",
+                        "provider_kind": "osera",
+                        "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.18-osera-00001",
+                        "ready": True,
+                        "fixed_advisories": ["CVE-2024-22243"],
+                        "residual_advisories": ["CVE-2024-99999"],
+                    }
+                ],
+            },
+            {
+                "opportunity_id": "opp-spring-module-b",
+                "action_kind": "library_patch",
+                "library": "org.springframework:spring-web",
+                "deployed_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+                "framework_or_runtime": "spring-5.3",
+                "owner": "team-payments",
+                "change_window": "standard_weekly",
+                "identity_status": "confirmed",
+                "dependency_scope": "direct",
+                "affected_applications": ["github|acme|payments|main"],
+                "advisories": [{"id": "CVE-2024-22243", "kev": True, "cvss_score": 8.1, "epss_probability": 0.42}],
+                "options": [
+                    {
+                        "patch_id": "spring-5.3.20-osera-1",
+                        "provider": "OSERA",
+                        "provider_kind": "osera",
+                        "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00001",
+                        "ready": True,
+                        "fixed_advisories": ["CVE-2024-22243"],
+                        "residual_advisories": [],
+                    }
+                ],
+            },
+        ]
+    }
+    ranked = rank_patch_opportunities(payload)
+    assert ranked["summary_metrics"]["affected_application_count"] == 1
+    assert ranked["summary_metrics"]["exposure_instance_count"] == 2
+
+    by_id = {o["opportunity_id"]: o for o in ranked["opportunities"]}
+    assert len(by_id["opp-spring-module-a"]["addressed_exposure_instances"]) == 1
+    assert any(e.endswith("|CVE-2024-99999") for e in by_id["opp-spring-module-a"]["residual_exposure_instances"])
+
+    # Selecting only module-a leaves module-b's CVE-2024-22243 unaddressed AND reports target-version CVE-2024-99999 residual
+    full_plan = assemble_portfolio_plan(ranked)
+    actions_by_id = {a["opportunity_id"]: a for a in full_plan["incremental_actions"]}
+    assert actions_by_id["opp-spring-module-a"]["incremental_exposure_reduction"] == 1
+    assert actions_by_id["opp-spring-module-b"]["incremental_exposure_reduction"] == 1
+    assert full_plan["portfolio_metrics"]["deduplicated_addressed_exposure_instances"] == 2
+    assert full_plan["portfolio_metrics"]["duplicate_overlap_prevented"] == 0
+    assert full_plan["portfolio_metrics"]["affected_application_count"] == 1
+    assert "CVE-2024-99999" in full_plan["portfolio_metrics"]["residual_unique_advisories"]
+    assert full_plan["portfolio_metrics"]["residual_exposure_instance_count"] == 1
+
+    # Export Markdown, CSV, CycloneDX and verify snapshot drift detection
+    pkg = export_owner_change_package(ranked, full_plan)
+    assert pkg["baseline_hashes"]["plan_baseline_hash"].startswith("sha256:")
+    assert "# OSERA Owner-Ready Patch Change Package" in pkg["exports"]["markdown"]
+    assert "opp-spring-module-a" in export_owner_change_package_csv(pkg)
+    cdx = export_owner_change_package_cyclonedx(pkg)
+    assert cdx["bomFormat"] == "CycloneDX"
+    assert any(v["id"] == "CVE-2024-99999" and v["analysis"]["state"] == "exploitable" for v in cdx["vulnerabilities"])
+
+    no_drift = detect_plan_snapshot_drift(pkg, ranked)
+    assert no_drift["drifted"] is False
+
+    mutated_payload = json.loads(json.dumps(payload))
+    mutated_payload["opportunities"][0]["options"][0]["ready"] = False
+    mutated_payload["opportunities"][0]["options"][0]["blocked_reasons"] = ["withdrawn_artifact"]
+    drifted_ranked = rank_patch_opportunities(mutated_payload)
+    drift_report = detect_plan_snapshot_drift(pkg, drifted_ranked)
+    assert drift_report["drifted"] is True
+    assert drift_report["catalog_options_changed"] is True
+    assert any(d["kind"] == "target_option_withdrawn_or_blocked" for d in drift_report["drift_events"])
+
+
 class PatchOpportunityPlannerTestCase(unittest.TestCase):
     def test_all(self):
         test_osera_ordered_inclusion_p0_p1_p2_kev_and_medium_with_signal()
@@ -176,6 +275,7 @@ class PatchOpportunityPlannerTestCase(unittest.TestCase):
         test_unavailable_blocked_investigate_and_unmet_coverage_cannot_rank_as_ready()
         test_overlapping_library_and_framework_bom_fixes_receive_only_incremental_portfolio_credit()
         test_recipe_suppression_comparison_drawer_owner_export_and_empty_data_states()
+        test_pipe_delimited_app_ids_independent_occurrences_target_residuals_and_drift_exports()
 
 
 if __name__ == "__main__":

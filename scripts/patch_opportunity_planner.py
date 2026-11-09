@@ -17,6 +17,9 @@ Implements:
 from __future__ import annotations
 
 import copy
+import csv
+import hashlib
+import io
 import json
 from pathlib import Path
 from typing import Any
@@ -64,6 +67,73 @@ def _canonical_advisory_map(advisory_records: list[dict[str, Any]]) -> Any:
                 union(cid, al_str)
 
     return find
+
+
+def _split_exposure_key(exp: str) -> tuple[str, str]:
+    """Split an exposure instance key `<app_or_occurrence>|<advisory_id>` on the LAST pipe so app IDs with `|` survive."""
+    raw = str(exp or "").strip()
+    if "|" not in raw:
+        return raw, ""
+    left, right = raw.rsplit("|", 1)
+    return left.strip(), right.strip()
+
+
+def _extract_app_id_from_prefix(prefix: str) -> str:
+    """Extract canonical application_id from `<application_id>` or `<application_id>@@<occurrence_id>`."""
+    if "@@" in prefix:
+        return prefix.split("@@", 1)[0]
+    return prefix
+
+
+def _stable_sha256(data: Any) -> str:
+    serialized = json.dumps(data, sort_keys=True, separators=(",", ":"), default=str)
+    return f"sha256:{hashlib.sha256(serialized.encode('utf-8')).hexdigest()}"
+
+
+def _compute_baseline_hashes(
+    opportunities: list[dict[str, Any]],
+    rules_cfg: dict[str, Any],
+    policy: dict[str, Any],
+    selected_ids: list[str] | None = None,
+) -> dict[str, str]:
+    estate_projection = [
+        {
+            "opportunity_id": o.get("opportunity_id"),
+            "deployed_purl": o.get("deployed_purl"),
+            "affected_applications": sorted(o.get("affected_applications") or []),
+            "unique_advisories": sorted(o.get("unique_advisories") or []),
+            "exposure_instances": sorted(o.get("exposure_instances") or []),
+        }
+        for o in sorted(opportunities, key=lambda x: str(x.get("opportunity_id") or ""))
+    ]
+    catalog_projection = [
+        {
+            "opportunity_id": o.get("opportunity_id"),
+            "target_purl": o.get("target_purl"),
+            "provider": o.get("provider"),
+            "queue": o.get("queue"),
+            "eligible_for_ready_ranking": o.get("eligible_for_ready_ranking"),
+            "choices": o.get("comparison_drawer", {}).get("choices") or [],
+        }
+        for o in sorted(opportunities, key=lambda x: str(x.get("opportunity_id") or ""))
+    ]
+    estate_hash = _stable_sha256(estate_projection)
+    catalog_hash = _stable_sha256(catalog_projection)
+    rules_policy_hash = _stable_sha256({"osera_rules": rules_cfg, "company_policy": policy})
+    plan_hash = _stable_sha256(
+        {
+            "estate_snapshot_hash": estate_hash,
+            "catalog_options_hash": catalog_hash,
+            "rules_and_policy_hash": rules_policy_hash,
+            "selected_opportunity_ids": sorted(selected_ids) if selected_ids is not None else "all_ready",
+        }
+    )
+    return {
+        "estate_snapshot_hash": estate_hash,
+        "catalog_options_hash": catalog_hash,
+        "rules_and_policy_hash": rules_policy_hash,
+        "plan_baseline_hash": plan_hash,
+    }
 
 
 def evaluate_osera_priority(
@@ -465,15 +535,49 @@ def rank_patch_opportunities(
     canonical_adv = _canonical_advisory_map(all_adv_records)
 
     evaluated_opps: list[dict[str, Any]] = []
-    all_estate_exposures: set[tuple[str, str]] = set()
+    all_estate_exposures: set[str] = set()
     all_unique_advisories: set[str] = set()
     all_affected_apps: set[str] = set()
     has_incomplete_signals = False
+
+    # Pre-scan non-BOM opportunities to detect when an application has multiple independent component/module
+    # occurrences affected by the same advisory so they are never collapsed into a single app|CVE key.
+    non_bom_app_adv_counts: dict[tuple[str, str], int] = {}
+    for idx, opp in enumerate(raw_opportunities):
+        if not isinstance(opp, dict):
+            continue
+        action_kind = str(opp.get("action_kind") or "library_patch").strip().lower()
+        if action_kind == "framework_bom_patch":
+            continue
+        apps_pre = [str(a).strip() for a in (opp.get("affected_applications") or []) if str(a).strip()]
+        advs_pre = {
+            canonical_adv(str(a.get("id") or a.get("cve_id") or a.get("advisory_id") or ""))
+            for a in (opp.get("advisories") or [])
+            if isinstance(a, dict) and str(a.get("id") or a.get("cve_id") or a.get("advisory_id") or "").strip()
+        }
+        raw_exp_pre = opp.get("exposure_instances")
+        if isinstance(raw_exp_pre, list) and raw_exp_pre:
+            seen_pairs: set[tuple[str, str]] = set()
+            for exp in raw_exp_pre:
+                if isinstance(exp, dict):
+                    a_id = str(exp.get("application_id") or "app").strip()
+                    v_id = canonical_adv(str(exp.get("advisory_id") or "").strip())
+                    seen_pairs.add((a_id, v_id))
+                elif isinstance(exp, str) and "|" in exp:
+                    a_id, v_raw = _split_exposure_key(exp)
+                    seen_pairs.add((_extract_app_id_from_prefix(a_id), canonical_adv(v_raw)))
+            for pair in seen_pairs:
+                non_bom_app_adv_counts[pair] = non_bom_app_adv_counts.get(pair, 0) + 1
+        else:
+            for a_id in apps_pre:
+                for v_id in advs_pre:
+                    non_bom_app_adv_counts[(a_id, v_id)] = non_bom_app_adv_counts.get((a_id, v_id), 0) + 1
 
     for idx, opp in enumerate(raw_opportunities):
         if not isinstance(opp, dict):
             continue
         opp_id = str(opp.get("opportunity_id") or f"opp-{idx + 1}").strip()
+        action_kind = str(opp.get("action_kind") or "library_patch").strip()
         advisories = [a for a in (opp.get("advisories") or []) if isinstance(a, dict)]
         osera_eval = evaluate_osera_priority(advisories, rules_cfg)
         if osera_eval["unknown_signal_advisories"]:
@@ -492,26 +596,63 @@ def rank_patch_opportunities(
         for app in apps:
             all_affected_apps.add(app)
 
-        # Distinct exposure instances: (application_id, canonical_advisory_id)
+        opp_occ_id = str(
+            opp.get("occurrence_id")
+            or opp.get("deployment_id")
+            or opp.get("module_id")
+            or opp.get("application_version_id")
+            or ""
+        ).strip()
+
+        def _make_exposure_prefix(app_id: str, explicit_occ: str, adv_id: str) -> str:
+            if explicit_occ:
+                return f"{app_id}@@{explicit_occ}"
+            if action_kind.lower() != "framework_bom_patch" and non_bom_app_adv_counts.get((app_id, adv_id), 0) > 1:
+                disc = str(opp.get("deployed_purl") or opp_id).strip()
+                return f"{app_id}@@{disc}"
+            return app_id
+
+        # Distinct exposure instances: (<app_or_occurrence_prefix>|<canonical_advisory_id>)
         raw_exposures = opp.get("exposure_instances")
         exposure_instances: list[str] = []
+        occurrence_prefixes_for_app: dict[str, list[str]] = {}
         if isinstance(raw_exposures, list) and raw_exposures:
             for exp in raw_exposures:
                 if isinstance(exp, dict):
                     app_id = str(exp.get("application_id") or "app").strip()
                     adv_id = canonical_adv(str(exp.get("advisory_id") or "").strip())
-                    exposure_instances.append(f"{app_id}|{adv_id}")
-                    all_estate_exposures.add((app_id, adv_id))
+                    exp_occ = str(
+                        exp.get("occurrence_id")
+                        or exp.get("deployment_id")
+                        or exp.get("module_id")
+                        or exp.get("component_purl")
+                        or opp_occ_id
+                    ).strip()
+                    prefix = _make_exposure_prefix(app_id, exp_occ, adv_id)
+                    exp_key = f"{prefix}|{adv_id}"
+                    exposure_instances.append(exp_key)
+                    all_estate_exposures.add(exp_key)
+                    all_affected_apps.add(app_id)
+                    occurrence_prefixes_for_app.setdefault(app_id, []).append(prefix)
                 elif isinstance(exp, str) and "|" in exp:
-                    app_id, adv_raw = exp.split("|", 1)
-                    adv_id = canonical_adv(adv_raw.strip())
-                    exposure_instances.append(f"{app_id.strip()}|{adv_id}")
-                    all_estate_exposures.add((app_id.strip(), adv_id))
+                    raw_prefix, adv_raw = _split_exposure_key(exp)
+                    app_id = _extract_app_id_from_prefix(raw_prefix)
+                    explicit_occ = raw_prefix.split("@@", 1)[1] if "@@" in raw_prefix else opp_occ_id
+                    adv_id = canonical_adv(adv_raw)
+                    prefix = _make_exposure_prefix(app_id, explicit_occ, adv_id)
+                    exp_key = f"{prefix}|{adv_id}"
+                    exposure_instances.append(exp_key)
+                    all_estate_exposures.add(exp_key)
+                    all_affected_apps.add(app_id)
+                    occurrence_prefixes_for_app.setdefault(app_id, []).append(prefix)
         else:
             for app_id in apps:
                 for adv_id in canonical_adv_ids:
-                    exposure_instances.append(f"{app_id}|{adv_id}")
-                    all_estate_exposures.add((app_id, adv_id))
+                    prefix = _make_exposure_prefix(app_id, opp_occ_id, adv_id)
+                    exp_key = f"{prefix}|{adv_id}"
+                    exposure_instances.append(exp_key)
+                    all_estate_exposures.add(exp_key)
+                    occurrence_prefixes_for_app.setdefault(app_id, []).append(prefix)
         exposure_instances = sorted(set(exposure_instances))
 
         q_info = _classify_queue_and_next_step(opp)
@@ -519,9 +660,10 @@ def rank_patch_opportunities(
         drawer = _build_comparison_drawer(opp, sel_opt, canonical_adv, canonical_adv_ids)
         recipe_guidance = _build_recipe_guidance(opp, sel_opt)
 
-        # Determine addressed vs residual exposures for the selected option
+        # Determine addressed vs residual exposures for the selected option (including target-version residual advisories!)
         addressed_adv_set: set[str] = set()
         residual_adv_list: list[str] = []
+        target_only_residual_advs: list[str] = []
         if sel_opt and q_info["eligible_for_ready_ranking"]:
             fixed_canon = {
                 canonical_adv(str(x))
@@ -534,17 +676,26 @@ def rank_patch_opportunities(
                     residual_adv_list.append(cid)
             for res_raw in sel_opt.get("residual_advisories") or []:
                 rc = canonical_adv(str(res_raw))
-                if rc not in residual_adv_list:
+                if rc and rc not in residual_adv_list:
                     residual_adv_list.append(rc)
+                if rc and rc not in canonical_adv_ids and rc not in target_only_residual_advs:
+                    target_only_residual_advs.append(rc)
         else:
             residual_adv_list = list(canonical_adv_ids)
 
         addressed_exposures = sorted(
-            exp for exp in exposure_instances if exp.split("|", 1)[1] in addressed_adv_set
+            exp for exp in exposure_instances if _split_exposure_key(exp)[1] in addressed_adv_set
         )
-        residual_exposures = sorted(
-            exp for exp in exposure_instances if exp.split("|", 1)[1] not in addressed_adv_set
-        )
+        residual_exposure_set = {
+            exp for exp in exposure_instances if _split_exposure_key(exp)[1] not in addressed_adv_set
+        }
+        # Preserve target-version residual/introduced advisories in residual exposure instances
+        for target_rc in target_only_residual_advs:
+            for app_id in apps or list(occurrence_prefixes_for_app.keys()):
+                prefixes = sorted(set(occurrence_prefixes_for_app.get(app_id) or [_make_exposure_prefix(app_id, opp_occ_id, target_rc)]))
+                for pref in prefixes:
+                    residual_exposure_set.add(f"{pref}|{target_rc}")
+        residual_exposures = sorted(residual_exposure_set)
 
         # Keep estimated_effort, confidence, and measured_outcome strictly separate (#26)
         est_effort = str(
@@ -728,9 +879,14 @@ def rank_patch_opportunities(
         QUEUE_REQUEST_COVERAGE: [o for o in ordered_all if o["queue"] == QUEUE_REQUEST_COVERAGE],
     }
 
+    baseline_hashes = _compute_baseline_hashes(ordered_all, rules_cfg, policy)
+
     return {
         "schema_version": OPPORTUNITY_PLANNER_SCHEMA_VERSION,
         "data_completeness_state": "incomplete_signals" if has_incomplete_signals else "complete",
+        "baseline_hashes": baseline_hashes,
+        "osera_rules": rules_cfg,
+        "company_policy": policy,
         "opportunities": ordered_all,
         "queues": queues,
         "rank_changes": rank_changes,
@@ -758,8 +914,10 @@ def assemble_portfolio_plan(
 ) -> dict[str, Any]:
     """Assemble a portfolio plan with deduplicated incremental benefit across overlapping library and framework/BOM actions (#26, #27).
 
-    Recomputes portfolio benefit as a set union of addressed exposure instances (`application_id|advisory_id`)
-    so a framework/BOM upgrade and an individual library patch NEVER claim the same exposure reduction twice.
+    Recomputes portfolio benefit as a set union of addressed occurrence exposures (`<app_or_occurrence>|<advisory_id>`)
+    so a framework/BOM upgrade and an individual library patch on the same occurrence NEVER claim the same exposure
+    reduction twice, while independently vulnerable occurrences in the same application retain distinct credit and
+    target-version residual advisories remain visible in portfolio totals.
     """
     ready_candidates = ranked_result.get("queues", {}).get(QUEUE_READY_TO_PLAN) or [
         o for o in (ranked_result.get("opportunities") or []) if o.get("eligible_for_ready_ranking")
@@ -779,8 +937,10 @@ def assemble_portfolio_plan(
 
     cumulative_addressed: set[str] = set()
     all_scope_exposures: set[str] = set()
+    target_residual_exposures: set[str] = set()
     for opp in selected:
         all_scope_exposures.update(opp.get("exposure_instances") or [])
+        target_residual_exposures.update(opp.get("residual_exposure_instances") or [])
 
     incremental_rows: list[dict[str, Any]] = []
     raw_sum_claimed = 0
@@ -813,13 +973,24 @@ def assemble_portfolio_plan(
             }
         )
 
-    portfolio_residual = sorted(all_scope_exposures - cumulative_addressed)
-    affected_apps = sorted({exp.split("|", 1)[0] for exp in all_scope_exposures})
-    addressed_advisories = sorted({exp.split("|", 1)[1] for exp in cumulative_addressed})
-    residual_advisories = sorted({exp.split("|", 1)[1] for exp in portfolio_residual})
+    portfolio_residual = sorted((all_scope_exposures | target_residual_exposures) - cumulative_addressed)
+    all_known_exposures = all_scope_exposures | target_residual_exposures
+    affected_apps = sorted(
+        {_extract_app_id_from_prefix(_split_exposure_key(exp)[0]) for exp in all_known_exposures if _split_exposure_key(exp)[0]}
+    )
+    addressed_advisories = sorted({_split_exposure_key(exp)[1] for exp in cumulative_addressed if _split_exposure_key(exp)[1]})
+    residual_advisories = sorted({_split_exposure_key(exp)[1] for exp in portfolio_residual if _split_exposure_key(exp)[1]})
+
+    baseline_hashes = _compute_baseline_hashes(
+        ranked_result.get("opportunities") or selected,
+        ranked_result.get("osera_rules") or {},
+        ranked_result.get("company_policy") or {},
+        [o["opportunity_id"] for o in selected],
+    )
 
     return {
         "schema_version": OPPORTUNITY_PLANNER_SCHEMA_VERSION,
+        "baseline_hashes": baseline_hashes,
         "filters": {
             "owner": owner,
             "framework_or_runtime": framework_or_runtime,
@@ -840,6 +1011,212 @@ def assemble_portfolio_plan(
         },
         "deduplicated_addressed_exposures": sorted(cumulative_addressed),
         "residual_exposures": portfolio_residual,
+    }
+
+
+def detect_plan_snapshot_drift(
+    saved_plan_or_package: dict[str, Any],
+    current_ranked_result: dict[str, Any],
+) -> dict[str, Any]:
+    """Detect snapshot drift between a saved portfolio plan/package and a refreshed ranked opportunity snapshot (#27)."""
+    saved_hashes = saved_plan_or_package.get("baseline_hashes") or {}
+    selected_ids = [
+        str(a.get("opportunity_id"))
+        for a in (saved_plan_or_package.get("incremental_actions") or saved_plan_or_package.get("change_packages") or [])
+        if a.get("opportunity_id")
+    ]
+    current_hashes = _compute_baseline_hashes(
+        current_ranked_result.get("opportunities") or [],
+        current_ranked_result.get("osera_rules") or {},
+        current_ranked_result.get("company_policy") or {},
+        selected_ids or None,
+    )
+
+    estate_changed = bool(saved_hashes.get("estate_snapshot_hash")) and (
+        saved_hashes.get("estate_snapshot_hash") != current_hashes["estate_snapshot_hash"]
+    )
+    catalog_changed = bool(saved_hashes.get("catalog_options_hash")) and (
+        saved_hashes.get("catalog_options_hash") != current_hashes["catalog_options_hash"]
+    )
+    rules_changed = bool(saved_hashes.get("rules_and_policy_hash")) and (
+        saved_hashes.get("rules_and_policy_hash") != current_hashes["rules_and_policy_hash"]
+    )
+
+    current_by_id = {o["opportunity_id"]: o for o in (current_ranked_result.get("opportunities") or [])}
+    drift_events: list[dict[str, Any]] = []
+    for action in saved_plan_or_package.get("incremental_actions") or saved_plan_or_package.get("change_packages") or []:
+        opp_id = str(action.get("opportunity_id") or "")
+        planned_target = str(action.get("target_purl") or action.get("target_coordinate") or "")
+        curr = current_by_id.get(opp_id)
+        if curr is None:
+            drift_events.append({"opportunity_id": opp_id, "kind": "opportunity_removed_from_snapshot"})
+            continue
+        if not curr.get("eligible_for_ready_ranking") or curr.get("queue") != QUEUE_READY_TO_PLAN:
+            drift_events.append(
+                {
+                    "opportunity_id": opp_id,
+                    "kind": "target_option_withdrawn_or_blocked",
+                    "current_queue": curr.get("queue"),
+                    "blockers": curr.get("blockers") or [],
+                }
+            )
+        elif planned_target and str(curr.get("target_purl") or "") != planned_target:
+            drift_events.append(
+                {
+                    "opportunity_id": opp_id,
+                    "kind": "recommended_target_coordinate_changed",
+                    "planned_target": planned_target,
+                    "current_target": curr.get("target_purl"),
+                }
+            )
+
+    drifted = bool(estate_changed or catalog_changed or rules_changed or drift_events)
+    return {
+        "drifted": drifted,
+        "estate_snapshot_changed": estate_changed,
+        "catalog_options_changed": catalog_changed,
+        "rules_or_policy_changed": rules_changed,
+        "saved_baseline_hashes": saved_hashes,
+        "current_baseline_hashes": current_hashes,
+        "drift_events": drift_events,
+    }
+
+
+def export_owner_change_package_markdown(change_package: dict[str, Any]) -> str:
+    """Render an owner-ready change package as Markdown (#27)."""
+    metrics = change_package.get("portfolio_metrics") or {}
+    hashes = change_package.get("baseline_hashes") or {}
+    lines = [
+        "# OSERA Owner-Ready Patch Change Package",
+        "",
+        f"- **Schema Version**: `{change_package.get('schema_version', CHANGE_PACKAGE_SCHEMA_VERSION)}`",
+        f"- **Plan Baseline Hash**: `{hashes.get('plan_baseline_hash', 'unknown')}`",
+        f"- **Affected Applications**: {metrics.get('affected_application_count', 0)}",
+        f"- **Deduplicated Exposure Reduction**: {metrics.get('deduplicated_addressed_exposure_instances', 0)}",
+        f"- **Residual Exposure Instances**: {metrics.get('residual_exposure_instance_count', 0)}",
+        "",
+        "## Planned Actions",
+    ]
+    for idx, pkg in enumerate(change_package.get("change_packages") or [], start=1):
+        lines.extend(
+            [
+                f"### {idx}. `{pkg.get('opportunity_id')}` ({pkg.get('source_priority')} -> {pkg.get('company_priority')})",
+                f"- **Owner / Window**: `{pkg.get('owner')}` / `{pkg.get('change_window')}`",
+                f"- **Source Coordinate**: `{pkg.get('source_coordinate')}`",
+                f"- **Target Coordinate**: `{pkg.get('target_coordinate')}` ({pkg.get('provider')})",
+                f"- **Incremental Exposure Reduction**: {pkg.get('incremental_exposure_reduction')}",
+                f"- **Residual Advisories**: {', '.join(pkg.get('residual_advisories') or []) or 'None'}",
+                f"- **Instructions**: {pkg.get('implementation_instructions')}",
+                f"- **Rollback Target**: `{pkg.get('rollback_target')}`",
+                "",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def export_owner_change_package_csv(change_package: dict[str, Any]) -> str:
+    """Render an owner-ready change package as CSV (#27)."""
+    buf = io.StringIO()
+    fieldnames = [
+        "opportunity_id",
+        "owner",
+        "change_window",
+        "framework_or_runtime",
+        "action_kind",
+        "source_coordinate",
+        "target_coordinate",
+        "provider",
+        "source_priority",
+        "company_priority",
+        "incremental_exposure_reduction",
+        "residual_advisories",
+        "recipe_status",
+        "rollback_target",
+    ]
+    writer = csv.DictWriter(buf, fieldnames=fieldnames, lineterminator="\n")
+    writer.writeheader()
+    for pkg in change_package.get("change_packages") or []:
+        writer.writerow(
+            {
+                "opportunity_id": pkg.get("opportunity_id") or "",
+                "owner": pkg.get("owner") or "",
+                "change_window": pkg.get("change_window") or "",
+                "framework_or_runtime": pkg.get("framework_or_runtime") or "",
+                "action_kind": pkg.get("action_kind") or "",
+                "source_coordinate": pkg.get("source_coordinate") or "",
+                "target_coordinate": pkg.get("target_coordinate") or "",
+                "provider": pkg.get("provider") or "",
+                "source_priority": pkg.get("source_priority") or "",
+                "company_priority": pkg.get("company_priority") or "",
+                "incremental_exposure_reduction": pkg.get("incremental_exposure_reduction", 0),
+                "residual_advisories": ";".join(pkg.get("residual_advisories") or []),
+                "recipe_status": pkg.get("recipe_status") or "",
+                "rollback_target": pkg.get("rollback_target") or "",
+            }
+        )
+    return buf.getvalue()
+
+
+def export_owner_change_package_cyclonedx(change_package: dict[str, Any]) -> dict[str, Any]:
+    """Render an owner-ready change package as a CycloneDX 1.5 BOM + VEX remediation plan (#27)."""
+    components: list[dict[str, Any]] = []
+    vulnerabilities: list[dict[str, Any]] = []
+    for pkg in change_package.get("change_packages") or []:
+        target_purl = str(pkg.get("target_coordinate") or "")
+        source_purl = str(pkg.get("source_coordinate") or "")
+        opp_id = str(pkg.get("opportunity_id") or "")
+        components.append(
+            {
+                "type": "library",
+                "bom-ref": opp_id or target_purl,
+                "name": target_purl,
+                "purl": target_purl,
+                "properties": [
+                    {"name": "osera:source_coordinate", "value": source_purl},
+                    {"name": "osera:provider", "value": str(pkg.get("provider") or "")},
+                    {"name": "osera:owner", "value": str(pkg.get("owner") or "")},
+                    {"name": "osera:change_window", "value": str(pkg.get("change_window") or "")},
+                    {"name": "osera:rollback_target", "value": str(pkg.get("rollback_target") or "")},
+                ],
+            }
+        )
+        sel = pkg.get("selected_option_details") or {}
+        for adv_id in sel.get("addressed_advisories") or []:
+            vulnerabilities.append(
+                {
+                    "id": adv_id,
+                    "analysis": {
+                        "state": "resolved",
+                        "detail": f"Planned upgrade from {source_purl} to {target_purl}",
+                    },
+                    "affects": [{"ref": opp_id or target_purl}],
+                }
+            )
+        for res_id in pkg.get("residual_advisories") or []:
+            vulnerabilities.append(
+                {
+                    "id": res_id,
+                    "analysis": {
+                        "state": "exploitable",
+                        "detail": f"Residual advisory remaining after upgrading to {target_purl}",
+                    },
+                    "affects": [{"ref": opp_id or target_purl}],
+                }
+            )
+    return {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "version": 1,
+        "metadata": {
+            "properties": [
+                {
+                    "name": "osera:plan_baseline_hash",
+                    "value": str((change_package.get("baseline_hashes") or {}).get("plan_baseline_hash") or ""),
+                }
+            ]
+        },
+        "components": components,
+        "vulnerabilities": vulnerabilities,
     }
 
 
@@ -894,8 +1271,15 @@ def export_owner_change_package(
             }
         )
 
-    return {
+    result: dict[str, Any] = {
         "schema_version": CHANGE_PACKAGE_SCHEMA_VERSION,
+        "baseline_hashes": portfolio_plan.get("baseline_hashes") or ranked_result.get("baseline_hashes") or {},
         "portfolio_metrics": portfolio_plan["portfolio_metrics"],
         "change_packages": packages,
     }
+    result["exports"] = {
+        "markdown": export_owner_change_package_markdown(result),
+        "csv": export_owner_change_package_csv(result),
+        "cyclonedx_vex": export_owner_change_package_cyclonedx(result),
+    }
+    return result

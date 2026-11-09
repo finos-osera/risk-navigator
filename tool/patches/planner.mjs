@@ -5,6 +5,73 @@ const PRIORITY_ORDER = { P0: 0, P1: 1, P2: 2, P3: 3, UNRANKED: 9 };
 const EFFORT_ORDER = { low: 1, medium: 2, high: 3, unknown: 4 };
 const CRITICALITY_WEIGHT = { tier_1_critical: 30, high: 20, medium: 10, low: 0, unknown: 5 };
 
+const splitExposureKey = exp => {
+  const raw = String(exp || '').trim();
+  const idx = raw.lastIndexOf('|');
+  if (idx === -1) return [raw, ''];
+  return [raw.slice(0, idx).trim(), raw.slice(idx + 1).trim()];
+};
+
+const extractAppIdFromPrefix = prefix => {
+  const raw = String(prefix || '');
+  const idx = raw.indexOf('@@');
+  return idx === -1 ? raw : raw.slice(0, idx);
+};
+
+const stableCanonicalJson = val => {
+  if (val === null || typeof val !== 'object') return JSON.stringify(val);
+  if (Array.isArray(val)) return `[${val.map(stableCanonicalJson).join(',')}]`;
+  const keys = Object.keys(val).sort();
+  return `{${keys.map(k => `${JSON.stringify(k)}:${stableCanonicalJson(val[k])}`).join(',')}}`;
+};
+
+const deterministicHash = data => {
+  const str = stableCanonicalJson(data);
+  let h1 = 0xdeadbeef ^ str.length, h2 = 0x41c6ce57 ^ str.length;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return `fnv64:${(h2 >>> 0).toString(16).padStart(8, '0')}${(h1 >>> 0).toString(16).padStart(8, '0')}`;
+};
+
+const computeBaselineHashes = (opportunities, rulesCfg, policy, selectedIds = null) => {
+  const sortedOpps = [...(opportunities || [])].sort((a, b) => String(a.opportunity_id || '').localeCompare(String(b.opportunity_id || '')));
+  const estateProjection = sortedOpps.map(o => ({
+    opportunity_id: o.opportunity_id,
+    deployed_purl: o.deployed_purl,
+    affected_applications: [...(o.affected_applications || [])].sort(),
+    unique_advisories: [...(o.unique_advisories || [])].sort(),
+    exposure_instances: [...(o.exposure_instances || [])].sort(),
+  }));
+  const catalogProjection = sortedOpps.map(o => ({
+    opportunity_id: o.opportunity_id,
+    target_purl: o.target_purl,
+    provider: o.provider,
+    queue: o.queue,
+    eligible_for_ready_ranking: o.eligible_for_ready_ranking,
+    choices: o.comparison_drawer?.choices || [],
+  }));
+  const estateHash = deterministicHash(estateProjection);
+  const catalogHash = deterministicHash(catalogProjection);
+  const rulesPolicyHash = deterministicHash({ osera_rules: rulesCfg || {}, company_policy: policy || {} });
+  const planHash = deterministicHash({
+    estate_snapshot_hash: estateHash,
+    catalog_options_hash: catalogHash,
+    rules_and_policy_hash: rulesPolicyHash,
+    selected_opportunity_ids: Array.isArray(selectedIds) ? [...selectedIds].sort() : 'all_ready',
+  });
+  return {
+    estate_snapshot_hash: estateHash,
+    catalog_options_hash: catalogHash,
+    rules_and_policy_hash: rulesPolicyHash,
+    plan_baseline_hash: planHash,
+  };
+};
+
 export function evaluateOseraPriority(advisories = [], rulesConfig = {}) {
   const rulesVersion = String(rulesConfig.rules_version || '2026.10-osera-prioritisation-v1');
   if (!Array.isArray(advisories) || !advisories.length) {
@@ -131,23 +198,81 @@ export function rankPatchOpportunities(payload, companyPolicy = null) {
   const allAdvisories = new Set(), allApps = new Set(), allExposures = new Set();
   let hasIncompleteSignals = false;
 
+  const nonBomAppAdvCounts = new Map();
+  for (const opp of rawOpportunities) {
+    const actionKind = String(opp.action_kind || 'library_patch').trim().toLowerCase();
+    if (actionKind === 'framework_bom_patch') continue;
+    const appsPre = unique((opp.affected_applications || []).map(a => String(a).trim()).filter(Boolean));
+    const advsPre = unique((opp.advisories || []).map(a => canonicalAdv(a.id || a.cve_id || a.advisory_id || '')).filter(Boolean));
+    const seenPairs = new Set();
+    if (Array.isArray(opp.exposure_instances) && opp.exposure_instances.length) {
+      for (const e of opp.exposure_instances) {
+        if (typeof e === 'string') {
+          const [rawPref, advRaw] = splitExposureKey(e);
+          seenPairs.add(`${extractAppIdFromPrefix(rawPref)}|||${canonicalAdv(advRaw)}`);
+        } else if (e && typeof e === 'object') {
+          seenPairs.add(`${String(e.application_id || 'app').trim()}|||${canonicalAdv(e.advisory_id || '')}`);
+        }
+      }
+    } else {
+      for (const a of appsPre) for (const v of advsPre) seenPairs.add(`${a}|||${v}`);
+    }
+    for (const pair of seenPairs) nonBomAppAdvCounts.set(pair, (nonBomAppAdvCounts.get(pair) || 0) + 1);
+  }
+
   const evaluated = rawOpportunities.map((opp, idx) => {
     const oppId = String(opp.opportunity_id || `opp-${idx + 1}`);
+    const actionKind = String(opp.action_kind || 'library_patch');
     const advisories = Array.isArray(opp.advisories) ? opp.advisories : [];
     const oseraEval = evaluateOseraPriority(advisories, rulesCfg);
     if (oseraEval.unknown_signal_advisories.length) hasIncompleteSignals = true;
 
-    const apps = unique((opp.affected_applications || []).map(a => String(a).trim()));
-    const canonAdvIds = unique(advisories.map(a => canonicalAdv(a.id || a.cve_id || a.advisory_id || '')));
+    const apps = unique((opp.affected_applications || []).map(a => String(a).trim()).filter(Boolean));
+    const canonAdvIds = unique(advisories.map(a => canonicalAdv(a.id || a.cve_id || a.advisory_id || '')).filter(Boolean));
     canonAdvIds.forEach(a => allAdvisories.add(a));
     apps.forEach(a => allApps.add(a));
 
+    const oppOccId = String(opp.occurrence_id || opp.deployment_id || opp.module_id || opp.application_version_id || '').trim();
+    const makePrefix = (appId, explicitOcc, advId) => {
+      if (explicitOcc) return `${appId}@@${explicitOcc}`;
+      if (actionKind.toLowerCase() !== 'framework_bom_patch' && (nonBomAppAdvCounts.get(`${appId}|||${advId}`) || 0) > 1) {
+        return `${appId}@@${String(opp.deployed_purl || oppId).trim()}`;
+      }
+      return appId;
+    };
+
+    const prefixesByApp = new Map();
+    const recordPrefix = (appId, pref) => {
+      if (!prefixesByApp.has(appId)) prefixesByApp.set(appId, new Set());
+      prefixesByApp.get(appId).add(pref);
+    };
+
     const exposureInstances = unique(
       Array.isArray(opp.exposure_instances) && opp.exposure_instances.length
-        ? opp.exposure_instances.map(e => typeof e === 'string'
-            ? `${e.split('|')[0]}|${canonicalAdv(e.split('|')[1])}`
-            : `${e.application_id}|${canonicalAdv(e.advisory_id)}`)
-        : apps.flatMap(app => canonAdvIds.map(adv => `${app}|${adv}`))
+        ? opp.exposure_instances.map(e => {
+            if (typeof e === 'string') {
+              const [rawPref, advRaw] = splitExposureKey(e);
+              const appId = extractAppIdFromPrefix(rawPref);
+              const explicitOcc = rawPref.includes('@@') ? rawPref.split('@@')[1] : oppOccId;
+              const advId = canonicalAdv(advRaw);
+              const pref = makePrefix(appId, explicitOcc, advId);
+              allApps.add(appId);
+              recordPrefix(appId, pref);
+              return `${pref}|${advId}`;
+            }
+            const appId = String(e.application_id || 'app').trim();
+            const advId = canonicalAdv(e.advisory_id || '');
+            const explicitOcc = String(e.occurrence_id || e.deployment_id || e.module_id || e.component_purl || oppOccId).trim();
+            const pref = makePrefix(appId, explicitOcc, advId);
+            allApps.add(appId);
+            recordPrefix(appId, pref);
+            return `${pref}|${advId}`;
+          })
+        : apps.flatMap(app => canonAdvIds.map(adv => {
+            const pref = makePrefix(app, oppOccId, adv);
+            recordPrefix(app, pref);
+            return `${pref}|${adv}`;
+          }))
     );
     exposureInstances.forEach(e => allExposures.add(e));
 
@@ -178,11 +303,22 @@ export function rankPatchOpportunities(payload, companyPolicy = null) {
 
     const fixedCanon = new Set(((selOpt?.fixed_advisories || []).concat(selOpt?.aliases || [])).map(canonicalAdv));
     const addressedAdvs = eligible ? canonAdvIds.filter(a => fixedCanon.has(a)) : [];
+    const targetOnlyResidualAdvs = eligible
+      ? unique((selOpt?.residual_advisories || []).map(canonicalAdv).filter(rc => rc && !canonAdvIds.includes(rc)))
+      : [];
     const residualAdvs = eligible
-      ? unique([...canonAdvIds.filter(a => !fixedCanon.has(a)), ...(selOpt?.residual_advisories || []).map(canonicalAdv)])
+      ? unique([...canonAdvIds.filter(a => !fixedCanon.has(a)), ...(selOpt?.residual_advisories || []).map(canonicalAdv).filter(Boolean)])
       : [...canonAdvIds];
-    const addressedExposures = exposureInstances.filter(e => addressedAdvs.includes(e.split('|')[1]));
-    const residualExposures = exposureInstances.filter(e => !addressedAdvs.includes(e.split('|')[1]));
+    const addressedExposures = exposureInstances.filter(e => addressedAdvs.includes(splitExposureKey(e)[1]));
+    const residualExposureSet = new Set(exposureInstances.filter(e => !addressedAdvs.includes(splitExposureKey(e)[1])));
+    for (const targetRc of targetOnlyResidualAdvs) {
+      const targetApps = apps.length ? apps : [...prefixesByApp.keys()];
+      for (const appId of targetApps) {
+        const prefs = prefixesByApp.has(appId) ? [...prefixesByApp.get(appId)] : [makePrefix(appId, oppOccId, targetRc)];
+        for (const pref of prefs) residualExposureSet.add(`${pref}|${targetRc}`);
+      }
+    }
+    const residualExposures = [...residualExposureSet].sort();
 
     const depScopeRaw = String(opp.dependency_scope || opp.direct_relationship || 'unknown').toLowerCase();
     const depScope = ['true', 'direct'].includes(depScopeRaw) ? 'direct' : (['false', 'transitive'].includes(depScopeRaw) ? 'transitive' : 'unknown');
@@ -349,9 +485,14 @@ export function rankPatchOpportunities(payload, companyPolicy = null) {
     request_coverage: orderedAll.filter(o => o.queue === 'request_coverage'),
   };
 
+  const baselineHashes = computeBaselineHashes(orderedAll, rulesCfg, policy);
+
   return {
     schema_version: 'osera-opportunity-planner/v1',
     data_completeness_state: hasIncompleteSignals ? 'incomplete_signals' : 'complete',
+    baseline_hashes: baselineHashes,
+    osera_rules: rulesCfg,
+    company_policy: policy,
     opportunities: orderedAll,
     queues,
     rank_changes: rankChanges,
@@ -378,8 +519,11 @@ export function assemblePortfolioPlan(rankedResult, filters = {}) {
     (!filters.change_window || opp.change_window.toLowerCase() === filters.change_window.toLowerCase())
   );
 
-  const cumulativeAddressed = new Set(), allScopeExposures = new Set();
-  selected.forEach(o => (o.exposure_instances || []).forEach(e => allScopeExposures.add(e)));
+  const cumulativeAddressed = new Set(), allScopeExposures = new Set(), targetResidualExposures = new Set();
+  selected.forEach(o => {
+    (o.exposure_instances || []).forEach(e => allScopeExposures.add(e));
+    (o.residual_exposure_instances || []).forEach(e => targetResidualExposures.add(e));
+  });
   let rawSumClaimed = 0;
 
   const incrementalActions = selected.map((opp, idx) => {
@@ -408,31 +552,163 @@ export function assemblePortfolioPlan(rankedResult, filters = {}) {
     };
   });
 
-  const residualExposures = [...allScopeExposures].filter(e => !cumulativeAddressed.has(e)).sort();
+  const combinedScopeAndTargetResiduals = new Set([...allScopeExposures, ...targetResidualExposures]);
+  const residualExposures = [...combinedScopeAndTargetResiduals].filter(e => !cumulativeAddressed.has(e)).sort();
+  const baselineHashes = computeBaselineHashes(
+    rankedResult?.opportunities || selected,
+    rankedResult?.osera_rules || {},
+    rankedResult?.company_policy || {},
+    selected.map(o => o.opportunity_id)
+  );
   return {
     schema_version: 'osera-opportunity-planner/v1',
+    baseline_hashes: baselineHashes,
     filters,
     selected_count: selected.length,
     incremental_actions: incrementalActions,
     portfolio_metrics: {
-      affected_application_count: unique([...allScopeExposures].map(e => e.split('|')[0])).length,
+      affected_application_count: unique([...combinedScopeAndTargetResiduals].map(e => extractAppIdFromPrefix(splitExposureKey(e)[0])).filter(Boolean)).length,
       total_scope_exposure_instances: allScopeExposures.size,
       naive_unioned_claim_sum: rawSumClaimed,
       deduplicated_addressed_exposure_instances: cumulativeAddressed.size,
       duplicate_overlap_prevented: rawSumClaimed - cumulativeAddressed.size,
       residual_exposure_instance_count: residualExposures.length,
-      addressed_unique_advisories: unique([...cumulativeAddressed].map(e => e.split('|')[1])),
-      residual_unique_advisories: unique(residualExposures.map(e => e.split('|')[1])),
+      addressed_unique_advisories: unique([...cumulativeAddressed].map(e => splitExposureKey(e)[1]).filter(Boolean)),
+      residual_unique_advisories: unique(residualExposures.map(e => splitExposureKey(e)[1]).filter(Boolean)),
     },
     deduplicated_addressed_exposures: [...cumulativeAddressed].sort(),
     residual_exposures: residualExposures,
   };
 }
 
+export function detectPlanSnapshotDrift(savedPlanOrPackage, currentRankedResult) {
+  const savedHashes = savedPlanOrPackage?.baseline_hashes || {};
+  const actions = savedPlanOrPackage?.incremental_actions || savedPlanOrPackage?.change_packages || [];
+  const selectedIds = actions.map(a => a.opportunity_id).filter(Boolean);
+  const currentHashes = computeBaselineHashes(
+    currentRankedResult?.opportunities || [],
+    currentRankedResult?.osera_rules || {},
+    currentRankedResult?.company_policy || {},
+    selectedIds.length ? selectedIds : null
+  );
+  const estateChanged = Boolean(savedHashes.estate_snapshot_hash && savedHashes.estate_snapshot_hash !== currentHashes.estate_snapshot_hash);
+  const catalogChanged = Boolean(savedHashes.catalog_options_hash && savedHashes.catalog_options_hash !== currentHashes.catalog_options_hash);
+  const rulesChanged = Boolean(savedHashes.rules_and_policy_hash && savedHashes.rules_and_policy_hash !== currentHashes.rules_and_policy_hash);
+  const currentById = Object.fromEntries((currentRankedResult?.opportunities || []).map(o => [o.opportunity_id, o]));
+  const driftEvents = [];
+  for (const act of actions) {
+    const oppId = act.opportunity_id;
+    const plannedTarget = act.target_purl || act.target_coordinate || '';
+    const curr = currentById[oppId];
+    if (!curr) {
+      driftEvents.push({ opportunity_id: oppId, kind: 'opportunity_removed_from_snapshot' });
+    } else if (!curr.eligible_for_ready_ranking || curr.queue !== 'ready_to_plan') {
+      driftEvents.push({ opportunity_id: oppId, kind: 'target_option_withdrawn_or_blocked', current_queue: curr.queue, blockers: curr.blockers || [] });
+    } else if (plannedTarget && curr.target_purl !== plannedTarget) {
+      driftEvents.push({ opportunity_id: oppId, kind: 'recommended_target_coordinate_changed', planned_target: plannedTarget, current_target: curr.target_purl });
+    }
+  }
+  return {
+    drifted: Boolean(estateChanged || catalogChanged || rulesChanged || driftEvents.length),
+    estate_snapshot_changed: estateChanged,
+    catalog_options_changed: catalogChanged,
+    rules_or_policy_changed: rulesChanged,
+    saved_baseline_hashes: savedHashes,
+    current_baseline_hashes: currentHashes,
+    drift_events: driftEvents,
+  };
+}
+
+export function exportOwnerChangePackageMarkdown(changePackage) {
+  const m = changePackage?.portfolio_metrics || {};
+  const h = changePackage?.baseline_hashes || {};
+  const lines = [
+    '# OSERA Owner-Ready Patch Change Package',
+    '',
+    `- **Schema Version**: \`${changePackage?.schema_version || 'osera-owner-change-package/v1'}\``,
+    `- **Plan Baseline Hash**: \`${h.plan_baseline_hash || 'unknown'}\``,
+    `- **Affected Applications**: ${m.affected_application_count ?? 0}`,
+    `- **Deduplicated Exposure Reduction**: ${m.deduplicated_addressed_exposure_instances ?? 0}`,
+    `- **Residual Exposure Instances**: ${m.residual_exposure_instance_count ?? 0}`,
+    '',
+    '## Planned Actions',
+  ];
+  (changePackage?.change_packages || []).forEach((pkg, idx) => {
+    lines.push(
+      `### ${idx + 1}. \`${pkg.opportunity_id}\` (${pkg.source_priority} -> ${pkg.company_priority})`,
+      `- **Owner / Window**: \`${pkg.owner}\` / \`${pkg.change_window}\``,
+      `- **Source Coordinate**: \`${pkg.source_coordinate}\``,
+      `- **Target Coordinate**: \`${pkg.target_coordinate}\` (${pkg.provider})`,
+      `- **Incremental Exposure Reduction**: ${pkg.incremental_exposure_reduction}`,
+      `- **Residual Advisories**: ${(pkg.residual_advisories || []).join(', ') || 'None'}`,
+      `- **Instructions**: ${pkg.implementation_instructions}`,
+      `- **Rollback Target**: \`${pkg.rollback_target}\``,
+      ''
+    );
+  });
+  return lines.join('\n');
+}
+
+export function exportOwnerChangePackageCsv(changePackage) {
+  const headers = [
+    'opportunity_id', 'owner', 'change_window', 'framework_or_runtime', 'action_kind',
+    'source_coordinate', 'target_coordinate', 'provider', 'source_priority', 'company_priority',
+    'incremental_exposure_reduction', 'residual_advisories', 'recipe_status', 'rollback_target',
+  ];
+  const esc = v => {
+    const s = String(v ?? '');
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const rows = [headers.join(',')];
+  for (const pkg of changePackage?.change_packages || []) {
+    rows.push([
+      pkg.opportunity_id, pkg.owner, pkg.change_window, pkg.framework_or_runtime, pkg.action_kind,
+      pkg.source_coordinate, pkg.target_coordinate, pkg.provider, pkg.source_priority, pkg.company_priority,
+      pkg.incremental_exposure_reduction ?? 0, (pkg.residual_advisories || []).join(';'), pkg.recipe_status, pkg.rollback_target,
+    ].map(esc).join(','));
+  }
+  return rows.join('\n') + '\n';
+}
+
+export function exportOwnerChangePackageCycloneDx(changePackage) {
+  const components = [], vulnerabilities = [];
+  for (const pkg of changePackage?.change_packages || []) {
+    const ref = pkg.opportunity_id || pkg.target_coordinate;
+    components.push({
+      type: 'library',
+      'bom-ref': ref,
+      name: pkg.target_coordinate,
+      purl: pkg.target_coordinate,
+      properties: [
+        { name: 'osera:source_coordinate', value: String(pkg.source_coordinate || '') },
+        { name: 'osera:provider', value: String(pkg.provider || '') },
+        { name: 'osera:owner', value: String(pkg.owner || '') },
+        { name: 'osera:change_window', value: String(pkg.change_window || '') },
+        { name: 'osera:rollback_target', value: String(pkg.rollback_target || '') },
+      ],
+    });
+    for (const advId of pkg.selected_option_details?.addressed_advisories || []) {
+      vulnerabilities.push({ id: advId, analysis: { state: 'resolved', detail: `Planned upgrade from ${pkg.source_coordinate} to ${pkg.target_coordinate}` }, affects: [{ ref }] });
+    }
+    for (const resId of pkg.residual_advisories || []) {
+      vulnerabilities.push({ id: resId, analysis: { state: 'exploitable', detail: `Residual advisory remaining after upgrading to ${pkg.target_coordinate}` }, affects: [{ ref }] });
+    }
+  }
+  return {
+    bomFormat: 'CycloneDX',
+    specVersion: '1.5',
+    version: 1,
+    metadata: { properties: [{ name: 'osera:plan_baseline_hash', value: String(changePackage?.baseline_hashes?.plan_baseline_hash || '') }] },
+    components,
+    vulnerabilities,
+  };
+}
+
 export function exportOwnerChangePackage(rankedResult, portfolioPlan) {
   const byId = Object.fromEntries((rankedResult?.opportunities || []).map(o => [o.opportunity_id, o]));
-  return {
+  const result = {
     schema_version: 'osera-owner-change-package/v1',
+    baseline_hashes: portfolioPlan?.baseline_hashes || rankedResult?.baseline_hashes || {},
     portfolio_metrics: portfolioPlan.portfolio_metrics,
     change_packages: (portfolioPlan.incremental_actions || []).map(item => {
       const opp = byId[item.opportunity_id] || {};
@@ -464,4 +740,10 @@ export function exportOwnerChangePackage(rankedResult, portfolioPlan) {
       };
     }),
   };
+  result.exports = {
+    markdown: exportOwnerChangePackageMarkdown(result),
+    csv: exportOwnerChangePackageCsv(result),
+    cyclonedx_vex: exportOwnerChangePackageCycloneDx(result),
+  };
+  return result;
 }
