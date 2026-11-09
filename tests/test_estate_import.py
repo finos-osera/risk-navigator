@@ -13,11 +13,17 @@ from build_dataset import build_dataset  # noqa: E402
 from estate_import import (  # noqa: E402
     COMPANY_OVERLAY_SCHEMA_VERSION,
     ESTATE_CONTRACT_SCHEMA_VERSION,
+    PUBLIC_EXPORT_LIBRARY_ALLOWED_FIELDS,
+    PUBLIC_EXPORT_SCHEMA_VERSION,
     SCOPE_DATASET_SCHEMA_VERSION,
     apply_company_overlay,
+    evaluate_estate_view,
     generate_remediation_recipes,
     import_estate_sources,
+    merge_estate_observations,
+    parse_cyclonedx_document,
     parse_purl_rich,
+    parse_spdx_document,
     sanitize_for_public_export,
 )
 from extract_org import extract_from_estate  # noqa: E402
@@ -432,16 +438,426 @@ def test_company_overlay_modifies_filtering_and_prioritization_without_disclosin
     # Verify public export sanitization strips all private company overlay and internal inventory fields
     sanitized = sanitize_for_public_export(overlaid)
     serialized = json.dumps(sanitized)
-    assert "company_overlay" not in serialized
-    assert "overlay_priority" not in serialized
-    assert "clearing-eng@acme.internal" not in serialized
-    assert "CC-9010" not in serialized
-    assert "eks-prod-01" not in serialized
+
+    # Caller's internal dataset must remain intact in memory
+    assert len(overlaid["consumer_projects"]) == 4
+    assert any(p["id"] == "github|acme|payments-engine|main" for p in overlaid["consumer_projects"])
+
+    # Public export contract schema & top-level exclusions
+    assert sanitized["schema_version"] == PUBLIC_EXPORT_SCHEMA_VERSION
+    assert sanitized["meta"]["public_export_schema_version"] == PUBLIC_EXPORT_SCHEMA_VERSION
+    assert sanitized["consumer_summary"]["total_consumer_projects"] == 4
+    assert sanitized["consumer_summary"]["private_inventory_redacted"] is True
+    assert "consumer_projects" not in sanitized
+    assert "applications" not in sanitized
+    assert "application_versions" not in sanitized
+    assert "builds" not in sanitized
+    assert "deployments" not in sanitized
     assert "unmapped_records" not in sanitized
-    for proj in sanitized["consumer_projects"]:
-        assert proj["department"] == "General"
-        assert "builds" not in proj
-        assert "deployments" not in proj
+
+    # Full serialized payload must not contain any internal application names, repo refs, asset IDs,
+    # internal consumer ID lists, internal corporate emails/cost-centers, or internal repo URLs
+    forbidden_tokens = [
+        "company_overlay",
+        "overlay_priority",
+        "overlay_evaluation",
+        "clearing-eng@acme.internal",
+        "CC-9010",
+        "eks-prod-01",
+        "github|acme|payments-engine|main",
+        "github|acme|settlement-worker|main",
+        "github|acme|legacy-batch-ledger|main",
+        "github|acme|treasury-portal|main",
+        "github/acme/payments-engine",
+        "github/acme/settlement-worker",
+        "payments-engine",
+        "settlement-worker",
+        "legacy-batch-ledger",
+        "treasury-portal",
+        "ACME_PAYMENTS_ENGINE",
+        "EON-90010",
+        "SBOM-1",
+        "consumer_project_ids",
+        "direct_consumer_project_ids",
+        "unknown_consumer_project_ids",
+        "consumer_app_ids",
+        "nexus.corp.acme.internal",
+        "2.13.3-acme-internal-1",
+    ]
+    for token in forbidden_tokens:
+        assert token not in serialized, f"Leaked private token in serialized public export: {token}"
+
+    allowed_lib_keys = set(PUBLIC_EXPORT_LIBRARY_ALLOWED_FIELDS)
+    for lib in sanitized["libraries"]:
+        assert set(lib.keys()).issubset(allowed_lib_keys)
+        assert lib["total_consumer_count"] >= 1
+        for dep_path in lib.get("dependency_paths") or []:
+            assert dep_path[0] == "<redacted-application>"
+            assert all("payments-engine" not in step and "settlement-worker" not in step for step in dep_path)
+
+    # Also verify sanitize_for_public_export on raw estate contract (where dependency_paths are populated)
+    raw_contract = import_estate_sources(_fixture_paths(), scope="acme-estate")
+    sanitized_contract = sanitize_for_public_export(raw_contract)
+    serialized_contract = json.dumps(sanitized_contract)
+    for token in forbidden_tokens:
+        assert token not in serialized_contract, f"Leaked private token in contract public export: {token}"
+    jackson_pub = next(
+        lib for lib in sanitized_contract["libraries"]
+        if lib["proj"] == "jackson-databind" and not lib["is_repackaged"]
+    )
+    assert jackson_pub["dependency_paths"] == [
+        [
+            "<redacted-application>",
+            "maven|org.springframework|spring-web|5.3.20",
+            "maven|com.fasterxml.jackson.core|jackson-databind|2.13.3",
+        ]
+    ]
+    repackaged_pub = next(
+        lib for lib in sanitized_contract["libraries"]
+        if lib["proj"] == "jackson-databind" and lib["is_repackaged"]
+    )
+    assert repackaged_pub["release"] == "2.13.3"
+    assert repackaged_pub["repackaged_internal_coordinates_redacted"] is True
+    assert "repository_url" not in repackaged_pub["qualifiers"]
+
+
+def test_two_versions_simultaneously_deployed_in_production_and_view_semantics() -> None:
+    """Two versions (1.0.0 and 2.0.0) of the same application simultaneously active in production coexist cleanly."""
+
+    cdx_v1 = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "serialNumber": "urn:uuid:aaaa1111-0000-0000-0000-000000000001",
+        "version": 1,
+        "metadata": {
+            # Imported LATER than v2.0.0 to prove "latest" uses semantic version + active prod, not observed_at
+            "timestamp": "2026-10-28T18:00:00Z",
+            "properties": [
+                {"name": "osera:build_id", "value": "build-v100"},
+                {"name": "osera:deployment_id", "value": "deploy-prod-us-v1"},
+                {"name": "osera:environment", "value": "production"},
+                {"name": "osera:region", "value": "us-east-1"},
+                {"name": "osera:deployed_at", "value": "2026-10-15T10:00:00Z"},
+            ],
+            "component": {
+                "type": "application",
+                "bom-ref": "app-root",
+                "group": "acme",
+                "name": "order-router",
+                "version": "1.0.0",
+                "externalReferences": [{"type": "vcs", "url": "https://github.com/acme/order-router.git"}],
+            },
+        },
+        "components": [
+            {
+                "type": "library",
+                "bom-ref": "pkg:maven/org.springframework/spring-web@5.3.20",
+                "purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+            },
+            {
+                "type": "library",
+                "bom-ref": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+                "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+            },
+        ],
+        "dependencies": [
+            {
+                "ref": "app-root",
+                "dependsOn": [
+                    "pkg:maven/org.springframework/spring-web@5.3.20",
+                    "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+                ],
+            }
+        ],
+    }
+
+    cdx_v2 = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "serialNumber": "urn:uuid:aaaa1111-0000-0000-0000-000000000002",
+        "version": 1,
+        "metadata": {
+            "timestamp": "2026-10-22T12:00:00Z",
+            "properties": [
+                {"name": "osera:build_id", "value": "build-v200"},
+                {"name": "osera:deployment_id", "value": "deploy-prod-eu-v2"},
+                {"name": "osera:environment", "value": "production"},
+                {"name": "osera:region", "value": "eu-west-1"},
+                {"name": "osera:deployed_at", "value": "2026-10-22T12:00:00Z"},
+            ],
+            "component": {
+                "type": "application",
+                "bom-ref": "app-root",
+                "group": "acme",
+                "name": "order-router",
+                "version": "2.0.0",
+                "externalReferences": [{"type": "vcs", "url": "https://github.com/acme/order-router.git"}],
+            },
+        },
+        "components": [
+            {
+                "type": "library",
+                "bom-ref": "pkg:maven/org.springframework/spring-web@5.3.20",
+                "purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+            },
+            {
+                "type": "library",
+                "bom-ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.15.0",
+                "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.15.0",
+            },
+        ],
+        "dependencies": [
+            {
+                "ref": "app-root",
+                "dependsOn": [
+                    "pkg:maven/org.springframework/spring-web@5.3.20",
+                    "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.15.0",
+                ],
+            }
+        ],
+    }
+
+    # Import v2 first and v1 second (so v1 is last in list AND has a newer observed_at timestamp)
+    contract = merge_estate_observations([parse_cyclonedx_document(cdx_v2), parse_cyclonedx_document(cdx_v1)])
+
+    assert len(contract["applications"]) == 1
+    app = contract["applications"][0]
+    assert app["application_id"] == "github|acme|order-router|main"
+    assert app["release"] == "2.0.0"
+    assert app["latest_version"] == "2.0.0"
+    assert app["latest_production_version"] == "2.0.0"
+    assert app["active_production_versions"] == ["1.0.0", "2.0.0"]
+
+    av_by_id = {av["application_version_id"]: av for av in app["application_versions"]}
+    assert set(av_by_id.keys()) == {
+        "github|acme|order-router|main@1.0.0",
+        "github|acme|order-router|main@2.0.0",
+    }
+    assert av_by_id["github|acme|order-router|main@1.0.0"]["active_production"] is True
+    assert av_by_id["github|acme|order-router|main@2.0.0"]["active_production"] is True
+
+    # View 1: all_active_production evaluates both 1.0.0 and 2.0.0
+    all_prod_view = evaluate_estate_view(contract, "all_active_production")
+    assert all_prod_view["evaluated_application_count"] == 1
+    assert all_prod_view["evaluated_application_version_count"] == 2
+    assert all_prod_view["evaluated_deployment_count"] == 2
+    prod_comps = {c["library_id"]: c for c in all_prod_view["components"]}
+
+    # spring-web is in both 1.0.0 and 2.0.0 -> 1 logical app, 2 active app versions, 2 active deployments
+    spring = prod_comps["maven|org.springframework|spring-web|5.3.20"]
+    assert spring["affected_application_count"] == 1
+    assert spring["affected_application_version_count"] == 2
+    assert spring["affected_deployment_count"] == 2
+
+    # log4j-core is only in 1.0.0, which is still active in US production -> must remain visible!
+    log4j = prod_comps["maven|org.apache.logging.log4j|log4j-core|2.14.1"]
+    assert log4j["affected_application_count"] == 1
+    assert log4j["affected_application_version_count"] == 1
+    assert log4j["consumer_application_version_ids"] == ["github|acme|order-router|main@1.0.0"]
+
+    # View 2: latest_production_version evaluates only 2.0.0
+    latest_prod_view = evaluate_estate_view(contract, "latest_production_version")
+    assert latest_prod_view["evaluated_application_count"] == 1
+    assert latest_prod_view["evaluated_application_version_count"] == 1
+    latest_comps = {c["library_id"]: c for c in latest_prod_view["components"]}
+    assert "maven|org.apache.logging.log4j|log4j-core|2.14.1" not in latest_comps
+    assert latest_comps["maven|org.springframework|spring-web|5.3.20"]["affected_application_version_count"] == 1
+    assert latest_comps["maven|com.fasterxml.jackson.core|jackson-databind|2.15.0"]["affected_application_count"] == 1
+
+
+def test_historical_or_superseded_build_is_excluded_from_active_components() -> None:
+    """Obsolete/retired builds and builds superseded on the same deployment_id do not inflate active component counts."""
+
+    active_prod_doc = parse_cyclonedx_document(
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "metadata": {
+                "timestamp": "2026-10-20T10:00:00Z",
+                "properties": [
+                    {"name": "osera:build_id", "value": "build-120"},
+                    {"name": "osera:deployment_id", "value": "deploy-prod-primary"},
+                    {"name": "osera:environment", "value": "production"},
+                    {"name": "osera:deployed_at", "value": "2026-10-20T10:00:00Z"},
+                ],
+                "component": {"type": "application", "bom-ref": "root", "group": "acme", "name": "ledger-core", "version": "1.2.0"},
+            },
+            "components": [
+                {"type": "library", "bom-ref": "spring", "purl": "pkg:maven/org.springframework/spring-web@5.3.32"}
+            ],
+            "dependencies": [{"ref": "root", "dependsOn": ["spring"]}],
+        }
+    )
+
+    # Historical build 0.9.0 imported with a NEWER observed_at timestamp but status=historical / active=false
+    historical_doc = parse_cyclonedx_document(
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "metadata": {
+                "timestamp": "2026-10-29T23:00:00Z",
+                "properties": [
+                    {"name": "osera:build_id", "value": "build-090-retired"},
+                    {"name": "osera:deployment_id", "value": "deploy-archive-090"},
+                    {"name": "osera:environment", "value": "production"},
+                    {"name": "osera:status", "value": "historical"},
+                    {"name": "osera:active", "value": "false"},
+                ],
+                "component": {"type": "application", "bom-ref": "root", "group": "acme", "name": "ledger-core", "version": "0.9.0"},
+            },
+            "components": [
+                {"type": "library", "bom-ref": "cc", "purl": "pkg:maven/commons-collections/commons-collections@3.2.1"}
+            ],
+            "dependencies": [{"ref": "root", "dependsOn": ["cc"]}],
+        }
+    )
+
+    # Older build 1.1.0 that was previously deployed to the SAME deployment_id (deploy-prod-primary) at an earlier deployed_at
+    superseded_doc = parse_cyclonedx_document(
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "metadata": {
+                "timestamp": "2026-10-10T10:00:00Z",
+                "properties": [
+                    {"name": "osera:build_id", "value": "build-110-old"},
+                    {"name": "osera:deployment_id", "value": "deploy-prod-primary"},
+                    {"name": "osera:environment", "value": "production"},
+                    {"name": "osera:deployed_at", "value": "2026-10-10T10:00:00Z"},
+                ],
+                "component": {"type": "application", "bom-ref": "root", "group": "acme", "name": "ledger-core", "version": "1.1.0"},
+            },
+            "components": [
+                {"type": "library", "bom-ref": "yaml", "purl": "pkg:maven/org.yaml/snakeyaml@1.30"}
+            ],
+            "dependencies": [{"ref": "root", "dependsOn": ["yaml"]}],
+        }
+    )
+
+    contract = merge_estate_observations([active_prod_doc, historical_doc, superseded_doc])
+    app = contract["applications"][0]
+
+    assert app["release"] == "1.2.0"
+    assert app["active_versions"] == ["1.2.0"]
+    assert app["active_builds"] == ["build-120"]
+    assert contract["completeness"]["historical_builds_excluded"] == 2
+
+    active_lids = {c["library_id"] for c in contract["components"]}
+    assert active_lids == {"maven|org.springframework|spring-web|5.3.32"}
+    assert "maven|commons-collections|commons-collections|3.2.1" not in active_lids
+    assert "maven|org.yaml|snakeyaml|1.30" not in active_lids
+
+    # Historical components remain auditable in historical_components and all_imported view
+    hist_lids = {c["library_id"] for c in app["historical_components"]}
+    assert hist_lids == {
+        "maven|commons-collections|commons-collections|3.2.1",
+        "maven|org.yaml|snakeyaml|1.30",
+    }
+    all_imported_view = evaluate_estate_view(contract, "all_imported")
+    assert len(all_imported_view["components"]) == 3
+
+
+def test_equivalent_spdx_and_cyclonedx_inputs_produce_identical_identities_and_counts() -> None:
+    """Equivalent CycloneDX and SPDX inputs without explicit_app_id produce identical application/version/deployment identities and counts."""
+
+    cdx_docs = [
+        parse_cyclonedx_document(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.5",
+                "metadata": {
+                    "timestamp": "2026-10-20T10:00:00Z",
+                    "properties": [
+                        {"name": "osera:build_id", "value": f"build-{ver}"},
+                        {"name": "osera:deployment_id", "value": f"deploy-prod-{region}"},
+                        {"name": "osera:environment", "value": "production"},
+                        {"name": "osera:region", "value": region},
+                    ],
+                    "component": {
+                        "type": "application",
+                        "bom-ref": "app-root",
+                        "group": "acme",
+                        "name": "settlement-worker",
+                        "version": ver,
+                        "externalReferences": [{"type": "vcs", "url": "https://github.com/acme/settlement-worker.git"}],
+                    },
+                },
+                "components": [
+                    {
+                        "type": "library",
+                        "bom-ref": "spring",
+                        "purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+                    }
+                ],
+                "dependencies": [{"ref": "app-root", "dependsOn": ["spring"]}],
+            }
+        )
+        for ver, region in [("1.0.0", "us-east-1"), ("2.0.0", "eu-west-1")]
+    ]
+
+    spdx_docs = [
+        parse_spdx_document(
+            {
+                "spdxVersion": "SPDX-2.3",
+                "SPDXID": "SPDXRef-DOCUMENT",
+                "name": "settlement-worker",
+                "creationInfo": {
+                    "created": "2026-10-20T10:00:00Z",
+                    "comment": f"build_id=build-{ver};deployment_id=deploy-prod-{region};environment=production;region={region}",
+                },
+                "packages": [
+                    {
+                        "SPDXID": "SPDXRef-App",
+                        "name": "acme/settlement-worker",
+                        "versionInfo": ver,
+                        "primaryPackagePurpose": "APPLICATION",
+                        "DownloadLocation": "https://github.com/acme/settlement-worker.git",
+                    },
+                    {
+                        "SPDXID": "SPDXRef-spring",
+                        "name": "org.springframework:spring-web",
+                        "versionInfo": "5.3.20",
+                        "externalRefs": [
+                            {
+                                "referenceCategory": "PACKAGE-MANAGER",
+                                "referenceType": "purl",
+                                "referenceLocator": "pkg:maven/org.springframework/spring-web@5.3.20",
+                            }
+                        ],
+                    },
+                ],
+                "relationships": [
+                    {"spdxElementId": "SPDXRef-DOCUMENT", "relationshipType": "DESCRIBES", "relatedSpdxElement": "SPDXRef-App"},
+                    {"spdxElementId": "SPDXRef-App", "relationshipType": "DEPENDS_ON", "relatedSpdxElement": "SPDXRef-spring"},
+                ],
+            }
+        )
+        for ver, region in [("1.0.0", "us-east-1"), ("2.0.0", "eu-west-1")]
+    ]
+
+    cdx_contract = merge_estate_observations(cdx_docs)
+    spdx_contract = merge_estate_observations(spdx_docs)
+
+    assert [a["application_id"] for a in cdx_contract["applications"]] == ["github|acme|settlement-worker|main"]
+    assert [a["application_id"] for a in spdx_contract["applications"]] == ["github|acme|settlement-worker|main"]
+
+    cdx_app = cdx_contract["applications"][0]
+    spdx_app = spdx_contract["applications"][0]
+    assert cdx_app["name"] == spdx_app["name"] == "settlement-worker"
+    assert cdx_app["project_ref"] == spdx_app["project_ref"] == "github/acme/settlement-worker"
+    assert cdx_app["release"] == spdx_app["release"] == "2.0.0"
+    assert cdx_app["active_production_versions"] == spdx_app["active_production_versions"] == ["1.0.0", "2.0.0"]
+    assert [av["application_version_id"] for av in cdx_app["application_versions"]] == [
+        av["application_version_id"] for av in spdx_app["application_versions"]
+    ]
+    assert cdx_app["deployments"] == spdx_app["deployments"]
+
+    cdx_comp = cdx_contract["components"][0]
+    spdx_comp = spdx_contract["components"][0]
+    assert cdx_comp["library_id"] == spdx_comp["library_id"] == "maven|org.springframework|spring-web|5.3.20"
+    assert cdx_comp["total_consumer_count"] == spdx_comp["total_consumer_count"] == 1
+    assert cdx_comp["affected_application_version_count"] == spdx_comp["affected_application_version_count"] == 2
+    assert cdx_comp["affected_deployment_count"] == spdx_comp["affected_deployment_count"] == 2
 
 
 import tempfile  # noqa: E402
@@ -463,7 +879,17 @@ class EstateImportUnitTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             test_company_overlay_modifies_filtering_and_prioritization_without_disclosing_private_inventory(Path(tmp))
 
+    def test_two_versions_simultaneously_in_prod(self) -> None:
+        test_two_versions_simultaneously_deployed_in_production_and_view_semantics()
+
+    def test_historical_build_exclusion(self) -> None:
+        test_historical_or_superseded_build_is_excluded_from_active_components()
+
+    def test_spdx_cyclonedx_equivalence(self) -> None:
+        test_equivalent_spdx_and_cyclonedx_inputs_produce_identical_identities_and_counts()
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

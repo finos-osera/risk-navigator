@@ -37,6 +37,39 @@ from common import canonical_package_name, canonical_release, make_library_id, p
 ESTATE_CONTRACT_SCHEMA_VERSION = "osera-estate-contract/v1"
 SCOPE_DATASET_SCHEMA_VERSION = "risk-navigator-scope/v1"
 COMPANY_OVERLAY_SCHEMA_VERSION = "osera-company-overlay/v1"
+PUBLIC_EXPORT_SCHEMA_VERSION = "osera-public-demand-export/v1"
+
+ESTATE_VIEW_MODES = (
+    "all_active_deployments",
+    "all_active_production",
+    "latest_production_version",
+    "all_imported",
+)
+INACTIVE_LIFECYCLE_STATES = {
+    "historical",
+    "retired",
+    "inactive",
+    "obsolete",
+    "superseded",
+    "decommissioned",
+    "archived",
+    "undeployed",
+}
+PRODUCTION_ENVIRONMENTS = {"production", "prod"}
+ACTIVE_RUNTIME_ENVIRONMENTS = {
+    "production",
+    "prod",
+    "dr",
+    "staging",
+    "uat",
+    "preprod",
+    "qa",
+    "test",
+    "dev",
+    "development",
+    "sandbox",
+}
+SYMBOLIC_VERSION_TOKENS = {"main", "master", "head", "trunk", "latest", "0.0.0", "unspecified", "unknown", ""}
 
 REPACKAGED_VERSION_RE = re.compile(
     r"(?i)(?:[.+_-])(internal|corp|repackaged|vendor|patched|hotfix|custom|redhat|rhel\d*|el\d+|amzn\d+|deb\d+|ubuntu\d+|alpine\d*|fips)(?:$|[.+_-])"
@@ -490,6 +523,54 @@ def _extract_properties_dict(props: Any) -> Dict[str, str]:
     return out
 
 
+def _version_sort_key(version: Any) -> Tuple[int, Tuple[Tuple[int, Any], ...], str]:
+    """Return a deterministic semantic version comparison key (never ordering by SBOM import timestamp)."""
+
+    raw = str(version or "").strip()
+    lower = raw.lower()
+    if lower in SYMBOLIC_VERSION_TOKENS:
+        return (0, (), lower)
+    cleaned = re.sub(r"^[vV](?=\d)", "", raw)
+    parts: List[Tuple[int, Any]] = []
+    for token in re.split(r"[._+-]", cleaned):
+        if not token:
+            continue
+        if token.isdigit():
+            parts.append((1, int(token)))
+        else:
+            m = re.match(r"^(\d+)([A-Za-z].*)$", token)
+            if m:
+                parts.append((1, int(m.group(1))))
+                parts.append((0, m.group(2).lower()))
+            else:
+                parts.append((0, token.lower()))
+    return (1, tuple(parts), lower)
+
+
+def _parse_bool_flag(raw: Any, default: Optional[bool] = None) -> Optional[bool]:
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, (int, float)):
+        return bool(raw)
+    if isinstance(raw, str):
+        val = raw.strip().lower()
+        if val in {"true", "1", "yes", "active", "enabled", "deployed"}:
+            return True
+        if val in {"false", "0", "no", "inactive", "disabled", "retired", "historical", "obsolete", "superseded", "undeployed"}:
+            return False
+    return default
+
+
+def _is_active_lifecycle(status: str, environment: str, explicit_active: Optional[bool] = None) -> bool:
+    st = str(status or "").strip().lower()
+    env = str(environment or "").strip().lower()
+    if st in INACTIVE_LIFECYCLE_STATES or env in INACTIVE_LIFECYCLE_STATES:
+        return False
+    if explicit_active is not None:
+        return explicit_active
+    return True
+
+
 def _derive_application_identity(
     *,
     explicit_app_id: str = "",
@@ -502,7 +583,13 @@ def _derive_application_identity(
     eonid: str = "",
     tai_system: str = "",
 ) -> Dict[str, str]:
-    """Derive a canonical application identity independent of build or deployment IDs."""
+    """Derive a canonical logical application identity independent of build version or deployment IDs.
+
+    Invariant:
+    - Logical `application_id` is derived consistently across CycloneDX, SPDX, and inventory inputs
+      without embedding `comp_version` into `application_id`.
+    - Build/version identity (`application_version_id = f"{application_id}@{version}"`) is tracked separately.
+    """
 
     cleaned_stem = re.sub(
         r"(?i)[._-](build|deploy|deployment|prod|production|staging|uat|dev|qa|us-east|eu-west|ap-south|v?\d+(?:\.\d+)*)[A-Za-z0-9._-]*$",
@@ -511,13 +598,17 @@ def _derive_application_identity(
     ).strip("._-") or fallback_stem
 
     project_ref = ""
-    owner = "imported"
-    repo_name = slugify(comp_name or cleaned_stem)
-    if "/" in comp_name and not comp_group:
-        c_parts = [p for p in comp_name.split("/") if p]
-        if len(c_parts) == 2:
-            owner, repo_name = slugify(c_parts[0]), slugify(c_parts[1])
+    owner = slugify(comp_group) if comp_group else "imported"
+    display_name = comp_name.strip() if comp_name else cleaned_stem
+    if "/" in display_name:
+        c_parts = [p for p in display_name.split("/") if p]
+        if len(c_parts) >= 2:
+            if not comp_group:
+                owner = slugify(c_parts[0])
+            display_name = c_parts[-1]
+    repo_name = slugify(display_name or cleaned_stem)
     namespace = "github"
+    track = "main"
 
     if vcs_url:
         cleaned_vcs = vcs_url.removesuffix(".git").strip("/")
@@ -531,36 +622,42 @@ def _derive_application_identity(
             project_ref = cleaned_vcs
 
     if explicit_app_id:
-        app_id = explicit_app_id.strip()
-        if "|" in app_id:
-            parts = app_id.split("|")
+        raw_id = explicit_app_id.strip()
+        if "|" in raw_id:
+            parts = [p.strip() for p in raw_id.split("|") if p.strip()]
             if len(parts) >= 3:
                 namespace, owner, repo_name = parts[0], parts[1], parts[2]
+                if len(parts) >= 4:
+                    track = parts[3]
+                app_id = f"{namespace}|{owner}|{repo_name}|{track}"
+            else:
+                app_id = f"{namespace}|{owner}|{slugify(raw_id)}|{track}"
         else:
-            repo_name = slugify(app_id)
+            repo_name = slugify(raw_id)
             owner = slugify(comp_group) if comp_group else owner
-            app_id = f"{namespace}|{owner}|{repo_name}"
+            app_id = f"{namespace}|{owner}|{repo_name}|{track}"
     else:
         if comp_group and owner == "imported":
             owner = slugify(comp_group)
-        if comp_version and comp_version not in {"0.0.0", "unspecified"}:
-            app_id = f"{namespace}|{owner}|{repo_name}|{comp_version}"
-        else:
-            app_id = f"{namespace}|{owner}|{repo_name}"
+        app_id = f"{namespace}|{owner}|{repo_name}|{track}"
 
     if not project_ref:
         project_ref = f"{namespace}/{owner}/{repo_name}"
+
+    resolved_tai = tai_system.strip() if tai_system else ""
+    if "/" in resolved_tai and resolved_tai == comp_name:
+        resolved_tai = display_name
 
     return {
         "application_id": app_id,
         "namespace": namespace,
         "meta": owner,
         "proj": repo_name,
-        "name": comp_name or repo_name,
+        "name": display_name or repo_name,
         "project_ref": project_ref,
         "department": department or "SBOM Scan",
         "eonid": eonid or "",
-        "tai_system": tai_system or (comp_name or repo_name),
+        "tai_system": resolved_tai or (display_name or repo_name),
     }
 
 
@@ -571,7 +668,7 @@ def parse_cyclonedx_document(
     """Adapt a CycloneDX (1.4-1.6) JSON document into a normalized build/deployment observation."""
 
     metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
-    component = metadata.get("component") if isinstance(metadata.get("component"), dict) else {}
+    component = metadata.get("component") if isinstance(component := metadata.get("component"), dict) else {}
     props = {
         **_extract_properties_dict(metadata.get("properties")),
         **_extract_properties_dict(component.get("properties")),
@@ -580,6 +677,10 @@ def parse_cyclonedx_document(
     observed_at = normalize_iso_timestamp(
         metadata.get("timestamp") or props.get("observed_at") or props.get("timestamp"),
         fallback=now_iso(),
+    )
+    deployed_at = normalize_iso_timestamp(
+        props.get("deployed_at") or props.get("deployment:timestamp") or observed_at,
+        fallback=observed_at,
     )
 
     vcs_url = ""
@@ -590,7 +691,9 @@ def parse_cyclonedx_document(
 
     comp_name = str(component.get("name") or Path(source_path).stem).strip()
     comp_group = str(component.get("group") or props.get("group") or props.get("business_unit") or "").strip()
-    comp_version = str(component.get("version") or props.get("build_version") or "0.0.0").strip()
+    comp_version = normalize_version_text(
+        str(component.get("version") or props.get("build_version") or props.get("version") or "0.0.0").strip()
+    )
     explicit_app_id = str(
         props.get("application_id")
         or props.get("app_id")
@@ -612,11 +715,13 @@ def parse_cyclonedx_document(
         vcs_url=vcs_url,
         comp_group=comp_group,
         comp_name=comp_name,
+        comp_version=comp_version,
         fallback_stem=Path(source_path).stem,
         department=department,
         eonid=eonid,
         tai_system=tai_system,
     )
+    app_version_id = f"{app_identity['application_id']}@{comp_version}"
 
     serial_number = str(payload.get("serialNumber") or "").strip()
     bom_version = str(payload.get("version") or "1").strip()
@@ -640,6 +745,19 @@ def parse_cyclonedx_document(
         or props.get("deployment:id")
         or f"deploy:{app_identity['proj']}:{environment}:{region}:{build_id}"
     ).strip()
+    lifecycle_status = str(
+        props.get("status")
+        or props.get("deployment_status")
+        or props.get("lifecycle_state")
+        or ("historical" if environment in INACTIVE_LIFECYCLE_STATES else "active")
+    ).strip().lower()
+    explicit_active = _parse_bool_flag(
+        props.get("active") if "active" in props else props.get("deployment_active"),
+        default=None,
+    )
+    is_active = _is_active_lifecycle(lifecycle_status, environment, explicit_active)
+    if not is_active and lifecycle_status == "active":
+        lifecycle_status = "inactive"
 
     root_ref = str(component.get("bom-ref") or "").strip()
     raw_components = payload.get("components") if isinstance(payload.get("components"), list) else []
@@ -815,8 +933,12 @@ def parse_cyclonedx_document(
                 "dependency_paths": dep_paths,
                 "observed_at": observed_at,
                 "build_id": build_id,
+                "build_version": comp_version,
+                "application_version_id": app_version_id,
                 "deployment_id": deployment_id,
                 "environment": environment,
+                "status": lifecycle_status,
+                "active": is_active,
                 "supplier": supplier_str,
                 "identity_status": identity_status,
                 "is_repackaged": is_repackaged,
@@ -831,19 +953,26 @@ def parse_cyclonedx_document(
         "build": {
             "build_id": build_id,
             "version": comp_version,
+            "application_version_id": app_version_id,
             "commit_sha": commit_sha,
             "bom_serial_number": serial_number,
             "source_format": "cyclonedx",
             "source_path": str(source_path),
             "graph_available": graph_available,
             "observed_at": observed_at,
+            "status": lifecycle_status,
+            "active": is_active,
         },
         "deployment": {
             "deployment_id": deployment_id,
             "environment": environment,
             "region": region,
             "build_id": build_id,
-            "deployed_at": observed_at,
+            "version": comp_version,
+            "application_version_id": app_version_id,
+            "deployed_at": deployed_at,
+            "status": lifecycle_status,
+            "active": is_active,
         },
         "graph_available": graph_available,
         "components_total_observed": len(components),
@@ -894,12 +1023,12 @@ def parse_spdx_document(
     root_pkg = pkg_by_spdx_id.get(root_spdx_id, {})
 
     app_name = str(root_pkg.get("name") or doc_name).strip()
-    app_version = str(root_pkg.get("versionInfo") or "0.0.0").strip()
+    app_version = normalize_version_text(str(root_pkg.get("versionInfo") or "0.0.0").strip())
     vcs_url = str(root_pkg.get("downloadLocation") or root_pkg.get("DownloadLocation") or "").strip()
     if vcs_url in {"NOASSERTION", "NONE"}:
         vcs_url = ""
 
-    # Check annotations or comment for custom metadata (application_id, environment, build_id)
+    # Check annotations or comment for custom metadata (application_id, environment, build_id, status, active)
     meta_kv: Dict[str, str] = {}
     for comment_src in (payload.get("comment"), creation_info.get("comment"), root_pkg.get("comment")):
         if isinstance(comment_src, str) and comment_src.strip():
@@ -908,10 +1037,11 @@ def parse_spdx_document(
                     k, v = token.split("=", 1)
                     meta_kv[k.strip().lower()] = v.strip()
 
+    comp_group = str(root_pkg.get("group") or meta_kv.get("group") or meta_kv.get("business_unit") or "").strip()
     app_identity = _derive_application_identity(
         explicit_app_id=meta_kv.get("application_id") or meta_kv.get("app_id") or "",
         vcs_url=vcs_url,
-        comp_group=meta_kv.get("business_unit", ""),
+        comp_group=comp_group,
         comp_name=app_name,
         comp_version=app_version,
         fallback_stem=Path(source_path).stem,
@@ -919,11 +1049,26 @@ def parse_spdx_document(
         eonid=meta_kv.get("eonid", ""),
         tai_system=meta_kv.get("tai_system", app_name),
     )
+    app_version_id = f"{app_identity['application_id']}@{app_version}"
 
     build_id = meta_kv.get("build_id") or (doc_namespace if doc_namespace else f"spdx:{app_identity['proj']}:{app_version}")
     environment = (meta_kv.get("environment") or meta_kv.get("env") or "build").lower()
     region = meta_kv.get("region") or "global"
     deployment_id = meta_kv.get("deployment_id") or f"deploy:{app_identity['proj']}:{environment}:{region}:{build_id}"
+    deployed_at = normalize_iso_timestamp(meta_kv.get("deployed_at") or observed_at, fallback=observed_at)
+    lifecycle_status = str(
+        meta_kv.get("status")
+        or meta_kv.get("deployment_status")
+        or meta_kv.get("lifecycle_state")
+        or ("historical" if environment in INACTIVE_LIFECYCLE_STATES else "active")
+    ).strip().lower()
+    explicit_active = _parse_bool_flag(
+        meta_kv.get("active") if "active" in meta_kv else meta_kv.get("deployment_active"),
+        default=None,
+    )
+    is_active = _is_active_lifecycle(lifecycle_status, environment, explicit_active)
+    if not is_active and lifecycle_status == "active":
+        lifecycle_status = "inactive"
 
     # Build adjacency graph from SPDX relationships
     adjacency: Dict[str, List[str]] = {}
@@ -1101,8 +1246,12 @@ def parse_spdx_document(
                 "dependency_paths": dep_paths,
                 "observed_at": observed_at,
                 "build_id": build_id,
+                "build_version": app_version,
+                "application_version_id": app_version_id,
                 "deployment_id": deployment_id,
                 "environment": environment,
+                "status": lifecycle_status,
+                "active": is_active,
                 "supplier": supplier,
                 "identity_status": identity_status,
                 "is_repackaged": is_repackaged,
@@ -1117,19 +1266,26 @@ def parse_spdx_document(
         "build": {
             "build_id": build_id,
             "version": app_version,
+            "application_version_id": app_version_id,
             "commit_sha": meta_kv.get("commit_sha", ""),
             "bom_serial_number": doc_namespace,
             "source_format": "spdx",
             "source_path": str(source_path),
             "graph_available": graph_available,
             "observed_at": observed_at,
+            "status": lifecycle_status,
+            "active": is_active,
         },
         "deployment": {
             "deployment_id": deployment_id,
             "environment": environment,
             "region": region,
             "build_id": build_id,
-            "deployed_at": observed_at,
+            "version": app_version,
+            "application_version_id": app_version_id,
+            "deployed_at": deployed_at,
+            "status": lifecycle_status,
+            "active": is_active,
         },
         "graph_available": graph_available,
         "components_total_observed": len(component_packages),
@@ -1152,6 +1308,7 @@ def parse_company_inventory_feed(
                     continue
                 app_id = str(app.get("application_id") or app.get("app_id") or app.get("id") or "").strip()
                 app_name = str(app.get("name") or app_id or "application").strip()
+                app_group = str(app.get("group") or app.get("owner") or "").strip()
                 dept = str(app.get("department") or app.get("business_unit") or "Enterprise Estate").strip()
                 eonid = str(app.get("eonid") or app.get("asset_id") or "").strip()
                 tai = str(app.get("tai_system") or app_name).strip()
@@ -1165,6 +1322,7 @@ def parse_company_inventory_feed(
                     {
                         "application_id": app_id,
                         "application_name": app_name,
+                        "application_group": app_group,
                         "department": dept,
                         "eonid": eonid,
                         "tai_system": tai,
@@ -1173,7 +1331,10 @@ def parse_company_inventory_feed(
                         "deployment_id": str(primary_deploy.get("deployment_id") or app.get("deployment_id") or f"deploy:{app_name}:prod"),
                         "environment": str(primary_deploy.get("environment") or app.get("environment") or "production"),
                         "region": str(primary_deploy.get("region") or app.get("region") or "global"),
+                        "status": str(primary_deploy.get("status") or app.get("status") or "active"),
+                        "active": primary_deploy.get("active") if "active" in primary_deploy else app.get("active"),
                         "observed_at": str(app.get("observed_at") or payload.get("observed_at") or now_iso()),
+                        "deployed_at": str(primary_deploy.get("deployed_at") or app.get("deployed_at") or app.get("observed_at") or payload.get("observed_at") or now_iso()),
                         "graph_available": bool(app.get("graph_available") or app.get("has_dependency_graph", False)),
                         "all_builds": [b for b in builds if isinstance(b, dict)],
                         "all_deployments": [d for d in deployments if isinstance(d, dict)],
@@ -1210,6 +1371,7 @@ def parse_company_inventory_feed(
                 {
                     "application_id": app_id,
                     "application_name": str(rec.get("application_name") or rec.get("application") or app_id),
+                    "application_group": str(rec.get("application_group") or rec.get("group") or rec.get("owner") or ""),
                     "department": str(rec.get("department") or rec.get("business_unit") or "Enterprise Estate"),
                     "eonid": str(rec.get("eonid") or ""),
                     "tai_system": str(rec.get("tai_system") or app_id),
@@ -1218,7 +1380,10 @@ def parse_company_inventory_feed(
                     "deployment_id": deploy_id,
                     "environment": str(rec.get("environment") or "production"),
                     "region": str(rec.get("region") or "global"),
+                    "status": str(rec.get("status") or rec.get("deployment_status") or "active"),
+                    "active": rec.get("active") if "active" in rec else rec.get("deployment_active"),
                     "observed_at": str(rec.get("observed_at") or now_iso()),
+                    "deployed_at": str(rec.get("deployed_at") or rec.get("observed_at") or now_iso()),
                     "graph_available": bool(rec.get("graph_available", False)),
                     "components": [],
                 },
@@ -1228,7 +1393,7 @@ def parse_company_inventory_feed(
     for g in grouped.values():
         app_identity = _derive_application_identity(
             explicit_app_id=str(g.get("application_id") or ""),
-            comp_group=str(g.get("department") or ""),
+            comp_group=str(g.get("application_group") or g.get("department") or ""),
             comp_name=str(g.get("application_name") or ""),
             fallback_stem=Path(source_path).stem,
             department=str(g.get("department") or "Enterprise Estate"),
@@ -1236,15 +1401,87 @@ def parse_company_inventory_feed(
             tai_system=str(g.get("tai_system") or ""),
         )
         observed_at = normalize_iso_timestamp(g.get("observed_at"), fallback=now_iso())
+        deployed_at = normalize_iso_timestamp(g.get("deployed_at") or observed_at, fallback=observed_at)
         build_id = str(g.get("build_id") or f"build:{app_identity['proj']}:1").strip()
+        build_version = normalize_version_text(str(g.get("build_version") or "1.0.0").strip())
+        app_version_id = f"{app_identity['application_id']}@{build_version}"
         deploy_id = str(g.get("deployment_id") or f"deploy:{app_identity['proj']}:prod").strip()
         environment = str(g.get("environment") or "production").strip().lower()
         region = str(g.get("region") or "global").strip()
+        lifecycle_status = str(
+            g.get("status") or ("historical" if environment in INACTIVE_LIFECYCLE_STATES else "active")
+        ).strip().lower()
+        explicit_active = _parse_bool_flag(g.get("active"), default=None)
+        is_active = _is_active_lifecycle(lifecycle_status, environment, explicit_active)
+        if not is_active and lifecycle_status == "active":
+            lifecycle_status = "inactive"
         comps = g.get("components") or []
 
         mapped_observations: List[Dict[str, Any]] = []
         unmapped_records: List[Dict[str, Any]] = []
         any_explicit_graph = bool(g.get("graph_available", False))
+
+        extra_builds = []
+        version_by_build_id: Dict[str, str] = {}
+        active_by_build_id: Dict[str, bool] = {}
+        for b in (g.get("all_builds") or [{"build_id": build_id, "version": build_version}]):
+            b_id = str(b.get("build_id") or build_id).strip()
+            b_ver = normalize_version_text(str(b.get("version") or build_version or "1.0.0").strip())
+            b_status = str(b.get("status") or lifecycle_status).strip().lower()
+            b_active = _is_active_lifecycle(b_status, environment, _parse_bool_flag(b.get("active"), default=is_active))
+            if not b_active and b_status == "active":
+                b_status = "inactive"
+            version_by_build_id[b_id] = b_ver
+            active_by_build_id[b_id] = b_active
+            extra_builds.append(
+                {
+                    "build_id": b_id,
+                    "version": b_ver,
+                    "application_version_id": f"{app_identity['application_id']}@{b_ver}",
+                    "commit_sha": str(b.get("commit_sha") or ""),
+                    "bom_serial_number": str(b.get("bom_serial_number") or ""),
+                    "source_format": "company_inventory",
+                    "source_path": str(source_path),
+                    "graph_available": any_explicit_graph,
+                    "observed_at": normalize_iso_timestamp(b.get("observed_at"), fallback=observed_at),
+                    "status": b_status,
+                    "active": b_active,
+                }
+            )
+
+        extra_deployments = []
+        active_by_deploy_id: Dict[str, bool] = {}
+        for d in (
+            g.get("all_deployments")
+            or [{"deployment_id": deploy_id, "environment": environment, "region": region, "build_id": build_id}]
+        ):
+            d_id = str(d.get("deployment_id") or deploy_id).strip()
+            d_env = str(d.get("environment") or environment).strip().lower()
+            d_reg = str(d.get("region") or region).strip()
+            d_bid = str(d.get("build_id") or build_id).strip()
+            d_ver = normalize_version_text(str(d.get("version") or version_by_build_id.get(d_bid) or build_version))
+            d_status = str(d.get("status") or ("historical" if d_env in INACTIVE_LIFECYCLE_STATES else lifecycle_status)).strip().lower()
+            d_active = _is_active_lifecycle(
+                d_status,
+                d_env,
+                _parse_bool_flag(d.get("active"), default=active_by_build_id.get(d_bid, is_active)),
+            )
+            if not d_active and d_status == "active":
+                d_status = "inactive"
+            active_by_deploy_id[d_id] = d_active
+            extra_deployments.append(
+                {
+                    "deployment_id": d_id,
+                    "environment": d_env,
+                    "region": d_reg,
+                    "build_id": d_bid,
+                    "version": d_ver,
+                    "application_version_id": f"{app_identity['application_id']}@{d_ver}",
+                    "deployed_at": normalize_iso_timestamp(d.get("deployed_at"), fallback=deployed_at),
+                    "status": d_status,
+                    "active": d_active,
+                }
+            )
 
         for idx, comp in enumerate(comps):
             raw_purl = str(comp.get("purl") or "").strip()
@@ -1358,6 +1595,21 @@ def parse_company_inventory_feed(
             qualifier = classify_scope_qualifier(raw_scope)
             supplier = str(comp.get("supplier") or comp.get("vendor") or "").strip()
             comp_observed = normalize_iso_timestamp(comp.get("observed_at"), fallback=observed_at)
+            comp_bid = str(comp.get("build_id") or build_id).strip()
+            comp_did = str(comp.get("deployment_id") or deploy_id).strip()
+            comp_env = str(comp.get("environment") or environment).strip().lower()
+            comp_bver = normalize_version_text(
+                str(comp.get("build_version") or version_by_build_id.get(comp_bid) or build_version).strip()
+            )
+            comp_status = str(comp.get("status") or lifecycle_status).strip().lower()
+            comp_active = _is_active_lifecycle(
+                comp_status,
+                comp_env,
+                _parse_bool_flag(
+                    comp.get("active"),
+                    default=active_by_deploy_id.get(comp_did, active_by_build_id.get(comp_bid, is_active)),
+                ),
+            )
 
             identity_status, is_repackaged, uncertain_reasons = detect_identity_status(
                 explicit_purl=raw_purl,
@@ -1392,9 +1644,13 @@ def parse_company_inventory_feed(
                     "parent_id": parent_id,
                     "dependency_paths": dep_paths,
                     "observed_at": comp_observed,
-                    "build_id": str(comp.get("build_id") or build_id),
-                    "deployment_id": str(comp.get("deployment_id") or deploy_id),
-                    "environment": str(comp.get("environment") or environment).lower(),
+                    "build_id": comp_bid,
+                    "build_version": comp_bver,
+                    "application_version_id": f"{app_identity['application_id']}@{comp_bver}",
+                    "deployment_id": comp_did,
+                    "environment": comp_env,
+                    "status": comp_status if comp_active else ("inactive" if comp_status == "active" else comp_status),
+                    "active": comp_active,
                     "supplier": supplier,
                     "identity_status": identity_status,
                     "is_repackaged": is_repackaged,
@@ -1402,29 +1658,8 @@ def parse_company_inventory_feed(
                 }
             )
 
-        extra_builds = [
-            {
-                "build_id": str(b.get("build_id") or build_id),
-                "version": str(b.get("version") or g.get("build_version") or "1.0.0"),
-                "commit_sha": str(b.get("commit_sha") or ""),
-                "bom_serial_number": str(b.get("bom_serial_number") or ""),
-                "source_format": "company_inventory",
-                "source_path": str(source_path),
-                "graph_available": any_explicit_graph,
-                "observed_at": normalize_iso_timestamp(b.get("observed_at"), fallback=observed_at),
-            }
-            for b in (g.get("all_builds") or [{"build_id": build_id, "version": g.get("build_version", "1.0.0")}])
-        ]
-        extra_deployments = [
-            {
-                "deployment_id": str(d.get("deployment_id") or deploy_id),
-                "environment": str(d.get("environment") or environment).lower(),
-                "region": str(d.get("region") or region),
-                "build_id": str(d.get("build_id") or build_id),
-                "deployed_at": normalize_iso_timestamp(d.get("deployed_at"), fallback=observed_at),
-            }
-            for d in (g.get("all_deployments") or [{"deployment_id": deploy_id, "environment": environment, "region": region, "build_id": build_id}])
-        ]
+        for b_rec in extra_builds:
+            b_rec["graph_available"] = any_explicit_graph
 
         normalized_docs.append(
             {
@@ -1462,17 +1697,304 @@ def detect_and_parse_estate_source(path: Path) -> List[Dict[str, Any]]:
     return parse_company_inventory_feed(payload, source_path=str(path))
 
 
+def _merge_observation_into_bucket(
+    bucket: Dict[str, Dict[str, Any]],
+    obs: Dict[str, Any],
+) -> None:
+    """Merge a single component observation into a PURL-keyed component bucket."""
+
+    purl_key = obs["purl"]
+    existing = bucket.get(purl_key)
+    raw_purl_val = str(obs.get("raw_purl") or obs["purl"])
+    app_ver_id = str(obs.get("application_version_id") or "")
+    b_ver = str(obs.get("build_version") or "")
+    if not existing:
+        obs_purls = [obs["purl"]]
+        if raw_purl_val not in obs_purls:
+            obs_purls.append(raw_purl_val)
+        bucket[purl_key] = {
+            "library_id": obs["library_id"],
+            "purl": obs["purl"],
+            "raw_purl": raw_purl_val,
+            "observed_purls": obs_purls,
+            "base_purl": obs["base_purl"],
+            "namespace": obs["namespace"],
+            "meta": obs["meta"],
+            "proj": obs["proj"],
+            "release": obs["release"],
+            "qualifiers": dict(obs.get("qualifiers") or {}),
+            "subpath": obs.get("subpath") or "",
+            "digests": list(obs.get("digests") or []),
+            "scopes": [obs["scope"]] if obs.get("scope") else [],
+            "qualifier": obs.get("qualifier") or "runtime",
+            "dependency_classification": obs["dependency_classification"],
+            "parent_ids": [obs["parent_id"]] if obs.get("parent_id") else [],
+            "dependency_paths": list(obs.get("dependency_paths") or []),
+            "first_observed_at": obs["observed_at"],
+            "observed_at": obs["observed_at"],
+            "build_ids": [obs["build_id"]] if obs.get("build_id") else [],
+            "build_versions": [b_ver] if b_ver else [],
+            "application_version_ids": [app_ver_id] if app_ver_id else [],
+            "deployment_ids": [obs["deployment_id"]] if obs.get("deployment_id") else [],
+            "environments": [obs["environment"]] if obs.get("environment") else [],
+            "supplier": obs.get("supplier") or "",
+            "identity_status": obs.get("identity_status") or "exact",
+            "is_repackaged": bool(obs.get("is_repackaged", False)),
+            "uncertain_match_reasons": list(obs.get("uncertain_match_reasons") or []),
+        }
+        return
+
+    prev_cls = existing["dependency_classification"]
+    new_cls = obs["dependency_classification"]
+    if prev_cls == "unknown" and new_cls in {"direct", "transitive"}:
+        existing["dependency_classification"] = new_cls
+        existing["uncertain_match_reasons"] = [
+            r for r in existing["uncertain_match_reasons"] if "classified as 'unknown'" not in r
+        ]
+    elif prev_cls == "transitive" and new_cls == "direct":
+        existing["dependency_classification"] = "direct"
+
+    if raw_purl_val not in existing["observed_purls"]:
+        existing["observed_purls"].append(raw_purl_val)
+    if obs.get("qualifier") == "runtime":
+        existing["qualifier"] = "runtime"
+
+    for d_hash in obs.get("digests") or []:
+        if d_hash not in existing["digests"]:
+            existing["digests"].append(d_hash)
+    for sc in ([obs["scope"]] if obs.get("scope") else []):
+        if sc not in existing["scopes"]:
+            existing["scopes"].append(sc)
+    if obs.get("parent_id") and obs["parent_id"] not in existing["parent_ids"]:
+        existing["parent_ids"].append(obs["parent_id"])
+    for path in obs.get("dependency_paths") or []:
+        if path not in existing["dependency_paths"] and len(existing["dependency_paths"]) < 8:
+            existing["dependency_paths"].append(path)
+    if obs.get("build_id") and obs["build_id"] not in existing["build_ids"]:
+        existing["build_ids"].append(obs["build_id"])
+    if b_ver and b_ver not in existing["build_versions"]:
+        existing["build_versions"].append(b_ver)
+    if app_ver_id and app_ver_id not in existing["application_version_ids"]:
+        existing["application_version_ids"].append(app_ver_id)
+    if obs.get("deployment_id") and obs["deployment_id"] not in existing["deployment_ids"]:
+        existing["deployment_ids"].append(obs["deployment_id"])
+    if obs.get("environment") and obs["environment"] not in existing["environments"]:
+        existing["environments"].append(obs["environment"])
+    if obs["observed_at"] < existing["first_observed_at"]:
+        existing["first_observed_at"] = obs["observed_at"]
+    if obs["observed_at"] > existing["observed_at"]:
+        existing["observed_at"] = obs["observed_at"]
+    if obs.get("is_repackaged"):
+        existing["is_repackaged"] = True
+    if obs.get("identity_status") == "ambiguous":
+        existing["identity_status"] = "ambiguous"
+    elif obs.get("identity_status") == "qualified_or_repackaged" and existing["identity_status"] == "exact":
+        existing["identity_status"] = "qualified_or_repackaged"
+    for reason in obs.get("uncertain_match_reasons") or []:
+        if reason not in existing["uncertain_match_reasons"]:
+            existing["uncertain_match_reasons"].append(reason)
+
+
+def _aggregate_components_for_view(
+    applications: Sequence[Dict[str, Any]],
+    view_mode: str,
+) -> Dict[str, Any]:
+    """Compute aggregated component exposure and counts under an explicit estate counting view.
+
+    Supported `view_mode` values:
+    - `all_active_deployments`: All active deployments across active environments (excludes obsolete/retired/undeployed builds).
+    - `all_active_production`: All active production deployments (`app@1.0.0` and `app@2.0.0` both count when both are deployed in production).
+    - `latest_production_version`: Only each application's single highest semantic active production version (`latest_production_version`).
+    - `all_imported`: All imported builds including historical/inactive builds.
+    """
+
+    if view_mode not in ESTATE_VIEW_MODES:
+        raise ValueError(f"Unsupported estate view_mode: {view_mode!r}; expected one of {ESTATE_VIEW_MODES}")
+
+    agg_by_lid: Dict[str, Dict[str, Any]] = {}
+    in_scope_app_ids: List[str] = []
+    in_scope_version_ids: List[str] = []
+    in_scope_deployment_ids: List[str] = []
+
+    for app in applications:
+        app_id = app["application_id"]
+        app_versions = app.get("application_versions") or []
+        latest_prod_ver = app.get("latest_production_version") or ""
+
+        selected_versions: List[Dict[str, Any]] = []
+        for av in app_versions:
+            if view_mode == "all_active_deployments":
+                if av.get("active"):
+                    selected_versions.append(av)
+            elif view_mode == "all_active_production":
+                if av.get("active_production"):
+                    selected_versions.append(av)
+            elif view_mode == "latest_production_version":
+                if av.get("active_production") and av.get("version") == latest_prod_ver:
+                    selected_versions.append(av)
+            elif view_mode == "all_imported":
+                selected_versions.append(av)
+
+        if not selected_versions:
+            continue
+
+        if app_id not in in_scope_app_ids:
+            in_scope_app_ids.append(app_id)
+
+        for av in selected_versions:
+            av_id = av["application_version_id"]
+            if av_id not in in_scope_version_ids:
+                in_scope_version_ids.append(av_id)
+            dep_list = (
+                av.get("active_production_deployments")
+                if view_mode in {"all_active_production", "latest_production_version"}
+                else (av.get("active_deployments") if view_mode == "all_active_deployments" else av.get("deployments"))
+            ) or []
+            for did in dep_list:
+                if did not in in_scope_deployment_ids:
+                    in_scope_deployment_ids.append(did)
+
+            for comp in av.get("components") or []:
+                lid = comp["library_id"]
+                comp_purls = list(comp.get("observed_purls") or [comp["purl"]])
+                agg = agg_by_lid.get(lid)
+                if not agg:
+                    agg = {
+                        "library_id": lid,
+                        "namespace": comp["namespace"],
+                        "meta": comp["meta"],
+                        "proj": comp["proj"],
+                        "release": comp["release"],
+                        "observed_purls": list(comp_purls),
+                        "qualifiers": {k: [v] for k, v in (comp.get("qualifiers") or {}).items()},
+                        "subpaths": [comp["subpath"]] if comp.get("subpath") else [],
+                        "digests": list(comp.get("digests") or []),
+                        "dependency_paths": list(comp.get("dependency_paths") or []),
+                        "scopes": list(comp.get("scopes") or []),
+                        "observed_at": comp.get("observed_at") or "",
+                        "identity_status": comp.get("identity_status") or "exact",
+                        "is_repackaged": bool(comp.get("is_repackaged", False)),
+                        "uncertain_match_reasons": list(comp.get("uncertain_match_reasons") or []),
+                        "consumer_app_ids": [],
+                        "direct_app_ids": [],
+                        "transitive_app_ids": [],
+                        "unknown_app_ids": [],
+                        "consumer_application_version_ids": [],
+                        "consumer_deployment_ids": [],
+                    }
+                    agg_by_lid[lid] = agg
+                else:
+                    for p_str in comp_purls:
+                        if p_str not in agg["observed_purls"]:
+                            agg["observed_purls"].append(p_str)
+                    for qk, qv in (comp.get("qualifiers") or {}).items():
+                        qlist = agg["qualifiers"].setdefault(qk, [])
+                        if qv not in qlist:
+                            qlist.append(qv)
+                    if comp.get("subpath") and comp["subpath"] not in agg["subpaths"]:
+                        agg["subpaths"].append(comp["subpath"])
+                    for dg in comp.get("digests") or []:
+                        if dg not in agg["digests"]:
+                            agg["digests"].append(dg)
+                    for dp in comp.get("dependency_paths") or []:
+                        if dp not in agg["dependency_paths"]:
+                            agg["dependency_paths"].append(dp)
+                    for sc in comp.get("scopes") or []:
+                        if sc not in agg["scopes"]:
+                            agg["scopes"].append(sc)
+                    if (comp.get("observed_at") or "") > (agg.get("observed_at") or ""):
+                        agg["observed_at"] = comp["observed_at"]
+                    if comp.get("is_repackaged"):
+                        agg["is_repackaged"] = True
+                    if comp.get("identity_status") == "ambiguous":
+                        agg["identity_status"] = "ambiguous"
+                    elif comp.get("identity_status") == "qualified_or_repackaged" and agg["identity_status"] == "exact":
+                        agg["identity_status"] = "qualified_or_repackaged"
+                    for reason in comp.get("uncertain_match_reasons") or []:
+                        if reason not in agg["uncertain_match_reasons"]:
+                            agg["uncertain_match_reasons"].append(reason)
+
+                if app_id not in agg["consumer_app_ids"]:
+                    agg["consumer_app_ids"].append(app_id)
+                if av_id not in agg["consumer_application_version_ids"]:
+                    agg["consumer_application_version_ids"].append(av_id)
+                for did in dep_list:
+                    if did in (comp.get("deployment_ids") or dep_list) and did not in agg["consumer_deployment_ids"]:
+                        agg["consumer_deployment_ids"].append(did)
+
+                if comp["dependency_classification"] == "direct" and app_id not in agg["direct_app_ids"]:
+                    agg["direct_app_ids"].append(app_id)
+                elif comp["dependency_classification"] == "transitive" and app_id not in agg["transitive_app_ids"]:
+                    agg["transitive_app_ids"].append(app_id)
+                elif comp["dependency_classification"] == "unknown" and app_id not in agg["unknown_app_ids"]:
+                    agg["unknown_app_ids"].append(app_id)
+
+    components_out: List[Dict[str, Any]] = []
+    for lid in sorted(agg_by_lid.keys()):
+        item = agg_by_lid[lid]
+        d_cnt = len(item["direct_app_ids"])
+        t_cnt = len([a for a in item["transitive_app_ids"] if a not in item["direct_app_ids"]])
+        u_cnt = len([a for a in item["unknown_app_ids"] if a not in item["direct_app_ids"] and a not in item["transitive_app_ids"]])
+        if d_cnt > 0 and t_cnt == 0 and u_cnt == 0:
+            dep_cls = "direct"
+        elif t_cnt > 0 and d_cnt == 0 and u_cnt == 0:
+            dep_cls = "transitive"
+        elif u_cnt > 0 and d_cnt == 0 and t_cnt == 0:
+            dep_cls = "unknown"
+        else:
+            dep_cls = "mixed"
+        item["total_consumer_count"] = len(item["consumer_app_ids"])
+        item["direct_consumer_count"] = d_cnt
+        item["transitive_consumer_count"] = t_cnt
+        item["unknown_consumer_count"] = u_cnt
+        item["affected_application_count"] = len(item["consumer_app_ids"])
+        item["affected_application_version_count"] = len(item["consumer_application_version_ids"])
+        item["affected_deployment_count"] = len(item["consumer_deployment_ids"])
+        item["dependency_classification"] = dep_cls
+        components_out.append(item)
+
+    return {
+        "view_mode": view_mode,
+        "evaluated_application_count": len(in_scope_app_ids),
+        "evaluated_application_version_count": len(in_scope_version_ids),
+        "evaluated_deployment_count": len(in_scope_deployment_ids),
+        "evaluated_application_ids": in_scope_app_ids,
+        "evaluated_application_version_ids": in_scope_version_ids,
+        "evaluated_deployment_ids": in_scope_deployment_ids,
+        "component_count": len(components_out),
+        "components": components_out,
+    }
+
+
+def evaluate_estate_view(
+    contract: Dict[str, Any],
+    view_mode: str = "all_active_production",
+) -> Dict[str, Any]:
+    """Return an evaluated view of an estate contract (`all_active_production`, `latest_production_version`, `all_active_deployments`, or `all_imported`)."""
+
+    views = contract.get("views")
+    if isinstance(views, dict) and view_mode in views:
+        return copy.deepcopy(views[view_mode])
+    return _aggregate_components_for_view(contract.get("applications") or [], view_mode)
+
+
 def merge_estate_observations(
     parsed_documents: Sequence[Dict[str, Any]],
+    *,
+    view_mode: str = "all_active_deployments",
 ) -> Dict[str, Any]:
     """Merge build and deployment observations into a deduplicated Estate Contract (`osera-estate-contract/v1`).
 
-    Key invariant:
-    - Applications are deduplicated by `application_id` so repeated SBOM imports across
-      multiple builds or deployment environments NEVER inflate application or exposure counts.
-    - Every build (`builds[]`) and deployment (`deployments[]`) remains individually traceable.
-    - Component observations within an application are keyed by exact `purl` (preserving qualifiers
-      and subpaths) and also summarized by `library_id` for backward-compatible scope dataset joins.
+    Key invariants:
+    - Logical `application_id` is deduplicated consistently across CycloneDX, SPDX, and inventory inputs
+      without embedding build version into `application_id`.
+    - Build/version identity (`application_version_id = f"{application_id}@{version}"`) and deployment
+      identity (`deployment_id`) are preserved separately so multiple versions of the same application
+      coexist when simultaneously deployed in production.
+    - Obsolete, retired, historical, or superseded builds (`active=False`) are excluded from active
+      component counts while remaining auditable in `application_versions` and `historical_components`.
+    - `latest_version` / `release` and `latest_production_version` are determined by semantic version
+      ordering (`_version_sort_key`) over active deployments rather than SBOM import timestamp (`observed_at`).
     """
 
     apps_by_id: Dict[str, Dict[str, Any]] = {}
@@ -1510,8 +2032,8 @@ def merge_estate_observations(
                 "eonid": app_info.get("eonid") or f"SBOM-{len(apps_by_id) + 1}",
                 "tai_system": app_info.get("tai_system") or app_info["name"],
                 "builds_by_id": {},
-                "deployments_by_id": {},
-                "components_by_purl": {},
+                "deployments_list": [],
+                "raw_observations": [],
             }
 
         app_entry = apps_by_id[app_id]
@@ -1522,101 +2044,63 @@ def merge_estate_observations(
 
         for b in [doc["build"]] + list(doc.get("extra_builds") or []):
             bid = b["build_id"]
-            app_entry["builds_by_id"][bid] = b
+            b_copy = dict(b)
+            b_ver = normalize_version_text(str(b_copy.get("version") or "0.0.0"))
+            b_copy["version"] = b_ver
+            b_copy["application_version_id"] = f"{app_id}@{b_ver}"
+            if "active" not in b_copy:
+                b_copy["active"] = _is_active_lifecycle(str(b_copy.get("status") or "active"), "build", None)
+            if "status" not in b_copy:
+                b_copy["status"] = "active" if b_copy["active"] else "inactive"
+            prev_b = app_entry["builds_by_id"].get(bid)
+            if not prev_b or (b_copy.get("observed_at") or "") >= (prev_b.get("observed_at") or ""):
+                app_entry["builds_by_id"][bid] = b_copy
 
         for d in [doc["deployment"]] + list(doc.get("extra_deployments") or []):
-            did = d["deployment_id"]
-            app_entry["deployments_by_id"][did] = d
+            d_copy = dict(d)
+            d_bid = str(d_copy.get("build_id") or doc["build"]["build_id"])
+            d_ver = normalize_version_text(
+                str(
+                    d_copy.get("version")
+                    or app_entry["builds_by_id"].get(d_bid, {}).get("version")
+                    or doc["build"].get("version")
+                    or "0.0.0"
+                )
+            )
+            d_copy["version"] = d_ver
+            d_copy["application_version_id"] = f"{app_id}@{d_ver}"
+            d_env = str(d_copy.get("environment") or "build").strip().lower()
+            d_copy["environment"] = d_env
+            d_status = str(
+                d_copy.get("status") or ("historical" if d_env in INACTIVE_LIFECYCLE_STATES else "active")
+            ).strip().lower()
+            d_active = _is_active_lifecycle(d_status, d_env, _parse_bool_flag(d_copy.get("active"), default=None))
+            d_copy["active"] = d_active
+            d_copy["status"] = d_status if d_active else ("inactive" if d_status == "active" else d_status)
+            app_entry["deployments_list"].append(d_copy)
 
         for obs in observations:
-            purl_key = obs["purl"]
-            existing = app_entry["components_by_purl"].get(purl_key)
-            raw_purl_val = str(obs.get("raw_purl") or obs["purl"])
-            if not existing:
-                obs_purls = [obs["purl"]]
-                if raw_purl_val not in obs_purls:
-                    obs_purls.append(raw_purl_val)
-                app_entry["components_by_purl"][purl_key] = {
-                    "library_id": obs["library_id"],
-                    "purl": obs["purl"],
-                    "raw_purl": raw_purl_val,
-                    "observed_purls": obs_purls,
-                    "base_purl": obs["base_purl"],
-                    "namespace": obs["namespace"],
-                    "meta": obs["meta"],
-                    "proj": obs["proj"],
-                    "release": obs["release"],
-                    "qualifiers": dict(obs.get("qualifiers") or {}),
-                    "subpath": obs.get("subpath") or "",
-                    "digests": list(obs.get("digests") or []),
-                    "scopes": [obs["scope"]] if obs.get("scope") else [],
-                    "qualifier": obs.get("qualifier") or "runtime",
-                    "dependency_classification": obs["dependency_classification"],
-                    "parent_ids": [obs["parent_id"]] if obs.get("parent_id") else [],
-                    "dependency_paths": list(obs.get("dependency_paths") or []),
-                    "first_observed_at": obs["observed_at"],
-                    "observed_at": obs["observed_at"],
-                    "build_ids": [obs["build_id"]] if obs.get("build_id") else [],
-                    "deployment_ids": [obs["deployment_id"]] if obs.get("deployment_id") else [],
-                    "environments": [obs["environment"]] if obs.get("environment") else [],
-                    "supplier": obs.get("supplier") or "",
-                    "identity_status": obs.get("identity_status") or "exact",
-                    "is_repackaged": bool(obs.get("is_repackaged", False)),
-                    "uncertain_match_reasons": list(obs.get("uncertain_match_reasons") or []),
-                }
-            else:
-                # Merge without inflating application exposure count:
-                # Upgrade dependency_classification if a richer build provides a graph (`direct` > `transitive` > `unknown`)
-                prev_cls = existing["dependency_classification"]
-                new_cls = obs["dependency_classification"]
-                if prev_cls == "unknown" and new_cls in {"direct", "transitive"}:
-                    existing["dependency_classification"] = new_cls
-                    existing["uncertain_match_reasons"] = [
-                        r for r in existing["uncertain_match_reasons"] if "classified as 'unknown'" not in r
-                    ]
-                elif prev_cls == "transitive" and new_cls == "direct":
-                    existing["dependency_classification"] = "direct"
-
-                if obs.get("qualifier") == "runtime":
-                    existing["qualifier"] = "runtime"
-
-                for d_hash in obs.get("digests") or []:
-                    if d_hash not in existing["digests"]:
-                        existing["digests"].append(d_hash)
-                for sc in ([obs["scope"]] if obs.get("scope") else []):
-                    if sc not in existing["scopes"]:
-                        existing["scopes"].append(sc)
-                if obs.get("parent_id") and obs["parent_id"] not in existing["parent_ids"]:
-                    existing["parent_ids"].append(obs["parent_id"])
-                for path in obs.get("dependency_paths") or []:
-                    if path not in existing["dependency_paths"] and len(existing["dependency_paths"]) < 8:
-                        existing["dependency_paths"].append(path)
-                if obs.get("build_id") and obs["build_id"] not in existing["build_ids"]:
-                    existing["build_ids"].append(obs["build_id"])
-                if obs.get("deployment_id") and obs["deployment_id"] not in existing["deployment_ids"]:
-                    existing["deployment_ids"].append(obs["deployment_id"])
-                if obs.get("environment") and obs["environment"] not in existing["environments"]:
-                    existing["environments"].append(obs["environment"])
-                if obs["observed_at"] < existing["first_observed_at"]:
-                    existing["first_observed_at"] = obs["observed_at"]
-                if obs["observed_at"] > existing["observed_at"]:
-                    existing["observed_at"] = obs["observed_at"]
-                if obs.get("is_repackaged"):
-                    existing["is_repackaged"] = True
-                if obs.get("identity_status") == "ambiguous":
-                    existing["identity_status"] = "ambiguous"
-                elif obs.get("identity_status") == "qualified_or_repackaged" and existing["identity_status"] == "exact":
-                    existing["identity_status"] = "qualified_or_repackaged"
-                for reason in obs.get("uncertain_match_reasons") or []:
-                    if reason not in existing["uncertain_match_reasons"]:
-                        existing["uncertain_match_reasons"].append(reason)
+            obs_copy = dict(obs)
+            obs_bid = str(obs_copy.get("build_id") or doc["build"]["build_id"])
+            obs_ver = normalize_version_text(
+                str(
+                    obs_copy.get("build_version")
+                    or app_entry["builds_by_id"].get(obs_bid, {}).get("version")
+                    or doc["build"].get("version")
+                    or "0.0.0"
+                )
+            )
+            obs_copy["build_version"] = obs_ver
+            obs_copy["application_version_id"] = f"{app_id}@{obs_ver}"
+            app_entry["raw_observations"].append(obs_copy)
 
     applications: List[Dict[str, Any]] = []
+    all_application_versions: List[Dict[str, Any]] = []
     all_builds_list: List[Dict[str, Any]] = []
     all_deployments_list: List[Dict[str, Any]] = []
-    agg_components_by_id: Dict[str, Dict[str, Any]] = {}
     distinct_builds_total = 0
     distinct_deployments_total = 0
+    historical_builds_excluded = 0
     unknown_dep_observations = 0
     ambiguous_identities_count = 0
     repackaged_libraries_count = 0
@@ -1625,9 +2109,215 @@ def merge_estate_observations(
 
     for app_id in sorted(apps_by_id.keys()):
         raw_app = apps_by_id[app_id]
-        builds = sorted(raw_app["builds_by_id"].values(), key=lambda x: (x.get("observed_at", ""), x["build_id"]))
-        deployments = sorted(raw_app["deployments_by_id"].values(), key=lambda x: (x.get("environment", ""), x["deployment_id"]))
-        components = sorted(raw_app["components_by_purl"].values(), key=lambda x: x["purl"])
+        builds_by_id: Dict[str, Dict[str, Any]] = raw_app["builds_by_id"]
+
+        # Resolve deployments by deployment_id: if multiple records share a deployment_id,
+        # the newest deployed_at record wins and supersedes older build records on that same deployment slot.
+        deploys_by_did: Dict[str, List[Dict[str, Any]]] = {}
+        for d in raw_app["deployments_list"]:
+            deploys_by_did.setdefault(d["deployment_id"], []).append(d)
+
+        resolved_deployments_by_id: Dict[str, Dict[str, Any]] = {}
+        superseded_build_ids: Set[str] = set()
+        for did, d_candidates in deploys_by_did.items():
+            d_sorted = sorted(
+                d_candidates,
+                key=lambda x: (
+                    str(x.get("deployed_at") or ""),
+                    _version_sort_key(x.get("version")),
+                    str(x.get("build_id") or ""),
+                ),
+            )
+            winner = dict(d_sorted[-1])
+            for older in d_sorted[:-1]:
+                if older.get("build_id") and older.get("build_id") != winner.get("build_id"):
+                    superseded_build_ids.add(str(older["build_id"]))
+            resolved_deployments_by_id[did] = winner
+
+        # Check whether the application has any active non-build runtime deployments
+        has_runtime_deployments = any(
+            d.get("active") and d.get("environment") in ACTIVE_RUNTIME_ENVIRONMENTS
+            for d in resolved_deployments_by_id.values()
+        )
+        for did, d in resolved_deployments_by_id.items():
+            b_ref = builds_by_id.get(str(d.get("build_id") or ""))
+            if b_ref and not b_ref.get("active", True):
+                d["active"] = False
+                if d.get("status") == "active":
+                    d["status"] = str(b_ref.get("status") or "inactive")
+            if has_runtime_deployments and d.get("environment") == "build":
+                d["active"] = False
+                if d.get("status") == "active":
+                    d["status"] = "build_only"
+
+        active_build_ids_from_deploys = {
+            str(d["build_id"])
+            for d in resolved_deployments_by_id.values()
+            if d.get("active") and d.get("build_id")
+        }
+
+        for bid, b in builds_by_id.items():
+            if not b.get("active", True):
+                continue
+            if bid in active_build_ids_from_deploys:
+                b["active"] = True
+                b["status"] = "active"
+            elif bid in superseded_build_ids or resolved_deployments_by_id:
+                b["active"] = False
+                b["status"] = "superseded" if bid in superseded_build_ids else "undeployed"
+
+        builds = sorted(builds_by_id.values(), key=lambda x: (x.get("observed_at", ""), x["build_id"]))
+        deployments = sorted(
+            resolved_deployments_by_id.values(),
+            key=lambda x: (x.get("environment", ""), x["deployment_id"]),
+        )
+        historical_builds_excluded += sum(1 for b in builds if not b.get("active"))
+
+        # Group builds, deployments, and component observations by version (`application_version_id`)
+        versions_map: Dict[str, Dict[str, Any]] = {}
+        for b in builds:
+            ver = b["version"]
+            av_id = b["application_version_id"]
+            ver_entry = versions_map.setdefault(
+                ver,
+                {
+                    "application_version_id": av_id,
+                    "application_id": app_id,
+                    "version": ver,
+                    "builds": [],
+                    "active_builds": [],
+                    "deployments": [],
+                    "active_deployments": [],
+                    "active_production_deployments": [],
+                    "environments": set(),
+                    "latest_deployed_at": "",
+                    "latest_observed_at": "",
+                    "components_by_purl": {},
+                },
+            )
+            if b["build_id"] not in ver_entry["builds"]:
+                ver_entry["builds"].append(b["build_id"])
+            if b.get("active") and b["build_id"] not in ver_entry["active_builds"]:
+                ver_entry["active_builds"].append(b["build_id"])
+            if (b.get("observed_at") or "") > ver_entry["latest_observed_at"]:
+                ver_entry["latest_observed_at"] = b.get("observed_at") or ""
+
+        for d in deployments:
+            ver = d["version"]
+            av_id = d["application_version_id"]
+            ver_entry = versions_map.setdefault(
+                ver,
+                {
+                    "application_version_id": av_id,
+                    "application_id": app_id,
+                    "version": ver,
+                    "builds": [],
+                    "active_builds": [],
+                    "deployments": [],
+                    "active_deployments": [],
+                    "active_production_deployments": [],
+                    "environments": set(),
+                    "latest_deployed_at": "",
+                    "latest_observed_at": "",
+                    "components_by_purl": {},
+                },
+            )
+            did = d["deployment_id"]
+            if did not in ver_entry["deployments"]:
+                ver_entry["deployments"].append(did)
+            if d.get("active"):
+                if did not in ver_entry["active_deployments"]:
+                    ver_entry["active_deployments"].append(did)
+                if d.get("environment"):
+                    ver_entry["environments"].add(d["environment"])
+                if d.get("environment") in PRODUCTION_ENVIRONMENTS and did not in ver_entry["active_production_deployments"]:
+                    ver_entry["active_production_deployments"].append(did)
+            if (d.get("deployed_at") or "") > ver_entry["latest_deployed_at"]:
+                ver_entry["latest_deployed_at"] = d.get("deployed_at") or ""
+
+        active_components_by_purl: Dict[str, Dict[str, Any]] = {}
+        historical_components_by_purl: Dict[str, Dict[str, Any]] = {}
+
+        for obs in raw_app["raw_observations"]:
+            obs_bid = obs.get("build_id") or ""
+            obs_did = obs.get("deployment_id") or ""
+            obs_ver = obs["build_version"]
+            b_rec = builds_by_id.get(obs_bid, {})
+            d_rec = resolved_deployments_by_id.get(obs_did, {})
+
+            obs_active = bool(obs.get("active", True))
+            if b_rec and not b_rec.get("active", True):
+                obs_active = False
+            if d_rec and not d_rec.get("active", True):
+                obs_active = False
+
+            ver_entry = versions_map.get(obs_ver)
+            if ver_entry is not None:
+                _merge_observation_into_bucket(ver_entry["components_by_purl"], obs)
+
+            if obs_active:
+                _merge_observation_into_bucket(active_components_by_purl, obs)
+            else:
+                _merge_observation_into_bucket(historical_components_by_purl, obs)
+
+        app_versions_list: List[Dict[str, Any]] = []
+        for ver in sorted(versions_map.keys(), key=lambda v: (_version_sort_key(v), v)):
+            ve = versions_map[ver]
+            ver_active = bool(ve["active_deployments"] or ve["active_builds"])
+            ver_active_prod = bool(ve["active_production_deployments"])
+            ver_comps = sorted(ve["components_by_purl"].values(), key=lambda c: c["purl"])
+            av_record = {
+                "application_version_id": ve["application_version_id"],
+                "application_id": app_id,
+                "version": ver,
+                "active": ver_active,
+                "active_production": ver_active_prod,
+                "status": "active" if ver_active else "historical",
+                "builds": ve["builds"],
+                "active_builds": ve["active_builds"],
+                "deployments": ve["deployments"],
+                "active_deployments": ve["active_deployments"],
+                "active_production_deployments": ve["active_production_deployments"],
+                "environments": sorted(ve["environments"]),
+                "latest_deployed_at": ve["latest_deployed_at"] or ve["latest_observed_at"],
+                "component_count": len(ver_comps),
+                "components": ver_comps,
+            }
+            app_versions_list.append(av_record)
+            all_application_versions.append(av_record)
+
+        # Select latest_production_version and latest_version by semantic version ordering over active deployments
+        active_prod_versions = [av for av in app_versions_list if av["active_production"]]
+        active_any_versions = [av for av in app_versions_list if av["active"]]
+
+        if active_prod_versions:
+            best_prod = max(
+                active_prod_versions,
+                key=lambda av: (_version_sort_key(av["version"]), av.get("latest_deployed_at") or "", av["version"]),
+            )
+            latest_production_version = best_prod["version"]
+        else:
+            latest_production_version = ""
+
+        if active_prod_versions:
+            latest_version = latest_production_version
+        elif active_any_versions:
+            best_active = max(
+                active_any_versions,
+                key=lambda av: (_version_sort_key(av["version"]), av.get("latest_deployed_at") or "", av["version"]),
+            )
+            latest_version = best_active["version"]
+        elif app_versions_list:
+            best_all = max(
+                app_versions_list,
+                key=lambda av: (_version_sort_key(av["version"]), av.get("latest_deployed_at") or "", av["version"]),
+            )
+            latest_version = best_all["version"]
+        else:
+            latest_version = "0.0.0"
+
+        components = sorted(active_components_by_purl.values(), key=lambda x: x["purl"])
+        historical_components = sorted(historical_components_by_purl.values(), key=lambda x: x["purl"])
 
         all_builds_list.extend(builds)
         all_deployments_list.extend(deployments)
@@ -1648,72 +2338,7 @@ def merge_estate_observations(
             if comp["is_repackaged"]:
                 repackaged_libraries_count += 1
 
-            lid = comp["library_id"]
-            comp_purls = list(comp.get("observed_purls") or [comp["purl"]])
-            agg = agg_components_by_id.get(lid)
-            if not agg:
-                agg = {
-                    "library_id": lid,
-                    "namespace": comp["namespace"],
-                    "meta": comp["meta"],
-                    "proj": comp["proj"],
-                    "release": comp["release"],
-                    "observed_purls": list(comp_purls),
-                    "qualifiers": {k: [v] for k, v in (comp.get("qualifiers") or {}).items()},
-                    "subpaths": [comp["subpath"]] if comp.get("subpath") else [],
-                    "digests": list(comp.get("digests") or []),
-                    "dependency_paths": list(comp.get("dependency_paths") or []),
-                    "scopes": list(comp.get("scopes") or []),
-                    "observed_at": comp.get("observed_at") or "",
-                    "identity_status": comp.get("identity_status") or "exact",
-                    "is_repackaged": bool(comp.get("is_repackaged", False)),
-                    "uncertain_match_reasons": list(comp.get("uncertain_match_reasons") or []),
-                    "consumer_app_ids": [app_id],
-                    "direct_app_ids": [app_id] if comp["dependency_classification"] == "direct" else [],
-                    "transitive_app_ids": [app_id] if comp["dependency_classification"] == "transitive" else [],
-                    "unknown_app_ids": [app_id] if comp["dependency_classification"] == "unknown" else [],
-                }
-                agg_components_by_id[lid] = agg
-            else:
-                for p_str in comp_purls:
-                    if p_str not in agg["observed_purls"]:
-                        agg["observed_purls"].append(p_str)
-                for qk, qv in (comp.get("qualifiers") or {}).items():
-                    qlist = agg["qualifiers"].setdefault(qk, [])
-                    if qv not in qlist:
-                        qlist.append(qv)
-                if comp.get("subpath") and comp["subpath"] not in agg["subpaths"]:
-                    agg["subpaths"].append(comp["subpath"])
-                for dg in comp.get("digests") or []:
-                    if dg not in agg["digests"]:
-                        agg["digests"].append(dg)
-                for dp in comp.get("dependency_paths") or []:
-                    if dp not in agg["dependency_paths"]:
-                        agg["dependency_paths"].append(dp)
-                for sc in comp.get("scopes") or []:
-                    if sc not in agg["scopes"]:
-                        agg["scopes"].append(sc)
-                if (comp.get("observed_at") or "") > (agg.get("observed_at") or ""):
-                    agg["observed_at"] = comp["observed_at"]
-                if comp.get("is_repackaged"):
-                    agg["is_repackaged"] = True
-                if comp.get("identity_status") == "ambiguous":
-                    agg["identity_status"] = "ambiguous"
-                elif comp.get("identity_status") == "qualified_or_repackaged" and agg["identity_status"] == "exact":
-                    agg["identity_status"] = "qualified_or_repackaged"
-                for reason in comp.get("uncertain_match_reasons") or []:
-                    if reason not in agg["uncertain_match_reasons"]:
-                        agg["uncertain_match_reasons"].append(reason)
-                if app_id not in agg["consumer_app_ids"]:
-                    agg["consumer_app_ids"].append(app_id)
-                if comp["dependency_classification"] == "direct" and app_id not in agg["direct_app_ids"]:
-                    agg["direct_app_ids"].append(app_id)
-                elif comp["dependency_classification"] == "transitive" and app_id not in agg["transitive_app_ids"]:
-                    agg["transitive_app_ids"].append(app_id)
-                elif comp["dependency_classification"] == "unknown" and app_id not in agg["unknown_app_ids"]:
-                    agg["unknown_app_ids"].append(app_id)
-
-        latest_version = builds[-1]["version"] if builds else "0.0.0"
+        active_deployments_records = [d for d in deployments if d.get("active")]
         applications.append(
             {
                 "id": app_id,
@@ -1723,40 +2348,52 @@ def merge_estate_observations(
                 "meta": raw_app["meta"],
                 "proj": raw_app["proj"],
                 "release": latest_version,
+                "latest_version": latest_version,
+                "latest_production_version": latest_production_version,
+                "active_versions": [av["version"] for av in active_any_versions],
+                "active_production_versions": [av["version"] for av in active_prod_versions],
+                "application_versions": app_versions_list,
                 "project_ref": raw_app["project_ref"],
                 "department": raw_app["department"],
                 "eonid": raw_app["eonid"],
                 "tai_system": raw_app["tai_system"],
                 "build_count": len(builds),
+                "active_build_count": sum(1 for b in builds if b.get("active")),
                 "deployment_count": len(deployments),
-                "environments": sorted({d["environment"] for d in deployments if d.get("environment")}),
+                "active_deployment_count": len(active_deployments_records),
+                "environments": sorted({d["environment"] for d in active_deployments_records if d.get("environment")}),
                 "builds": [b["build_id"] for b in builds],
+                "active_builds": [b["build_id"] for b in builds if b.get("active")],
                 "build_records": builds,
                 "deployments": [d["deployment_id"] for d in deployments],
+                "active_deployments": [d["deployment_id"] for d in active_deployments_records],
                 "deployment_records": deployments,
                 "components": components,
+                "historical_components": historical_components,
             }
         )
 
+    views_by_mode: Dict[str, Dict[str, Any]] = {
+        mode: _aggregate_components_for_view(applications, mode)
+        for mode in ESTATE_VIEW_MODES
+    }
+    primary_view = views_by_mode.get(view_mode, views_by_mode["all_active_deployments"])
+    prod_view_by_lid = {
+        c["library_id"]: c for c in views_by_mode["all_active_production"]["components"]
+    }
+    latest_prod_by_lid = {
+        c["library_id"]: c for c in views_by_mode["latest_production_version"]["components"]
+    }
+
     agg_components: List[Dict[str, Any]] = []
-    for lid in sorted(agg_components_by_id.keys()):
-        item = agg_components_by_id[lid]
-        d_cnt = len(item["direct_app_ids"])
-        t_cnt = len([a for a in item["transitive_app_ids"] if a not in item["direct_app_ids"]])
-        u_cnt = len([a for a in item["unknown_app_ids"] if a not in item["direct_app_ids"] and a not in item["transitive_app_ids"]])
-        if d_cnt > 0 and t_cnt == 0 and u_cnt == 0:
-            dep_cls = "direct"
-        elif t_cnt > 0 and d_cnt == 0 and u_cnt == 0:
-            dep_cls = "transitive"
-        elif u_cnt > 0 and d_cnt == 0 and t_cnt == 0:
-            dep_cls = "unknown"
-        else:
-            dep_cls = "mixed"
-        item["total_consumer_count"] = len(item["consumer_app_ids"])
-        item["direct_consumer_count"] = d_cnt
-        item["transitive_consumer_count"] = t_cnt
-        item["unknown_consumer_count"] = u_cnt
-        item["dependency_classification"] = dep_cls
+    for item in copy.deepcopy(primary_view["components"]):
+        lid = item["library_id"]
+        prod_item = prod_view_by_lid.get(lid, {})
+        latest_prod_item = latest_prod_by_lid.get(lid, {})
+        item["active_production_application_count"] = int(prod_item.get("affected_application_count") or 0)
+        item["active_production_version_count"] = int(prod_item.get("affected_application_version_count") or 0)
+        item["active_production_deployment_count"] = int(prod_item.get("affected_deployment_count") or 0)
+        item["latest_production_application_count"] = int(latest_prod_item.get("affected_application_count") or 0)
         agg_components.append(item)
 
     completeness_ratio = (
@@ -1770,9 +2407,15 @@ def merge_estate_observations(
         "sources_by_format": {k: v for k, v in sources_by_format.items() if v > 0},
         "raw_sbom_documents_imported": len(parsed_documents),
         "deduplicated_applications": len(applications),
+        "distinct_application_versions": len(all_application_versions),
+        "active_application_versions": sum(1 for av in all_application_versions if av.get("active")),
+        "active_production_application_versions": sum(
+            1 for av in all_application_versions if av.get("active_production")
+        ),
         "applications_with_dependency_graph": apps_with_graph,
         "applications_without_dependency_graph": apps_without_graph,
         "distinct_builds": distinct_builds_total,
+        "historical_builds_excluded": historical_builds_excluded,
         "distinct_deployments": distinct_deployments_total,
         "duplicate_imports_collapsed": max(0, len(parsed_documents) - len(applications)),
         "components_total_observed": total_raw_components,
@@ -1796,18 +2439,26 @@ def merge_estate_observations(
             "scope_dataset_schema": SCOPE_DATASET_SCHEMA_VERSION,
             "backward_compatible": True,
         },
+        "view_mode": view_mode,
         "imported_at": now_iso(),
         "applications": applications,
+        "application_versions": all_application_versions,
         "builds": all_builds_list,
         "deployments": all_deployments_list,
         "components": agg_components,
+        "views": views_by_mode,
         "completeness": completeness_obj,
         "completeness_report": completeness_obj,
         "unmapped_records": all_unmapped,
     }
 
 
-def import_estate_sources(paths: Sequence[Path], scope: Optional[str] = None) -> Dict[str, Any]:
+def import_estate_sources(
+    paths: Sequence[Path],
+    scope: Optional[str] = None,
+    *,
+    view_mode: str = "all_active_deployments",
+) -> Dict[str, Any]:
     """Import one or more files or directories of CycloneDX, SPDX, or inventory feeds."""
 
     files: List[Path] = []
@@ -1823,7 +2474,7 @@ def import_estate_sources(paths: Sequence[Path], scope: Optional[str] = None) ->
     for file_path in files:
         parsed_docs.extend(detect_and_parse_estate_source(file_path))
 
-    contract = merge_estate_observations(parsed_docs)
+    contract = merge_estate_observations(parsed_docs, view_mode=view_mode)
     if scope:
         contract["scope"] = scope
     return contract
@@ -2213,32 +2864,306 @@ def apply_company_overlay(
     return view
 
 
-def sanitize_for_public_export(dataset_or_requests: Dict[str, Any]) -> Dict[str, Any]:
-    """Strip all private company overlay fields, owners, internal IDs, and deployment details before sharing."""
+PUBLIC_EXPORT_LIBRARY_ALLOWED_FIELDS = (
+    "id",
+    "library_id",
+    "namespace",
+    "meta",
+    "proj",
+    "release",
+    "purl",
+    "base_purl",
+    "qualifiers",
+    "subpaths",
+    "scopes",
+    "dependency_classification",
+    "dependency_paths",
+    "identity_status",
+    "is_repackaged",
+    "repackaged_internal_coordinates_redacted",
+    "total_consumer_count",
+    "direct_consumer_count",
+    "transitive_consumer_count",
+    "unknown_consumer_count",
+    "affected_application_count",
+    "affected_application_version_count",
+    "affected_deployment_count",
+    "active_production_application_count",
+    "active_production_version_count",
+    "active_production_deployment_count",
+    "latest_production_application_count",
+    "cve_count",
+    "cves",
+    "max_cvss",
+    "highest_priority",
+    "max_exploitability",
+    "is_kev_listed",
+    "kev_cve_ids",
+    "max_epss",
+    "effort_class",
+    "nearest_safe_version",
+    "max_safe_patch_same_minor",
+    "latest_safe_version",
+    "version_chain",
+    "risk_signal",
+    "amplifiers",
+)
 
-    cleaned = copy.deepcopy(dataset_or_requests)
-    cleaned.pop("unmapped_records", None)
-    cleaned.pop("company_overlay", None)
-    if isinstance(cleaned.get("meta"), dict):
-        cleaned["meta"].pop("company_overlay_applied", None)
-        cleaned["meta"].pop("company_overlay", None)
-        if isinstance(cleaned["meta"].get("estate_import"), dict):
-            cleaned["meta"]["estate_import"].pop("completeness", None)
-    for proj in cleaned.get("consumer_projects") or []:
+INTERNAL_REPACKAGED_SUFFIX_RE = re.compile(
+    r"(?i)[-+_](?:[a-z][a-z0-9]*[-+_])*(?:internal|corp|repackaged|private|inhouse)(?:[-+_.][a-z0-9._-]+)*$"
+)
+
+
+def _strip_internal_version_suffix(version: str) -> Tuple[str, bool]:
+    raw = str(version or "").strip()
+    if not raw:
+        return raw, False
+    cleaned = INTERNAL_REPACKAGED_SUFFIX_RE.sub("", raw)
+    if cleaned != raw and cleaned:
+        return cleaned, True
+    return raw, False
+
+
+def _sanitize_library_id_token(token: str, known_app_ids: Set[str]) -> str:
+    val = str(token or "").strip()
+    if not val:
+        return val
+    if val in known_app_ids or val.startswith("github|") or val.startswith("gitlab|") or val.startswith("bitbucket|"):
+        return "<redacted-application>"
+    if "|" in val:
+        parts = val.split("|")
+        if len(parts) == 4:
+            clean_ver, _ = _strip_internal_version_suffix(parts[3])
+            return f"{parts[0]}|{parts[1]}|{parts[2]}|{clean_ver}"
+    return val
+
+
+def _sanitize_public_library_entry(
+    lib: Dict[str, Any],
+    known_app_ids: Set[str],
+) -> Dict[str, Any]:
+    """Build an allowlisted public library/component entry with zero internal application or repo identifiers."""
+
+    ns = str(lib.get("namespace") or "")
+    meta = str(lib.get("meta") or "")
+    proj = str(lib.get("proj") or "")
+    raw_rel = str(lib.get("release") or "")
+    clean_rel, rel_redacted = _strip_internal_version_suffix(raw_rel)
+    clean_lid = make_library_id(ns, meta, proj, clean_rel) if (ns and proj and clean_rel) else _sanitize_library_id_token(
+        str(lib.get("id") or lib.get("library_id") or ""), known_app_ids
+    )
+
+    coord_path = "/".join(
+        urllib.parse.quote(part, safe="@/")
+        for part in ([meta, proj] if (meta and not (ns == "generic" and meta == "unknown")) else [proj])
+        if part
+    )
+    clean_base_purl = (
+        f"pkg:{ns}/{coord_path}@{urllib.parse.quote(clean_rel, safe='')}"
+        if (ns and coord_path and clean_rel)
+        else ""
+    )
+
+    # Filter qualifiers to public-safe package qualifiers only (drop repository_url and internal vendor tags)
+    raw_quals = lib.get("qualifiers")
+    clean_quals: Dict[str, Any] = {}
+    qual_redacted = False
+    if isinstance(raw_quals, dict):
+        for qk, qv in sorted(raw_quals.items()):
+            qk_lower = str(qk).lower()
+            if qk_lower in {"repository_url", "repo_url", "internal_url", "registry_url", "vendor"}:
+                qual_redacted = True
+                continue
+            vals = qv if isinstance(qv, list) else [qv]
+            safe_vals = [
+                str(v)
+                for v in vals
+                if v is not None and not any(tok in str(v).lower() for tok in (".internal", ".corp", "private", "acme"))
+            ]
+            if len(safe_vals) != len(vals):
+                qual_redacted = True
+            if safe_vals:
+                clean_quals[str(qk)] = safe_vals if isinstance(qv, list) else safe_vals[0]
+
+    # Sanitize dependency paths: replace application root nodes with "<redacted-application>"
+    raw_paths = lib.get("dependency_paths") or []
+    clean_paths: List[List[str]] = []
+    for path in raw_paths:
+        if not isinstance(path, list) or not path:
+            continue
+        sanitized_path: List[str] = []
+        for idx, step in enumerate(path):
+            if idx == 0:
+                sanitized_path.append("<redacted-application>")
+            else:
+                sanitized_path.append(_sanitize_library_id_token(str(step), known_app_ids))
+        if sanitized_path not in clean_paths:
+            clean_paths.append(sanitized_path)
+
+    # Sanitize version_chain if present
+    clean_chain: List[Dict[str, Any]] = []
+    for vc in lib.get("version_chain") or []:
+        if not isinstance(vc, dict):
+            continue
+        vc_rel, vc_red = _strip_internal_version_suffix(str(vc.get("release") or ""))
+        if vc_red:
+            continue
+        clean_chain.append(
+            {
+                "release": vc_rel,
+                "release_date": vc.get("release_date"),
+                "cve_count": int(vc.get("cve_count") or 0),
+                "max_cvss": float(vc.get("max_cvss") or 0.0),
+            }
+        )
+
+    # Sanitize amplifiers if present (preserve only upstream amplifier coordinates and aggregate project count)
+    clean_amplifiers: List[Dict[str, Any]] = []
+    for amp in lib.get("amplifiers") or []:
+        if not isinstance(amp, dict):
+            continue
+        affected_raw = amp.get("root_projects_affected")
+        if isinstance(affected_raw, list):
+            affected_count = len(affected_raw)
+        elif isinstance(affected_raw, (int, float)):
+            affected_count = int(affected_raw)
+        else:
+            affected_count = int(amp.get("root_projects_affected_count") or 0)
+        clean_amplifiers.append(
+            {
+                "amplifier_id": _sanitize_library_id_token(str(amp.get("amplifier_id") or ""), known_app_ids),
+                "amplifier_coords": str(amp.get("amplifier_coords") or ""),
+                "root_projects_affected_count": affected_count,
+            }
+        )
+
+    base_signal = lib.get("base_risk_signal", lib.get("risk_signal", 0.0))
+
+    candidate: Dict[str, Any] = {
+        "id": clean_lid,
+        "library_id": clean_lid,
+        "namespace": ns,
+        "meta": meta,
+        "proj": proj,
+        "release": clean_rel,
+        "purl": clean_base_purl,
+        "base_purl": clean_base_purl,
+        "qualifiers": clean_quals,
+        "subpaths": list(lib.get("subpaths") or ([lib["subpath"]] if lib.get("subpath") else [])),
+        "scopes": list(lib.get("scopes") or []),
+        "dependency_classification": str(lib.get("dependency_classification") or "unknown"),
+        "dependency_paths": clean_paths,
+        "identity_status": str(lib.get("identity_status") or "exact"),
+        "is_repackaged": bool(lib.get("is_repackaged", False)),
+        "repackaged_internal_coordinates_redacted": bool(rel_redacted or qual_redacted),
+        "total_consumer_count": int(lib.get("total_consumer_count") or 0),
+        "direct_consumer_count": int(lib.get("direct_consumer_count") or 0),
+        "transitive_consumer_count": int(lib.get("transitive_consumer_count") or 0),
+        "unknown_consumer_count": int(lib.get("unknown_consumer_count") or 0),
+        "affected_application_count": int(lib.get("affected_application_count") or lib.get("total_consumer_count") or 0),
+        "affected_application_version_count": int(
+            lib.get("affected_application_version_count") or lib.get("total_consumer_count") or 0
+        ),
+        "affected_deployment_count": int(lib.get("affected_deployment_count") or 0),
+        "active_production_application_count": int(lib.get("active_production_application_count") or 0),
+        "active_production_version_count": int(lib.get("active_production_version_count") or 0),
+        "active_production_deployment_count": int(lib.get("active_production_deployment_count") or 0),
+        "latest_production_application_count": int(lib.get("latest_production_application_count") or 0),
+        "cve_count": int(lib.get("cve_count") or 0),
+        "cves": copy.deepcopy(lib.get("cves") or []),
+        "max_cvss": float(lib.get("max_cvss") or 0.0),
+        "highest_priority": lib.get("highest_priority"),
+        "max_exploitability": lib.get("max_exploitability"),
+        "is_kev_listed": bool(lib.get("is_kev_listed", False)),
+        "kev_cve_ids": list(lib.get("kev_cve_ids") or []),
+        "max_epss": float(lib.get("max_epss") or 0.0),
+        "effort_class": lib.get("effort_class"),
+        "nearest_safe_version": lib.get("nearest_safe_version"),
+        "max_safe_patch_same_minor": lib.get("max_safe_patch_same_minor"),
+        "latest_safe_version": lib.get("latest_safe_version"),
+        "version_chain": clean_chain,
+        "risk_signal": float(base_signal or 0.0),
+        "amplifiers": clean_amplifiers,
+    }
+
+    return {k: candidate[k] for k in PUBLIC_EXPORT_LIBRARY_ALLOWED_FIELDS if k in candidate and candidate[k] is not None}
+
+
+def sanitize_for_public_export(dataset_or_requests: Dict[str, Any]) -> Dict[str, Any]:
+    """Export an allowlisted public/demand view (`osera-public-demand-export/v1`) with zero internal inventory leakage.
+
+    Public-export contract invariants:
+    - Does not mutate `dataset_or_requests`; the caller's full internal inventory and overlay remain intact in memory.
+    - Excludes `consumer_projects`, `applications`, `application_versions`, `builds`, `deployments`,
+      `unmapped_records`, `company_overlay`, and all internal consumer ID lists (`consumer_project_ids`,
+      `direct_consumer_project_ids`, `unknown_consumer_project_ids`, `consumer_app_ids`, `project_ref`,
+      `tai_system`, `eonid`, owner contacts, cost centers, and cluster names).
+    - Redacts application nodes in `dependency_paths` to `"<redacted-application>"` and strips internal
+      corporate repackaged version suffixes and private repository URLs while retaining upstream package
+      coordinates, vulnerability metadata, and aggregate consumer demand counts.
+    """
+
+    known_app_ids: Set[str] = set()
+    projects_raw = dataset_or_requests.get("consumer_projects") or dataset_or_requests.get("applications") or []
+    for proj in projects_raw:
         if isinstance(proj, dict):
-            proj.pop("company_context", None)
-            proj.pop("company_overlay", None)
-            proj.pop("overlay_priority_score", None)
-            proj.pop("builds", None)
-            proj.pop("deployments", None)
-            proj.pop("environments", None)
-            proj["department"] = "General"
-    for lib in cleaned.get("libraries") or []:
+            for key in ("id", "application_id", "project_ref", "name", "proj", "eonid", "tai_system"):
+                val = str(proj.get(key) or "").strip()
+                if val:
+                    known_app_ids.add(val)
+
+    raw_libs = dataset_or_requests.get("libraries")
+    if not isinstance(raw_libs, list):
+        raw_libs = dataset_or_requests.get("components") if isinstance(dataset_or_requests.get("components"), list) else []
+
+    for lib in raw_libs:
         if isinstance(lib, dict):
-            if "base_risk_signal" in lib:
-                lib["risk_signal"] = lib.pop("base_risk_signal")
-            lib.pop("overlay_evaluation", None)
-            lib.pop("overlay_priority", None)
-            lib.pop("overlay_recommended_action", None)
-            lib.pop("effective_risk_signal", None)
-    return cleaned
+            for list_key in (
+                "consumer_project_ids",
+                "direct_consumer_project_ids",
+                "unknown_consumer_project_ids",
+                "consumer_app_ids",
+                "direct_app_ids",
+                "transitive_app_ids",
+                "unknown_app_ids",
+            ):
+                for cid in lib.get(list_key) or []:
+                    if cid:
+                        known_app_ids.add(str(cid))
+
+    sanitized_libraries = [
+        _sanitize_public_library_entry(lib, known_app_ids)
+        for lib in raw_libs
+        if isinstance(lib, dict)
+    ]
+
+    raw_meta = dataset_or_requests.get("meta") if isinstance(dataset_or_requests.get("meta"), dict) else {}
+    generated_at = str(
+        raw_meta.get("generated_at")
+        or dataset_or_requests.get("imported_at")
+        or now_iso()
+    )
+
+    consumer_summary = {
+        "total_consumer_projects": len(projects_raw),
+        "total_libraries": len(sanitized_libraries),
+        "private_inventory_redacted": True,
+    }
+
+    return {
+        "schema_version": PUBLIC_EXPORT_SCHEMA_VERSION,
+        "public_export_contract": {
+            "schema_version": PUBLIC_EXPORT_SCHEMA_VERSION,
+            "allowed_library_fields": list(PUBLIC_EXPORT_LIBRARY_ALLOWED_FIELDS),
+            "dependency_path_application_node": "<redacted-application>",
+        },
+        "meta": {
+            "schema_version": str(raw_meta.get("schema_version") or SCOPE_DATASET_SCHEMA_VERSION),
+            "public_export_schema_version": PUBLIC_EXPORT_SCHEMA_VERSION,
+            "generated_at": generated_at,
+            "public_redaction_applied": True,
+            "consumer_summary": consumer_summary,
+        },
+        "consumer_summary": consumer_summary,
+        "libraries": sanitized_libraries,
+    }
