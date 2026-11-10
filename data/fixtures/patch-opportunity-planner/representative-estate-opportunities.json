@@ -1,0 +1,334 @@
+{
+  "schema_version": "osera-opportunity-planner/v1",
+  "osera_rules": {
+    "rules_version": "2026.10-osera-prioritisation-v1",
+    "source_url": "https://github.com/finos-osera-forks/backlog/blob/main/rules/prioritisation.yaml"
+  },
+  "company_policy": {
+    "policy_id": "member-tier1-risk-policy-v1",
+    "boost_internet_exposed": true,
+    "internet_exposure_boost": 55,
+    "urgent_sla_threshold_days": 5,
+    "urgent_sla_boost": 70,
+    "frozen_change_windows": ["q4_freeze"],
+    "change_freeze_penalty": 50
+  },
+  "opportunities": [
+    {
+      "opportunity_id": "opp-osera-spring-web-kev",
+      "scenario": "osera_adoption",
+      "action_kind": "library_patch",
+      "library": "org.springframework:spring-web",
+      "deployed_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+      "framework_or_runtime": "spring-5.3",
+      "owner": "team-payments",
+      "change_window": "standard_weekly",
+      "business_criticality": "high",
+      "internet_exposed": false,
+      "sla_days_remaining": 14,
+      "identity_status": "confirmed",
+      "dependency_scope": "direct",
+      "affected_applications": ["payments-gateway", "settlement-router"],
+      "advisories": [
+        {
+          "id": "CVE-2024-22243",
+          "aliases": ["GHSA-22243-spring"],
+          "kev": true,
+          "cvss_score": 8.1,
+          "cvss_version": "3.1",
+          "cvss_source": "NVD",
+          "epss_probability": 0.42,
+          "epss_percentile": 0.97
+        },
+        {
+          "id": "CVE-2024-22259",
+          "kev": false,
+          "cvss_score": 8.1,
+          "cvss_version": "3.1",
+          "cvss_source": "NVD",
+          "epss_probability": 0.15,
+          "epss_percentile": 0.91
+        }
+      ],
+      "options": [
+        {
+          "patch_id": "osera-spring-web-5.3.20-osera-00002",
+          "provider": "OSERA",
+          "provider_kind": "osera",
+          "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00002",
+          "ready": true,
+          "fixed_advisories": ["CVE-2024-22243", "CVE-2024-22259"],
+          "aliases": ["GHSA-22243-spring"],
+          "residual_advisories": [],
+          "estimated_effort": "low",
+          "entitlement_status": "not_required",
+          "evidence_state": "verified"
+        },
+        {
+          "patch_id": "upstream-spring-web-5.3.39",
+          "provider": "Spring Upstream",
+          "provider_kind": "upstream",
+          "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.39",
+          "ready": true,
+          "fixed_advisories": ["CVE-2024-22243"],
+          "residual_advisories": ["CVE-2024-22259"],
+          "estimated_effort": "medium",
+          "entitlement_status": "not_required",
+          "evidence_state": "verified",
+          "rejection_reason": "leaves_residual_advisories:CVE-2024-22259"
+        },
+        {
+          "patch_id": "commercial-unentitled-spring-web",
+          "provider": "VendorX",
+          "provider_kind": "commercial",
+          "replacement_purl": "pkg:maven/org.springframework/spring-web@5.3.20-vendorx-1",
+          "ready": false,
+          "fixed_advisories": ["CVE-2024-22243", "CVE-2024-22259"],
+          "blocked_reasons": ["missing_commercial_entitlement"],
+          "entitlement_status": "unentitled",
+          "evidence_state": "blocked"
+        }
+      ]
+    },
+    {
+      "opportunity_id": "opp-upstream-tomcat-core",
+      "scenario": "upstream_adoption",
+      "action_kind": "library_patch",
+      "library": "org.apache.tomcat.embed:tomcat-embed-core",
+      "deployed_purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.50",
+      "framework_or_runtime": "spring-5.3",
+      "owner": "team-payments",
+      "change_window": "standard_weekly",
+      "business_criticality": "medium",
+      "internet_exposed": false,
+      "sla_days_remaining": 21,
+      "identity_status": "confirmed",
+      "dependency_scope": "transitive",
+      "affected_applications": ["payments-gateway", "treasury-engine"],
+      "advisories": [
+        {
+          "id": "CVE-2024-24549",
+          "aliases": ["GHSA-tomcat-24549"],
+          "kev": false,
+          "cvss_score": 7.5,
+          "cvss_version": "3.1",
+          "cvss_source": "NVD",
+          "epss_probability": 0.04,
+          "epss_percentile": 0.72
+        },
+        {
+          "id": "CVE-2024-23672",
+          "kev": false,
+          "cvss_score": 6.5,
+          "cvss_version": "3.1",
+          "cvss_source": "NVD",
+          "epss_probability": 0.02,
+          "epss_percentile": 0.55
+        }
+      ],
+      "options": [
+        {
+          "patch_id": "upstream-tomcat-9.0.86",
+          "provider": "Apache Upstream",
+          "provider_kind": "upstream",
+          "replacement_purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.86",
+          "ready": true,
+          "fixed_advisories": ["CVE-2024-24549"],
+          "residual_advisories": ["CVE-2024-23672"],
+          "estimated_effort": "medium",
+          "entitlement_status": "not_required",
+          "evidence_state": "verified"
+        }
+      ]
+    },
+    {
+      "opportunity_id": "opp-commercial-tomcat-bom-medium-signal",
+      "scenario": "entitled_commercial_adoption",
+      "action_kind": "framework_bom_patch",
+      "library": "org.apache.tomcat:tomcat-bom",
+      "deployed_purl": "pkg:maven/org.apache.tomcat/tomcat-bom@9.0.50",
+      "framework_or_runtime": "spring-5.3",
+      "owner": "team-payments",
+      "change_window": "standard_weekly",
+      "business_criticality": "tier_1_critical",
+      "internet_exposed": true,
+      "sla_days_remaining": 2,
+      "identity_status": "confirmed",
+      "dependency_scope": "direct",
+      "affected_applications": ["payments-gateway", "treasury-engine"],
+      "exposure_instances": [
+        "payments-gateway|CVE-2024-24549",
+        "treasury-engine|CVE-2024-24549",
+        "payments-gateway|CVE-2024-34750",
+        "treasury-engine|CVE-2024-34750"
+      ],
+      "advisories": [
+        {
+          "id": "CVE-2024-34750",
+          "kev": false,
+          "cvss_score": 6.5,
+          "cvss_version": "3.1",
+          "cvss_source": "OSV",
+          "epss_probability": 0.14,
+          "epss_percentile": 0.94,
+          "exploit_maturity": "poc"
+        },
+        {
+          "id": "CVE-2024-24549",
+          "kev": false,
+          "cvss_score": 6.8,
+          "cvss_version": "3.1",
+          "cvss_source": "NVD",
+          "epss_probability": 0.09,
+          "epss_percentile": 0.91
+        }
+      ],
+      "options": [
+        {
+          "patch_id": "commercial-redhat-tomcat-bom-9.0.50.redhat-00008",
+          "provider": "RedHat",
+          "provider_kind": "commercial",
+          "replacement_purl": "pkg:maven/org.apache.tomcat/tomcat-bom@9.0.50.redhat-00008",
+          "ready": true,
+          "fixed_advisories": ["CVE-2024-24549", "CVE-2024-34750"],
+          "residual_advisories": [],
+          "estimated_effort": "low",
+          "entitlement_status": "entitled",
+          "evidence_state": "verified"
+        }
+      ]
+    },
+    {
+      "opportunity_id": "opp-baseline-p2-unknown-signal",
+      "scenario": "osera_p2_and_unknown_signal",
+      "action_kind": "library_patch",
+      "library": "com.fasterxml.jackson.core:jackson-databind",
+      "deployed_purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.4",
+      "framework_or_runtime": "spring-5.3",
+      "owner": "team-reporting",
+      "change_window": "q4_freeze",
+      "business_criticality": "low",
+      "internet_exposed": false,
+      "identity_status": "confirmed",
+      "dependency_scope": "direct",
+      "affected_applications": ["reporting-batch"],
+      "advisories": [
+        {
+          "id": "CVE-2023-35116",
+          "kev": false,
+          "cvss_score": 5.3,
+          "cvss_version": "3.1",
+          "cvss_source": "NVD",
+          "epss_probability": 0.004,
+          "epss_percentile": 0.15
+        },
+        {
+          "id": "GHSA-unknown-cvss-epss",
+          "kev": false,
+          "cvss_score": null,
+          "epss_probability": null,
+          "epss_percentile": null
+        }
+      ],
+      "options": [
+        {
+          "patch_id": "osera-jackson-databind-2.13.4-osera-00001",
+          "provider": "OSERA",
+          "provider_kind": "osera",
+          "replacement_purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.4-osera-00001",
+          "ready": true,
+          "fixed_advisories": ["CVE-2023-35116", "GHSA-unknown-cvss-epss"],
+          "estimated_effort": "low",
+          "entitlement_status": "not_required",
+          "evidence_state": "verified"
+        }
+      ]
+    },
+    {
+      "opportunity_id": "opp-blocked-netty-evidence",
+      "scenario": "blocked_evidence",
+      "action_kind": "library_patch",
+      "library": "io.netty:netty-handler",
+      "deployed_purl": "pkg:maven/io.netty/netty-handler@4.1.100.Final",
+      "framework_or_runtime": "netty-4.1",
+      "owner": "team-gateway",
+      "change_window": "standard_weekly",
+      "identity_status": "confirmed",
+      "dependency_scope": "direct",
+      "affected_applications": ["edge-proxy"],
+      "advisories": [
+        {
+          "id": "CVE-2024-29025",
+          "kev": false,
+          "cvss_score": 9.1,
+          "cvss_version": "3.1",
+          "cvss_source": "NVD",
+          "epss_probability": 0.35,
+          "epss_percentile": 0.96
+        }
+      ],
+      "options": [
+        {
+          "patch_id": "osera-netty-unverified-promotion",
+          "provider": "OSERA",
+          "provider_kind": "osera",
+          "replacement_purl": "pkg:maven/io.netty/netty-handler@4.1.100.Final-osera-00001",
+          "ready": false,
+          "fixed_advisories": ["CVE-2024-29025"],
+          "blocked_reasons": ["unverified_artifact_promotion_signature", "missing_required_companion_chain"],
+          "evidence_state": "blocked"
+        }
+      ]
+    },
+    {
+      "opportunity_id": "opp-ambiguous-guava-identity",
+      "scenario": "ambiguous_identity",
+      "action_kind": "library_patch",
+      "library": "com.google.guava:guava",
+      "deployed_purl": "pkg:maven/com.google.guava/guava",
+      "framework_or_runtime": "jvm-standard",
+      "owner": "team-analytics",
+      "change_window": "standard_weekly",
+      "identity_status": "ambiguous",
+      "dependency_scope": "unknown",
+      "affected_applications": ["analytics-worker"],
+      "advisories": [
+        {
+          "id": "CVE-2023-2976",
+          "kev": false,
+          "cvss_score": 7.1,
+          "cvss_version": "3.1",
+          "cvss_source": "NVD",
+          "epss_probability": 0.01,
+          "epss_percentile": 0.44
+        }
+      ],
+      "options": []
+    },
+    {
+      "opportunity_id": "opp-unmet-coverage-commons-io",
+      "scenario": "unmet_coverage",
+      "action_kind": "library_patch",
+      "library": "commons-io:commons-io",
+      "deployed_purl": "pkg:maven/commons-io/commons-io@2.8.0",
+      "framework_or_runtime": "jvm-standard",
+      "owner": "team-settlement",
+      "change_window": "standard_weekly",
+      "identity_status": "confirmed",
+      "dependency_scope": "direct",
+      "affected_applications": ["settlement-router"],
+      "advisories": [
+        {
+          "id": "CVE-2024-47554",
+          "kev": false,
+          "cvss_score": 7.5,
+          "cvss_version": "3.1",
+          "cvss_source": "NVD",
+          "epss_probability": 0.03,
+          "epss_percentile": 0.68
+        }
+      ],
+      "options": []
+    }
+  ]
+}
