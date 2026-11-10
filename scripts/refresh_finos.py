@@ -18,6 +18,13 @@ from build_package_allowlist import read_dep_edges
 from fetch_external import KEV_URL, fetch_json, normalize_kev, fetch_epss
 from validate_dataset import validate
 from resolve_osv_inventory import resolve_inventory
+from incremental_refresh_pipeline import (
+    build_assessment_receipt,
+    build_public_pipeline_status_from_artifacts,
+    publish_collection_artifacts_safely,
+    reassess_inventory_with_refreshed_evidence,
+    update_pipeline_status_document,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 SCOPE = "finos-github-org"
@@ -89,13 +96,21 @@ def publish(dataset, report):
         raise RuntimeError("Repository scans failed; inspect local coverage report before publishing")
     for path in [dataset_path, report_path]:
         shutil.copyfile(path, ROOT / "data" / path.name)
+    if report.get("sources") and (ROOT / "data").exists():
+        status_doc = build_public_pipeline_status_from_artifacts(root_dir=ROOT, write_receipts=True)
+        (ROOT / "data" / "pipeline-status.json").write_text(json.dumps(status_doc, indent=2) + "\n", encoding="utf-8")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reuse-inventory", action="store_true", help="Resume from local scan evidence; retains original scan timestamps")
     parser.add_argument("--reuse-vulnerabilities", action="store_true", help="Resume from local OSV DB (manual recovery only)")
+    parser.add_argument("--sync-status-only", action="store_true", help="Synchronize receipts and data/pipeline-status.json from committed artifacts")
     args = parser.parse_args()
+    if args.sync_status_only:
+        status_doc = build_public_pipeline_status_from_artifacts(root_dir=ROOT, write_receipts=True)
+        (ROOT / "data" / "pipeline-status.json").write_text(json.dumps(status_doc, indent=2) + "\n", encoding="utf-8")
+        return
     LOCAL.mkdir(parents=True, exist_ok=True)
     raw_root = LOCAL / "raw"
     raw = raw_root / SCOPE

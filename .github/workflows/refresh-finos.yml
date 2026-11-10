@@ -40,7 +40,7 @@ jobs:
             git fetch origin codex/automated-finos-refresh:refs/remotes/origin/codex/automated-finos-refresh
           fi
           git switch -C codex/automated-finos-refresh
-          git add data/finos-github-org.json data/finos-coverage.json tool/manifest.json
+          git add data/finos-github-org.json data/finos-coverage.json data/receipts/finos-github-org.receipt.json data/pipeline-status.json tool/manifest.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m 'Refresh compact FINOS inventory and risk signals'
           git push --force-with-lease origin codex/automated-finos-refresh

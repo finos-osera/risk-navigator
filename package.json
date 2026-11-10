@@ -43,7 +43,9 @@
     "docs:build": "npm run build --prefix website",
     "test": "python3 -m pytest -q",
     "test:patches": "node --test tests/patch-*.test.mjs",
-    "refresh:finos": "python3 scripts/refresh_finos.py"
+    "refresh:finos": "python3 scripts/refresh_finos.py",
+    "status:sync": "python3 scripts/incremental_refresh_pipeline.py --sync-status",
+    "status:validate": "python3 scripts/incremental_refresh_pipeline.py --validate-status"
   },
   "devDependencies": {
     "vite": "^8.3.4"

@@ -1,0 +1,74 @@
+{
+  "schema_version": "1",
+  "collection_id": "finos-github-org",
+  "snapshot_id": "finos-github-org-20261103",
+  "content_sha256": "08dd6ec40eaa07e0c4f1c8b01861ecde1dcb67879d8dce3643b520ee2e17ad41",
+  "generated_at": "2026-11-03T01:14:01Z",
+  "inventory_snapshot_id": "finos-github-org-inv-fb40881d257b",
+  "evidence_snapshot_ids": {
+    "osv": "osv-34e9f945da33",
+    "kev": "kev-20261103",
+    "epss": "epss-20261103",
+    "osera_openvex": "osera-openvex-161"
+  },
+  "collector_commit": "e1b8aa18333ccdf84be588dfa620876a3a2ad8da",
+  "methodology_version": "2026.11-incremental-v1",
+  "coverage": {
+    "generated_at": "2026-11-03T01:14:01Z",
+    "inventory_started_at": "2026-11-03T01:08:08Z",
+    "inventory_completed_at": "2026-11-03T01:08:27Z",
+    "repositories": 135,
+    "repositories_with_dependencies": 105,
+    "repositories_failed": 0,
+    "status_counts": {
+      "no_supported_dependencies": 30,
+      "extracted": 94,
+      "partial": 11
+    },
+    "dependency_edges": 14575,
+    "resolved_lockfiles": 8,
+    "distinct_package_versions": 6904,
+    "runtime_transitive_edges": 8919,
+    "vulnerable_library_versions": 206,
+    "unique_cves": 519
+  },
+  "sources": [
+    {
+      "name": "github-finos-org",
+      "sha256": "fb40881d257b17b310c127ce5cc721549dfedf60691dc98828780225e5fe607e",
+      "retrieved_at": "2026-11-03T01:08:27Z"
+    },
+    {
+      "name": "osv",
+      "sha256": "34e9f945da339a5c9441e5d5226f03de12941bfe6018dcc4fc4f226f1d3d0132",
+      "retrieved_at": "2026-11-03T01:13:52Z"
+    },
+    {
+      "name": "cisa-kev",
+      "sha256": "bbe50ab583df102b659de156b45165425bdbe581238522a47641cb7694450dec",
+      "retrieved_at": "2026-11-03T01:13:58Z"
+    },
+    {
+      "name": "first-epss",
+      "sha256": "26d6cc3b1b69919c05fa8758c031b42868ae80bd8075051b6d00ba1e2caead77",
+      "retrieved_at": "2026-11-03T01:14:01Z"
+    }
+  ],
+  "artifacts": [
+    {
+      "role": "dataset",
+      "path": "data/finos-github-org.json",
+      "url": "../data/finos-github-org.json"
+    },
+    {
+      "role": "coverage_report",
+      "path": "data/finos-coverage.json",
+      "url": "../data/finos-coverage.json"
+    },
+    {
+      "role": "receipt",
+      "path": "data/receipts/finos-github-org.receipt.json",
+      "url": "../data/receipts/finos-github-org.receipt.json"
+    }
+  ]
+}
