@@ -11,19 +11,24 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 from build_dataset import build_dataset  # noqa: E402
 from estate_import import (  # noqa: E402
+    APPLICATION_VERSION_ORDERING_POLICY,
     COMPANY_OVERLAY_SCHEMA_VERSION,
     ESTATE_CONTRACT_SCHEMA_VERSION,
     PUBLIC_EXPORT_LIBRARY_ALLOWED_FIELDS,
     PUBLIC_EXPORT_SCHEMA_VERSION,
     SCOPE_DATASET_SCHEMA_VERSION,
+    _version_sort_key,
     apply_company_overlay,
+    compare_application_versions,
     evaluate_estate_view,
     generate_remediation_recipes,
     import_estate_sources,
     merge_estate_observations,
+    parse_company_inventory_feed,
     parse_cyclonedx_document,
     parse_purl_rich,
     parse_spdx_document,
+    resolve_application_version_convention,
     sanitize_for_public_export,
 )
 from extract_org import extract_from_estate  # noqa: E402
@@ -1148,6 +1153,466 @@ def test_latest_version_selection_ranks_final_release_above_release_candidate() 
     assert "maven|org.apache.logging.log4j|log4j-core|2.14.1" not in latest_lids
 
 
+def test_osera_java_patch_version_ordering_and_patch_sequences() -> None:
+    """REL-003-JAVA OSERA patched versions rank after their numeric or qualified baselines and preserve patch sequence ordering."""
+
+    assert APPLICATION_VERSION_ORDERING_POLICY["policy_version"] == "osera-application-version-ordering/v1"
+
+    # 1. Numeric-base Java example: 5.3.39 < 5.3.39.1-osera-00001 < 5.3.39.1-osera-00002
+    assert _version_sort_key("5.3.39", "maven") < _version_sort_key("5.3.39.1-osera-00001", "maven")
+    assert _version_sort_key("5.3.39.1-osera-00001", "maven") < _version_sort_key("5.3.39.1-osera-00002", "maven")
+    assert compare_application_versions("5.3.39", "5.3.39.1-osera-00001", "maven") == -1
+
+    # 2. Qualified Java examples: 5.6.15.Final < 5.6.15.Final-osera-00001 and 2.0.0.RELEASE < 2.0.0.RELEASE-osera-00001
+    assert _version_sort_key("5.6.15.Final", "maven") < _version_sort_key("5.6.15.Final-osera-00001", "maven")
+    assert _version_sort_key("5.6.15.Final-osera-00001", "maven") < _version_sort_key("5.6.15.Final-osera-00002", "maven")
+    assert _version_sort_key("2.0.0.RELEASE", "maven") < _version_sort_key("2.0.0.RELEASE-osera-00001", "maven")
+    assert _version_sort_key("2.0.0.RELEASE-osera-00001", "maven") < _version_sort_key("2.0.0.RELEASE-osera-00002", "maven")
+
+    # 3. Date-qualified Jetty-style baseline + OSERA patch: 9.4.51.v20230217 < 9.4.51.v20230217-osera-00001 < 9.4.51.v20230218
+    assert _version_sort_key("9.4.51.v20230217", "maven") < _version_sort_key("9.4.51.v20230217-osera-00001", "maven")
+    assert _version_sort_key("9.4.51.v20230217-osera-00001", "maven") < _version_sort_key("9.4.51.v20230218", "maven")
+
+    # 4. Genuine prereleases / release candidates remain below the final release under both Maven and SemVer
+    maven_chain = [
+        "5.6.15-SNAPSHOT",
+        "5.6.15.Alpha1",
+        "5.6.15.Beta1",
+        "5.6.15.M1",
+        "5.6.15.CR1",
+        "5.6.15.RC1",
+        "5.6.15.Final",
+        "5.6.15.Final-osera-00001",
+        "5.6.15.Final-osera-00002",
+    ]
+    assert sorted(reversed(maven_chain), key=lambda v: _version_sort_key(v, "maven")) == maven_chain
+
+    semver_chain = [
+        "2.0.0-alpha.1",
+        "2.0.0-beta.1",
+        "2.0.0-rc.1",
+        "2.0.0-rc.2",
+        "2.0.0",
+        "2.0.0-osera-00001",
+        "2.0.0-osera-00002",
+    ]
+    assert sorted(reversed(semver_chain), key=lambda v: _version_sort_key(v, "semver")) == semver_chain
+
+
+def test_maven_versus_semver_numeric_hyphen_suffix_and_explicit_convention_policy() -> None:
+    """Explicitly cover Maven vs SemVer interpretation of 2.0.0-1 and honest handling of ambiguous/unsupported schemes."""
+
+    # Under SemVer: 2.0.0-1 is a numeric prerelease identifier and ranks BELOW 2.0.0
+    assert _version_sort_key("2.0.0-1", "semver") < _version_sort_key("2.0.0", "semver")
+    assert compare_application_versions("2.0.0-1", "2.0.0", "semver") == -1
+
+    # Under Maven/Java: 2.0.0-1 is a post-release build/patch revision and ranks ABOVE 2.0.0
+    assert _version_sort_key("2.0.0", "maven") < _version_sort_key("2.0.0-1", "maven")
+    assert _version_sort_key("2.0.0-1", "maven") < _version_sort_key("2.0.0-2", "maven")
+    assert compare_application_versions("2.0.0-1", "2.0.0", "maven") == 1
+
+    # Do NOT assume an application uses Maven ordering merely because it consumes Java dependencies:
+    # Without an explicit convention or pkg:maven root PURL, 2.0.0 vs 2.0.0-1 is flagged as ambiguous_convention.
+    ambig_v1 = parse_cyclonedx_document(
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "metadata": {
+                "timestamp": "2026-11-01T10:00:00Z",
+                "properties": [
+                    {"name": "osera:build_id", "value": "build-200"},
+                    {"name": "osera:deployment_id", "value": "deploy-prod-a"},
+                    {"name": "osera:environment", "value": "production"},
+                ],
+                "component": {
+                    "type": "application",
+                    "bom-ref": "root",
+                    "group": "acme",
+                    "name": "polyglot-gateway",
+                    "version": "2.0.0",
+                },
+            },
+            "components": [
+                {"type": "library", "bom-ref": "spring", "purl": "pkg:maven/org.springframework/spring-web@5.3.20"}
+            ],
+            "dependencies": [{"ref": "root", "dependsOn": ["spring"]}],
+        }
+    )
+    ambig_v2 = parse_cyclonedx_document(
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "metadata": {
+                "timestamp": "2026-11-02T10:00:00Z",
+                "properties": [
+                    {"name": "osera:build_id", "value": "build-200-1"},
+                    {"name": "osera:deployment_id", "value": "deploy-prod-b"},
+                    {"name": "osera:environment", "value": "production"},
+                ],
+                "component": {
+                    "type": "application",
+                    "bom-ref": "root",
+                    "group": "acme",
+                    "name": "polyglot-gateway",
+                    "version": "2.0.0-1",
+                },
+            },
+            "components": [
+                {"type": "library", "bom-ref": "jackson", "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3"}
+            ],
+            "dependencies": [{"ref": "root", "dependsOn": ["jackson"]}],
+        }
+    )
+
+    ambig_contract = merge_estate_observations([ambig_v1, ambig_v2])
+    ambig_app = ambig_contract["applications"][0]
+    assert ambig_app["version_ordering_status"] == "ambiguous_convention"
+    assert ambig_app["latest_production_version"] == ""
+    assert ambig_app["latest_version"] == ""
+
+    # Honest handling in latest_production_version view: retains both active releases instead of silently dropping one
+    ambig_latest_view = evaluate_estate_view(ambig_contract, "latest_production_version")
+    assert ambig_latest_view["latest_version_selection_status"] == "partial_ambiguous_or_unsupported"
+    assert ambig_latest_view["ambiguous_latest_version_application_ids"] == ["github|acme|polyglot-gateway|main"]
+    assert {c["library_id"] for c in ambig_latest_view["components"]} == {
+        "maven|org.springframework|spring-web|5.3.20",
+        "maven|com.fasterxml.jackson.core|jackson-databind|2.13.3",
+    }
+
+    # When explicit convention is provided (maven vs semver), 2.0.0 vs 2.0.0-1 resolves deterministically as Intended:
+    feed_maven = parse_company_inventory_feed(
+        {
+            "applications": [
+                {
+                    "application_id": "github|acme|java-service|main",
+                    "name": "java-service",
+                    "version": "2.0.0",
+                    "version_convention": "maven",
+                    "build_id": "b-200",
+                    "deployment_id": "d-prod-1",
+                    "environment": "production",
+                    "dependencies": [{"purl": "pkg:maven/org.springframework/spring-web@5.3.20", "direct": True}],
+                },
+                {
+                    "application_id": "github|acme|java-service|main",
+                    "name": "java-service",
+                    "version": "2.0.0-1",
+                    "version_convention": "maven",
+                    "build_id": "b-200-1",
+                    "deployment_id": "d-prod-2",
+                    "environment": "production",
+                    "dependencies": [{"purl": "pkg:maven/org.springframework/spring-web@5.3.32", "direct": True}],
+                },
+            ]
+        }
+    )
+    maven_contract = merge_estate_observations(feed_maven)
+    maven_app = maven_contract["applications"][0]
+    assert maven_app["version_convention"] == "maven"
+    assert maven_app["version_ordering_status"] == "ordered"
+    assert maven_app["latest_production_version"] == "2.0.0-1"
+    maven_latest_lids = {c["library_id"] for c in evaluate_estate_view(maven_contract, "latest_production_version")["components"]}
+    assert maven_latest_lids == {"maven|org.springframework|spring-web|5.3.32"}
+
+    feed_semver = parse_company_inventory_feed(
+        {
+            "applications": [
+                {
+                    "application_id": "github|acme|node-service|main",
+                    "name": "node-service",
+                    "version": "2.0.0",
+                    "version_convention": "semver",
+                    "build_id": "b-200",
+                    "deployment_id": "d-prod-1",
+                    "environment": "production",
+                    "dependencies": [{"purl": "pkg:maven/org.springframework/spring-web@5.3.32", "direct": True}],
+                },
+                {
+                    "application_id": "github|acme|node-service|main",
+                    "name": "node-service",
+                    "version": "2.0.0-1",
+                    "version_convention": "semver",
+                    "build_id": "b-200-1",
+                    "deployment_id": "d-prod-2",
+                    "environment": "production",
+                    "dependencies": [{"purl": "pkg:maven/org.springframework/spring-web@5.3.20", "direct": True}],
+                },
+            ]
+        }
+    )
+    semver_contract = merge_estate_observations(feed_semver)
+    semver_app = semver_contract["applications"][0]
+    assert semver_app["version_convention"] == "semver"
+    assert semver_app["version_ordering_status"] == "ordered"
+    assert semver_app["latest_production_version"] == "2.0.0"
+    semver_latest_lids = {c["library_id"] for c in evaluate_estate_view(semver_contract, "latest_production_version")["components"]}
+    assert semver_latest_lids == {"maven|org.springframework|spring-web@5.3.32".replace("@", "|")}
+
+    # Unsupported / opaque version schemes (e.g. git commit SHAs) do not claim a fake universal latest version
+    conv, src, status = resolve_application_version_convention("", "", ["a1b2c3d4e5f6", "f6e5d4c3b2a1"])
+    assert conv == "unsupported"
+    assert status == "unsupported_scheme"
+
+
+def test_estate_latest_production_version_view_with_osera_patched_releases_and_all_active_preservation() -> None:
+    """Exercise latest_production_version and all_active_production views across all 3 REL-003-JAVA examples regardless of import order."""
+
+    cases = [
+        ("numeric-app", "5.3.39", "5.3.39.1-osera-00001"),
+        ("hibernate-app", "5.6.15.Final", "5.6.15.Final-osera-00001"),
+        ("spring-release-app", "2.0.0.RELEASE", "2.0.0.RELEASE-osera-00001"),
+    ]
+
+    for app_name, baseline_ver, patched_ver in cases:
+        baseline_doc = parse_cyclonedx_document(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.5",
+                "metadata": {
+                    # Give unpatched baseline a NEWER observed_at timestamp so timestamp order cannot accidentally win
+                    "timestamp": "2026-11-08T18:00:00Z",
+                    "properties": [
+                        {"name": "osera:build_id", "value": f"build-{baseline_ver}"},
+                        {"name": "osera:deployment_id", "value": f"deploy-prod-us-{app_name}"},
+                        {"name": "osera:environment", "value": "production"},
+                        {"name": "osera:deployed_at", "value": "2026-11-08T18:00:00Z"},
+                    ],
+                    "component": {
+                        "type": "application",
+                        "bom-ref": "root",
+                        "group": "acme",
+                        "name": app_name,
+                        "version": baseline_ver,
+                        "purl": f"pkg:maven/com.acme/{app_name}@{baseline_ver}",
+                    },
+                },
+                "components": [
+                    {
+                        "type": "library",
+                        "bom-ref": "unpatched-dep",
+                        "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+                    }
+                ],
+                "dependencies": [{"ref": "root", "dependsOn": ["unpatched-dep"]}],
+            }
+        )
+
+        patched_doc = parse_cyclonedx_document(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.5",
+                "metadata": {
+                    "timestamp": "2026-11-02T09:00:00Z",
+                    "properties": [
+                        {"name": "osera:build_id", "value": f"build-{patched_ver}"},
+                        {"name": "osera:deployment_id", "value": f"deploy-prod-eu-{app_name}"},
+                        {"name": "osera:environment", "value": "production"},
+                        {"name": "osera:deployed_at", "value": "2026-11-02T09:00:00Z"},
+                    ],
+                    "component": {
+                        "type": "application",
+                        "bom-ref": "root",
+                        "group": "acme",
+                        "name": app_name,
+                        "version": patched_ver,
+                        "purl": f"pkg:maven/com.acme/{app_name}@{patched_ver}",
+                    },
+                },
+                "components": [
+                    {
+                        "type": "library",
+                        "bom-ref": "patched-dep",
+                        "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.17.1",
+                    }
+                ],
+                "dependencies": [{"ref": "root", "dependsOn": ["patched-dep"]}],
+            }
+        )
+
+        # Exercise both import orders: [baseline, patched] and [patched, baseline]
+        for ordered_docs in ([baseline_doc, patched_doc], [patched_doc, baseline_doc]):
+            contract = merge_estate_observations(ordered_docs)
+            app = contract["applications"][0]
+            assert app["version_convention"] == "maven"
+            assert app["version_ordering_status"] == "ordered"
+            assert app["active_production_versions"] == [baseline_ver, patched_ver]
+            assert app["latest_production_version"] == patched_ver
+            assert app["latest_version"] == patched_ver
+            assert app["release"] == patched_ver
+
+            # latest_production_version view must select ONLY the patched release and its dependency (2.17.1)
+            latest_view = evaluate_estate_view(contract, "latest_production_version")
+            assert latest_view["latest_version_selection_status"] == "complete"
+            assert latest_view["evaluated_application_version_ids"] == [f"github|acme|{app_name}|main@{patched_ver}"]
+            latest_lids = {c["library_id"] for c in latest_view["components"]}
+            assert latest_lids == {"maven|org.apache.logging.log4j|log4j-core|2.17.1"}
+
+            # all_active_production view must still retain BOTH releases and BOTH dependencies while both remain active
+            all_active_view = evaluate_estate_view(contract, "all_active_production")
+            assert set(all_active_view["evaluated_application_version_ids"]) == {
+                f"github|acme|{app_name}|main@{baseline_ver}",
+                f"github|acme|{app_name}|main@{patched_ver}",
+            }
+            all_active_lids = {c["library_id"] for c in all_active_view["components"]}
+            assert all_active_lids == {
+                "maven|org.apache.logging.log4j|log4j-core|2.14.1",
+                "maven|org.apache.logging.log4j|log4j-core|2.17.1",
+            }
+
+
+def test_conflicting_multi_import_conventions_and_spdx_osera_comment_convention() -> None:
+    """Conflicting conventions across imports are order-independent, and SPDX osera:version_convention is honored."""
+
+    doc_maven = parse_cyclonedx_document(
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "metadata": {
+                "timestamp": "2026-11-01T10:00:00Z",
+                "properties": [
+                    {"name": "osera:build_id", "value": "b-200"},
+                    {"name": "osera:deployment_id", "value": "d-prod-1"},
+                    {"name": "osera:environment", "value": "production"},
+                    {"name": "osera:version_convention", "value": "maven"},
+                ],
+                "component": {
+                    "type": "application",
+                    "bom-ref": "root",
+                    "group": "acme",
+                    "name": "mixed-convention-app",
+                    "version": "2.0.0",
+                },
+            },
+            "components": [
+                {"type": "library", "bom-ref": "dep-1", "purl": "pkg:maven/org.springframework/spring-web@5.3.20"}
+            ],
+            "dependencies": [{"ref": "root", "dependsOn": ["dep-1"]}],
+        }
+    )
+    doc_semver = parse_cyclonedx_document(
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "metadata": {
+                "timestamp": "2026-11-02T10:00:00Z",
+                "properties": [
+                    {"name": "osera:build_id", "value": "b-200-1"},
+                    {"name": "osera:deployment_id", "value": "d-prod-2"},
+                    {"name": "osera:environment", "value": "production"},
+                    {"name": "osera:version_convention", "value": "semver"},
+                ],
+                "component": {
+                    "type": "application",
+                    "bom-ref": "root",
+                    "group": "acme",
+                    "name": "mixed-convention-app",
+                    "version": "2.0.0-1",
+                },
+            },
+            "components": [
+                {"type": "library", "bom-ref": "dep-2", "purl": "pkg:maven/org.springframework/spring-web@5.3.32"}
+            ],
+            "dependencies": [{"ref": "root", "dependsOn": ["dep-2"]}],
+        }
+    )
+
+    for docs_order in ([doc_maven, doc_semver], [doc_semver, doc_maven]):
+        conflict_contract = merge_estate_observations(docs_order)
+        conflict_app = conflict_contract["applications"][0]
+        assert conflict_app["version_convention"] == "ambiguous"
+        assert conflict_app["version_convention_source"] == "conflicting_explicit_conventions"
+        assert conflict_app["version_ordering_status"] == "ambiguous_convention"
+        assert conflict_app["latest_production_version"] == ""
+        latest_view = evaluate_estate_view(conflict_contract, "latest_production_version")
+        assert latest_view["latest_version_selection_status"] == "partial_ambiguous_or_unsupported"
+        assert {c["library_id"] for c in latest_view["components"]} == {
+            "maven|org.springframework|spring-web|5.3.20",
+            "maven|org.springframework|spring-web|5.3.32",
+        }
+
+        # Explicit caller override resolves conflicting document conventions deterministically
+        resolved_maven = merge_estate_observations(
+            docs_order,
+            application_version_conventions={"mixed-convention-app": "maven"},
+        )
+        assert resolved_maven["applications"][0]["latest_production_version"] == "2.0.0-1"
+
+    # SPDX creationInfo.comment osera:version_convention=maven key works end-to-end
+    spdx_base = parse_spdx_document(
+        {
+            "spdxVersion": "SPDX-2.3",
+            "name": "spdx-java-app",
+            "documentNamespace": "https://acme.example/spdx/b-200",
+            "creationInfo": {
+                "created": "2026-11-01T10:00:00Z",
+                "comment": "osera:environment=production; osera:deployment_id=spdx-prod-1; osera:version_convention=maven",
+            },
+            "documentDescribes": ["SPDXRef-App"],
+            "packages": [
+                {
+                    "SPDXID": "SPDXRef-App",
+                    "name": "spdx-java-app",
+                    "versionInfo": "2.0.0",
+                    "primaryPackagePurpose": "APPLICATION",
+                },
+                {
+                    "SPDXID": "SPDXRef-Dep1",
+                    "name": "spring-web",
+                    "versionInfo": "5.3.20",
+                    "externalRefs": [
+                        {
+                            "referenceCategory": "PACKAGE-MANAGER",
+                            "referenceType": "purl",
+                            "referenceLocator": "pkg:maven/org.springframework/spring-web@5.3.20",
+                        }
+                    ],
+                },
+            ],
+            "relationships": [
+                {"spdxElementId": "SPDXRef-App", "relationshipType": "DEPENDS_ON", "relatedSpdxElement": "SPDXRef-Dep1"}
+            ],
+        }
+    )
+    spdx_patched = parse_spdx_document(
+        {
+            "spdxVersion": "SPDX-2.3",
+            "name": "spdx-java-app",
+            "documentNamespace": "https://acme.example/spdx/b-200-1",
+            "creationInfo": {
+                "created": "2026-11-02T10:00:00Z",
+                "comment": "osera:environment=production; osera:deployment_id=spdx-prod-2; osera:version_convention=maven",
+            },
+            "documentDescribes": ["SPDXRef-App"],
+            "packages": [
+                {
+                    "SPDXID": "SPDXRef-App",
+                    "name": "spdx-java-app",
+                    "versionInfo": "2.0.0-1",
+                    "primaryPackagePurpose": "APPLICATION",
+                },
+                {
+                    "SPDXID": "SPDXRef-Dep2",
+                    "name": "spring-web",
+                    "versionInfo": "5.3.32",
+                    "externalRefs": [
+                        {
+                            "referenceCategory": "PACKAGE-MANAGER",
+                            "referenceType": "purl",
+                            "referenceLocator": "pkg:maven/org.springframework/spring-web@5.3.32",
+                        }
+                    ],
+                },
+            ],
+            "relationships": [
+                {"spdxElementId": "SPDXRef-App", "relationshipType": "DEPENDS_ON", "relatedSpdxElement": "SPDXRef-Dep2"}
+            ],
+        }
+    )
+    spdx_contract = merge_estate_observations([spdx_patched, spdx_base])
+    assert spdx_contract["applications"][0]["version_convention"] == "maven"
+    assert spdx_contract["applications"][0]["latest_production_version"] == "2.0.0-1"
+
+
 import tempfile  # noqa: E402
 import unittest  # noqa: E402
 
@@ -1184,6 +1649,18 @@ class EstateImportUnitTests(unittest.TestCase):
 
     def test_final_release_ranks_above_rc(self) -> None:
         test_latest_version_selection_ranks_final_release_above_release_candidate()
+
+    def test_osera_java_patch_version_ordering(self) -> None:
+        test_osera_java_patch_version_ordering_and_patch_sequences()
+
+    def test_maven_vs_semver_and_explicit_convention(self) -> None:
+        test_maven_versus_semver_numeric_hyphen_suffix_and_explicit_convention_policy()
+
+    def test_estate_latest_view_osera_patched_and_all_active(self) -> None:
+        test_estate_latest_production_version_view_with_osera_patched_releases_and_all_active_preservation()
+
+    def test_conflicting_conventions_and_spdx_comment_convention(self) -> None:
+        test_conflicting_multi_import_conventions_and_spdx_osera_comment_convention()
 
 
 if __name__ == "__main__":
