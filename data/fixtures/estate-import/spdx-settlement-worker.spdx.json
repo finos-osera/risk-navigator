@@ -1,0 +1,100 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "acme-settlement-worker",
+  "documentNamespace": "https://spdx.acme.example/settlement-worker/spdx-build-201",
+  "creationInfo": {
+    "created": "2026-10-22T08:15:00Z",
+    "creators": [
+      "Tool: syft-1.14.0",
+      "Organization: Acme Settlement Engineering"
+    ],
+    "comment": "env=staging;deployment_id=deploy-settlement-staging;region=us-east-1"
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-App",
+      "name": "acme/settlement-worker",
+      "versionInfo": "main",
+      "primaryPackagePurpose": "APPLICATION",
+      "DownloadLocation": "https://github.com/acme/settlement-worker.git"
+    },
+    {
+      "SPDXID": "SPDXRef-spring-web",
+      "name": "org.springframework:spring-web",
+      "versionInfo": "5.3.20",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:maven/org.springframework/spring-web@5.3.20"
+        }
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8f3c2a1b9e0d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-jackson-databind",
+      "name": "com.fasterxml.jackson.core:jackson-databind",
+      "versionInfo": "2.13.3",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3"
+        }
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-gin",
+      "name": "github.com/gin-gonic/gin",
+      "versionInfo": "v1.9.0",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:golang/github.com/gin-gonic/gin@v1.9.0#binding/json"
+        }
+      ],
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d7c6b"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-App"
+    },
+    {
+      "spdxElementId": "SPDXRef-App",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-spring-web"
+    },
+    {
+      "spdxElementId": "SPDXRef-App",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-gin"
+    },
+    {
+      "spdxElementId": "SPDXRef-spring-web",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-jackson-databind"
+    }
+  ]
+}

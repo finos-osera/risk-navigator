@@ -1,0 +1,43 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.4",
+  "serialNumber": "urn:uuid:11111111-2222-3333-4444-555555550301",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-10-23T06:00:00Z",
+    "properties": [
+      { "name": "osera:app_id", "value": "github|acme|legacy-batch-ledger|main" },
+      { "name": "osera:build_id", "value": "build-legacy-301" },
+      { "name": "osera:deployment_id", "value": "deploy-legacy-prod" },
+      { "name": "osera:environment", "value": "production" },
+      { "name": "osera:department", "value": "Core Banking Ledger" }
+    ],
+    "component": {
+      "type": "application",
+      "bom-ref": "app-legacy-batch-ledger",
+      "group": "acme",
+      "name": "legacy-batch-ledger",
+      "version": "main"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+      "group": "org.apache.logging.log4j",
+      "name": "log4j-core",
+      "version": "2.14.1",
+      "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.yaml/snakeyaml@1.30",
+      "group": "org.yaml",
+      "name": "snakeyaml",
+      "version": "1.30",
+      "purl": "pkg:maven/org.yaml/snakeyaml@1.30",
+      "scope": "required"
+    }
+  ]
+}
