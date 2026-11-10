@@ -226,6 +226,67 @@ def test_multi_occurrence_reconciliation_order_independence_staging_isolation_an
     assert eu_only["occurrence_breakdown"]["out_of_scope_unpatched_occurrences"] == ["payments-gateway@prod-us"]
 
 
+def test_distinct_clusters_in_same_region_and_timezone_offset_timestamp_ordering():
+    """Verify distinct clusters sharing a region stay separate and UTC instants beat lexicographic timezone text (#28)."""
+    # 1. Distinct clusters sharing region='eu' (no deployment_id) PLUS timezone offset ordering on eu/blue:
+    #    - Older unpatched observation at 2026-10-28T12:00:00+02:00 (10:00 UTC, lexicographically larger!)
+    #    - Newer patched observation at 2026-10-28T10:30:00Z (10:30 UTC, 30 min newer!)
+    eu_blue_older_offset = {
+        "application_id": "payments-gateway",
+        "region": "eu",
+        "cluster": "blue",
+        "environment": "production",
+        "observed_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+        "observed_at": "2026-10-28T12:00:00+02:00",
+        "validation_status": "pending",
+    }
+    eu_blue_newer_utc = {
+        "application_id": "payments-gateway",
+        "region": "eu",
+        "cluster": "blue",
+        "environment": "production",
+        "observed_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00002",
+        "observed_at": "2026-10-28T10:30:00Z",
+        "validation_status": "passed",
+    }
+    eu_green_unpatched = {
+        "application_id": "payments-gateway",
+        "region": "eu",
+        "cluster": "green",
+        "environment": "production",
+        "observed_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+        "observed_at": "2026-10-28T10:35:00Z",
+        "validation_status": "pending",
+    }
+
+    eu_region_plan = {
+        "plan_id": "plan-eu-region",
+        "opportunity_id": "opp-spring-web-eu",
+        "current_stage": "deployed",
+        "source_artifact_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+        "selected_artifact_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00002",
+        "required_environment": "production",
+        "target_applications": ["payments-gateway"],
+        "target_regions": ["eu"],
+        "expected_fixed_advisories": ["CVE-2024-22243"],
+    }
+
+    obs_list = [eu_blue_older_offset, eu_blue_newer_utc, eu_green_unpatched]
+    rep_fwd = reconcile_patch_plans_with_observations({"deployment_observations": obs_list, "plans": [eu_region_plan]})
+    rep_rev = reconcile_patch_plans_with_observations(
+        {"deployment_observations": list(reversed(obs_list)), "plans": [eu_region_plan]}
+    )
+    assert rep_fwd == rep_rev
+
+    plan_res = rep_fwd["plans"][0]
+    # Because eu/green is still unpatched while eu/blue selected the newer 10:30Z patched observation over 12:00+02:00 (10:00Z):
+    assert plan_res["reconciled_stage"] == "partial_rollout"
+    assert plan_res["occurrence_breakdown"]["verified_occurrences"] == ["payments-gateway@eu/blue"]
+    assert plan_res["occurrence_breakdown"]["unpatched_occurrences"] == ["payments-gateway@eu/green"]
+    assert plan_res["observed_remediated_exposures"] == ["payments-gateway@eu/blue|CVE-2024-22243"]
+    assert plan_res["residual_exposures"] == ["payments-gateway@eu/green|CVE-2024-22243"]
+
+
 class PatchVerificationAndRequestsTestCase(unittest.TestCase):
     def test_all(self):
         test_closed_ticket_recipe_or_osera_issue_without_deployment_cannot_verify_remediation()
@@ -233,6 +294,7 @@ class PatchVerificationAndRequestsTestCase(unittest.TestCase):
         test_privacy_preserving_request_export_broad_major_precision_and_co_release_mapping()
         test_unsupported_ecosystem_rejection_and_authenticated_intake_deduplication_with_rare_request_privacy()
         test_multi_occurrence_reconciliation_order_independence_staging_isolation_and_scoped_plans()
+        test_distinct_clusters_in_same_region_and_timezone_offset_timestamp_ordering()
 
 
 if __name__ == "__main__":

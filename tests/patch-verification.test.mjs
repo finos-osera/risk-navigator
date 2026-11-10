@@ -124,3 +124,59 @@ test('preserves multi-occurrence deployment observations deterministically acros
   assert.deepEqual(byId['plan-eu-only'].observed_remediated_exposures, ['payments-gateway@prod-eu|CVE-2024-22243']);
   assert.deepEqual(byId['plan-eu-only'].occurrence_breakdown.out_of_scope_unpatched_occurrences, ['payments-gateway@prod-us']);
 });
+
+test('keeps distinct clusters in the same region separate and compares ISO timestamps by UTC instant (#28)', () => {
+  const obsList = [
+    {
+      application_id: 'payments-gateway',
+      region: 'eu',
+      cluster: 'blue',
+      environment: 'production',
+      observed_purl: 'pkg:maven/org.springframework/spring-web@5.3.20',
+      observed_at: '2026-10-28T12:00:00+02:00',
+      validation_status: 'pending',
+    },
+    {
+      application_id: 'payments-gateway',
+      region: 'eu',
+      cluster: 'blue',
+      environment: 'production',
+      observed_purl: 'pkg:maven/org.springframework/spring-web@5.3.20-osera-00002',
+      observed_at: '2026-10-28T10:30:00Z',
+      validation_status: 'passed',
+    },
+    {
+      application_id: 'payments-gateway',
+      region: 'eu',
+      cluster: 'green',
+      environment: 'production',
+      observed_purl: 'pkg:maven/org.springframework/spring-web@5.3.20',
+      observed_at: '2026-10-28T10:35:00Z',
+      validation_status: 'pending',
+    },
+  ];
+  const plans = [
+    {
+      plan_id: 'plan-eu-region',
+      opportunity_id: 'opp-spring-web-eu',
+      current_stage: 'deployed',
+      source_artifact_purl: 'pkg:maven/org.springframework/spring-web@5.3.20',
+      selected_artifact_purl: 'pkg:maven/org.springframework/spring-web@5.3.20-osera-00002',
+      required_environment: 'production',
+      target_applications: ['payments-gateway'],
+      target_regions: ['eu'],
+      expected_fixed_advisories: ['CVE-2024-22243'],
+    },
+  ];
+
+  const repFwd = reconcilePatchPlansWithObservations({ deployment_observations: obsList, plans });
+  const repRev = reconcilePatchPlansWithObservations({ deployment_observations: [...obsList].reverse(), plans });
+  assert.deepEqual(repFwd, repRev);
+
+  const planRes = repFwd.plans[0];
+  assert.equal(planRes.reconciled_stage, 'partial_rollout');
+  assert.deepEqual(planRes.occurrence_breakdown.verified_occurrences, ['payments-gateway@eu/blue']);
+  assert.deepEqual(planRes.occurrence_breakdown.unpatched_occurrences, ['payments-gateway@eu/green']);
+  assert.deepEqual(planRes.observed_remediated_exposures, ['payments-gateway@eu/blue|CVE-2024-22243']);
+  assert.deepEqual(planRes.residual_exposures, ['payments-gateway@eu/green|CVE-2024-22243']);
+});

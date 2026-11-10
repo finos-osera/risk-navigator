@@ -17,6 +17,7 @@ Implements:
 from __future__ import annotations
 
 import copy
+from datetime import datetime, timezone
 import json
 import re
 from pathlib import Path
@@ -70,6 +71,56 @@ PRIVATE_ESTATE_KEYS = frozenset(
 # ============================================================================
 
 
+def _parse_iso_timestamp_epoch(raw_ts: Any) -> tuple[int, float]:
+    """Parse an ISO-8601 timestamp into (valid_flag, utc_epoch_seconds).
+
+    Missing or unparseable timestamps return (0, -inf) so valid timestamps always sort newer
+    and timezone offsets (e.g. +02:00 vs Z) are compared by actual UTC instant rather than ASCII text.
+    """
+    ts_str = str(raw_ts or "").strip()
+    if not ts_str:
+        return (0, float("-inf"))
+    try:
+        normalized = ts_str[:-1] + "+00:00" if ts_str.endswith(("Z", "z")) else ts_str
+        dt = datetime.fromisoformat(normalized)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt = dt.astimezone(timezone.utc)
+        return (1, dt.timestamp())
+    except ValueError:
+        return (0, float("-inf"))
+
+
+def _extract_deployment_id(obs: dict[str, Any]) -> str:
+    """Build a composite deployment identifier preserving all present location dimensions."""
+    explicit_dep = str(obs.get("deployment_id") or "").strip()
+    location_parts: list[str] = []
+    for key in ("region", "cluster", "namespace", "instance_id", "host"):
+        val = str(obs.get(key) or "").strip()
+        if val and val not in location_parts:
+            location_parts.append(val)
+    if explicit_dep:
+        extra = [p for p in location_parts if p != explicit_dep and p not in explicit_dep.split("/")]
+        return "/".join([explicit_dep, *extra]) if extra else explicit_dep
+    if location_parts:
+        return "/".join(location_parts)
+    return "default"
+
+
+def _occurrence_matches_target(dep_id: str, obs: dict[str, Any], target: str) -> bool:
+    """Check whether an observation occurrence matches a planned target deployment or region."""
+    t = target.strip()
+    if not t:
+        return False
+    if dep_id == t or dep_id.startswith(f"{t}/") or t in dep_id.split("/"):
+        return True
+    for key in ("deployment_id", "region", "cluster", "namespace", "instance_id", "host"):
+        if str(obs.get(key) or "").strip() == t:
+            return True
+    return False
+
+
 def reconcile_patch_plans_with_observations(
     bundle_or_path: dict[str, Any] | Path,
 ) -> dict[str, Any]:
@@ -93,11 +144,12 @@ def reconcile_patch_plans_with_observations(
         payload = copy.deepcopy(bundle_or_path)
 
     stale_cutoff = str(payload.get("stale_inventory_cutoff") or "2026-10-20T00:00:00Z")
+    cutoff_valid, cutoff_epoch = _parse_iso_timestamp_epoch(stale_cutoff)
     withdrawn_purls = set(str(x) for x in (payload.get("withdrawn_artifacts") or []) if str(x).strip())
     invalidated_advisories = set(str(x) for x in (payload.get("invalidated_advisory_claims") or []) if str(x).strip())
 
     # Index latest deployment observations by (application_id, environment, deployment_id, library_coord)
-    # Deterministically select the latest observation per occurrence by (observed_at, canonical_json)
+    # Deterministically select the latest observation per occurrence by (utc_epoch, canonical_json)
     observations_by_occ: dict[tuple[str, str, str, str], dict[str, Any]] = {}
     for obs in payload.get("deployment_observations") or []:
         if not isinstance(obs, dict):
@@ -106,27 +158,25 @@ def reconcile_patch_plans_with_observations(
         if not app_id:
             continue
         obs_env = str(obs.get("environment") or "production").strip().lower()
-        dep_id = str(
-            obs.get("deployment_id")
-            or obs.get("region")
-            or obs.get("cluster")
-            or obs.get("instance_id")
-            or "default"
-        ).strip()
+        dep_id = _extract_deployment_id(obs)
         obs_purl = str(obs.get("observed_purl") or "").strip()
         parsed_obs = parse_purl(obs_purl) if obs_purl else {"valid": False, "library": ""}
         lib_coord = str(obs.get("library") or (parsed_obs["library"] if parsed_obs.get("valid") else "") or "*").strip()
         occ_key = (app_id, obs_env, dep_id, lib_coord)
+        ts_valid, ts_epoch = _parse_iso_timestamp_epoch(obs.get("observed_at"))
         candidate_sort_key = (
-            str(obs.get("observed_at") or ""),
+            ts_valid,
+            ts_epoch,
             json.dumps(obs, sort_keys=True, separators=(",", ":"), default=str),
         )
         existing = observations_by_occ.get(occ_key)
         if existing is None:
             observations_by_occ[occ_key] = obs
         else:
+            ex_valid, ex_epoch = _parse_iso_timestamp_epoch(existing.get("observed_at"))
             existing_sort_key = (
-                str(existing.get("observed_at") or ""),
+                ex_valid,
+                ex_epoch,
                 json.dumps(existing, sort_keys=True, separators=(",", ":"), default=str),
             )
             if candidate_sort_key > existing_sort_key:
@@ -168,10 +218,32 @@ def reconcile_patch_plans_with_observations(
         target_apps = [str(a).strip() for a in (plan.get("target_applications") or []) if str(a).strip()]
         expected_advisories = [str(a).strip() for a in (plan.get("expected_fixed_advisories") or []) if str(a).strip()]
         if target_deployments:
+            expanded_app_deps: list[tuple[str, str]] = []
+            for app in target_apps:
+                app_env_occs_for_plan = [
+                    (occ_key, obs)
+                    for occ_key, obs in sorted(observations_by_occ.items(), key=lambda kv: kv[0])
+                    if occ_key[0] == app
+                    and occ_key[1] == required_env
+                    and (not plan_lib_coord or occ_key[3] in (plan_lib_coord, "*"))
+                    and not bool(obs.get("removed_from_scope", False))
+                ]
+                for dep in target_deployments:
+                    matched_concrete = [
+                        k[2]
+                        for k, o in app_env_occs_for_plan
+                        if _occurrence_matches_target(k[2], o, dep)
+                    ]
+                    if matched_concrete:
+                        for c_dep in matched_concrete:
+                            if (app, c_dep) not in expanded_app_deps:
+                                expanded_app_deps.append((app, c_dep))
+                    else:
+                        if (app, dep) not in expanded_app_deps:
+                            expanded_app_deps.append((app, dep))
             planned_exposures = [
                 f"{app}@{dep}|{adv}"
-                for app in target_apps
-                for dep in target_deployments
+                for app, dep in expanded_app_deps
                 for adv in expected_advisories
             ]
         else:
@@ -264,8 +336,16 @@ def reconcile_patch_plans_with_observations(
                 and (not plan_lib_coord or occ_key[3] in (plan_lib_coord, "*"))
             ]
             if target_deployments:
-                in_scope_occs = [(k, o) for k, o in app_env_occs if k[2] in target_deployments]
-                out_scope_occs = [(k, o) for k, o in app_env_occs if k[2] not in target_deployments]
+                in_scope_occs = [
+                    (k, o)
+                    for k, o in app_env_occs
+                    if any(_occurrence_matches_target(k[2], o, t) for t in target_deployments)
+                ]
+                out_scope_occs = [
+                    (k, o)
+                    for k, o in app_env_occs
+                    if not any(_occurrence_matches_target(k[2], o, t) for t in target_deployments)
+                ]
                 for k_out, o_out in out_scope_occs:
                     if str(o_out.get("observed_purl") or "").strip() != selected_purl:
                         out_of_scope_unpatched_occurrences.append(f"{app_id}@{k_out[2]}")
@@ -291,11 +371,18 @@ def reconcile_patch_plans_with_observations(
                 obs_purl = str(obs.get("observed_purl") or "").strip()
                 obs_digest = str(obs.get("observed_artifact_digest") or "").strip() or None
                 obs_env = str(obs.get("environment") or "production").strip().lower()
-                obs_ts = str(obs.get("observed_at") or "")
+                obs_ts = str(obs.get("observed_at") or "").strip()
+                obs_ts_valid, obs_ts_epoch = _parse_iso_timestamp_epoch(obs_ts)
                 validation_status = str(obs.get("validation_status") or "pending").strip().lower()
                 previously_deployed = bool(obs.get("previously_deployed_target", False)) or prior_stage == "verified"
 
-                is_stale = bool(obs_ts and obs_ts < stale_cutoff)
+                is_stale = bool(
+                    obs_ts
+                    and (
+                        obs_ts_valid == 0
+                        or (cutoff_valid == 1 and obs_ts_epoch < cutoff_epoch)
+                    )
+                )
                 if is_stale:
                     app_stale_count += 1
                     stale_inventory_occurrences.append(occ_label)

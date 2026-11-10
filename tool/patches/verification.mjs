@@ -22,8 +22,43 @@ const canonicalJson = val => {
   return `{${keys.map(k => `${JSON.stringify(k)}:${canonicalJson(val[k])}`).join(',')}}`;
 };
 
+const parseIsoTimestampEpoch = rawTs => {
+  const tsStr = String(rawTs || '').trim();
+  if (!tsStr) return { valid: 0, epochMs: Number.NEGATIVE_INFINITY };
+  const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(tsStr);
+  const normalized = hasZone ? tsStr : `${tsStr}Z`;
+  const ms = Date.parse(normalized);
+  if (Number.isNaN(ms)) return { valid: 0, epochMs: Number.NEGATIVE_INFINITY };
+  return { valid: 1, epochMs: ms };
+};
+
+const extractDeploymentId = obs => {
+  const explicitDep = String(obs.deployment_id || '').trim();
+  const locParts = [];
+  for (const key of ['region', 'cluster', 'namespace', 'instance_id', 'host']) {
+    const val = String(obs[key] || '').trim();
+    if (val && !locParts.includes(val)) locParts.push(val);
+  }
+  if (explicitDep) {
+    const extra = locParts.filter(p => p !== explicitDep && !explicitDep.split('/').includes(p));
+    return extra.length ? [explicitDep, ...extra].join('/') : explicitDep;
+  }
+  return locParts.length ? locParts.join('/') : 'default';
+};
+
+const occurrenceMatchesTarget = (depId, obs, target) => {
+  const t = String(target || '').trim();
+  if (!t) return false;
+  if (depId === t || depId.startsWith(`${t}/`) || depId.split('/').includes(t)) return true;
+  for (const key of ['deployment_id', 'region', 'cluster', 'namespace', 'instance_id', 'host']) {
+    if (String(obs[key] || '').trim() === t) return true;
+  }
+  return false;
+};
+
 export function reconcilePatchPlansWithObservations(bundle) {
   const staleCutoff = String(bundle.stale_inventory_cutoff || '2026-10-20T00:00:00Z');
+  const cutoffParsed = parseIsoTimestampEpoch(staleCutoff);
   const withdrawnPurls = new Set(bundle.withdrawn_artifacts || []);
   const invalidatedAdvisories = new Set(bundle.invalidated_advisory_claims || []);
 
@@ -34,13 +69,18 @@ export function reconcilePatchPlansWithObservations(bundle) {
     const appId = String(obs.application_id || '').trim();
     if (!appId) continue;
     const obsEnv = String(obs.environment || 'production').trim().toLowerCase();
-    const depId = String(obs.deployment_id || obs.region || obs.cluster || obs.instance_id || 'default').trim();
+    const depId = extractDeploymentId(obs);
     const libCoord = String(obs.library || extractLibCoord(obs.observed_purl) || '*').trim();
     const occKey = `${appId}|||${obsEnv}|||${depId}|||${libCoord}`;
-    const candKey = `${String(obs.observed_at || '')}|||${canonicalJson(obs)}`;
+    const tsParsed = parseIsoTimestampEpoch(obs.observed_at);
+    const cJson = canonicalJson(obs);
     const existing = obsByOcc.get(occKey);
-    if (!existing || candKey > existing.sortKey) {
-      obsByOcc.set(occKey, { appId, obsEnv, depId, libCoord, sortKey: candKey, obs });
+    const isNewer = !existing ||
+      tsParsed.valid > existing.tsValid ||
+      (tsParsed.valid === existing.tsValid && tsParsed.epochMs > existing.tsEpoch) ||
+      (tsParsed.valid === existing.tsValid && tsParsed.epochMs === existing.tsEpoch && cJson > existing.cJson);
+    if (isNewer) {
+      obsByOcc.set(occKey, { appId, obsEnv, depId, libCoord, tsValid: tsParsed.valid, tsEpoch: tsParsed.epochMs, cJson, obs });
     }
   }
   const sortedOccEntries = [...obsByOcc.values()].sort((a, b) =>
@@ -62,7 +102,21 @@ export function reconcilePatchPlansWithObservations(bundle) {
     const targetApps = plan.target_applications || [];
     const expectedAdvs = plan.expected_fixed_advisories || [];
     const plannedExposures = targetDeployments.length
-      ? targetApps.flatMap(app => targetDeployments.flatMap(dep => expectedAdvs.map(adv => `${app}@${dep}|${adv}`)))
+      ? targetApps.flatMap(app => {
+          const appEnvOccsForPlan = sortedOccEntries.filter(e =>
+            e.appId === app &&
+            e.obsEnv === requiredEnv &&
+            (!planLibCoord || e.libCoord === planLibCoord || e.libCoord === '*') &&
+            e.obs.removed_from_scope !== true
+          );
+          const concreteDeps = unique(
+            targetDeployments.flatMap(dep => {
+              const matched = appEnvOccsForPlan.filter(e => occurrenceMatchesTarget(e.depId, e.obs, dep)).map(e => e.depId);
+              return matched.length ? matched : [dep];
+            })
+          );
+          return concreteDeps.flatMap(dep => expectedAdvs.map(adv => `${app}@${dep}|${adv}`));
+        })
       : targetApps.flatMap(app => expectedAdvs.map(adv => `${app}|${adv}`));
     totalPlanned += plannedExposures.length;
 
@@ -106,8 +160,8 @@ export function reconcilePatchPlansWithObservations(bundle) {
       );
       let inScopeOccs = appEnvOccs;
       if (targetDeployments.length) {
-        inScopeOccs = appEnvOccs.filter(e => targetDeployments.includes(e.depId));
-        for (const outE of appEnvOccs.filter(e => !targetDeployments.includes(e.depId))) {
+        inScopeOccs = appEnvOccs.filter(e => targetDeployments.some(t => occurrenceMatchesTarget(e.depId, e.obs, t)));
+        for (const outE of appEnvOccs.filter(e => !targetDeployments.some(t => occurrenceMatchesTarget(e.depId, e.obs, t)))) {
           if (String(outE.obs.observed_purl || '').trim() !== selectedPurl) {
             outOfScopeUnpatchedOccurrences.push(`${app}@${outE.depId}`);
           }
@@ -121,9 +175,12 @@ export function reconcilePatchPlansWithObservations(bundle) {
 
       let appVerCount = 0, appDepUnverCount = 0, appFailCount = 0, appRbCount = 0, appStaleCount = 0, appUnpatchedCount = 0;
       for (const entry of activeOccs) {
-        const { depId, obs } = entry;
+        const { depId, obs, tsValid, tsEpoch } = entry;
         const occLabel = (targetDeployments.length || depId !== 'default' || activeOccs.length > 1) ? `${app}@${depId}` : app;
-        const isStale = Boolean(obs.observed_at && obs.observed_at < staleCutoff);
+        const rawObsTs = String(obs.observed_at || '').trim();
+        const isStale = Boolean(
+          rawObsTs && (tsValid === 0 || (cutoffParsed.valid === 1 && tsEpoch < cutoffParsed.epochMs))
+        );
         if (isStale) {
           appStaleCount++;
           staleInventoryOccurrences.push(occLabel);
