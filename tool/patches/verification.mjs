@@ -22,11 +22,32 @@ const canonicalJson = val => {
   return `{${keys.map(k => `${JSON.stringify(k)}:${canonicalJson(val[k])}`).join(',')}}`;
 };
 
+const ISO_TIMESTAMP_RE = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:Z|([+-])(\d{2}):?(\d{2}))?$/i;
+
 const parseIsoTimestampEpoch = rawTs => {
-  const tsStr = String(rawTs || '').trim();
-  if (!tsStr) return { valid: 0, epochMs: Number.NEGATIVE_INFINITY };
+  if (typeof rawTs !== 'string') return { valid: 0, epochMs: Number.NEGATIVE_INFINITY };
+  const tsStr = rawTs.trim();
+  const m = ISO_TIMESTAMP_RE.exec(tsStr);
+  if (!m) return { valid: 0, epochMs: Number.NEGATIVE_INFINITY };
+  const year = Number(m[1]), month = Number(m[2]), day = Number(m[3]);
+  const hour = Number(m[4]), minute = Number(m[5]), second = Number(m[6]);
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59 || second > 59) {
+    return { valid: 0, epochMs: Number.NEGATIVE_INFINITY };
+  }
+  const utcCheck = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  if (
+    utcCheck.getUTCFullYear() !== year ||
+    utcCheck.getUTCMonth() + 1 !== month ||
+    utcCheck.getUTCDate() !== day
+  ) {
+    return { valid: 0, epochMs: Number.NEGATIVE_INFINITY };
+  }
+  if (m[7] !== undefined) {
+    const tzHr = Number(m[8]), tzMin = Number(m[9]);
+    if (tzHr > 23 || tzMin > 59) return { valid: 0, epochMs: Number.NEGATIVE_INFINITY };
+  }
   const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(tsStr);
-  const normalized = hasZone ? tsStr : `${tsStr}Z`;
+  const normalized = (hasZone ? tsStr : `${tsStr}Z`).replace(' ', 'T');
   const ms = Date.parse(normalized);
   if (Number.isNaN(ms)) return { valid: 0, epochMs: Number.NEGATIVE_INFINITY };
   return { valid: 1, epochMs: ms };
@@ -177,9 +198,9 @@ export function reconcilePatchPlansWithObservations(bundle) {
       for (const entry of activeOccs) {
         const { depId, obs, tsValid, tsEpoch } = entry;
         const occLabel = (targetDeployments.length || depId !== 'default' || activeOccs.length > 1) ? `${app}@${depId}` : app;
-        const rawObsTs = String(obs.observed_at || '').trim();
+        // Require a valid observation timestamp before granting verified remediation credit (#28).
         const isStale = Boolean(
-          rawObsTs && (tsValid === 0 || (cutoffParsed.valid === 1 && tsEpoch < cutoffParsed.epochMs))
+          tsValid === 0 || (cutoffParsed.valid === 1 && tsEpoch < cutoffParsed.epochMs)
         );
         if (isStale) {
           appStaleCount++;
@@ -192,7 +213,7 @@ export function reconcilePatchPlansWithObservations(bundle) {
           if (obs.validation_status === 'failed') {
             appFailCount++;
             failedValidationOccurrences.push(occLabel);
-          } else if (obs.validation_status === 'passed' && !isStale) {
+          } else if (obs.validation_status === 'passed' && tsValid === 1 && !isStale) {
             appVerCount++;
             verifiedOccurrences.push(occLabel);
           } else {

@@ -180,3 +180,69 @@ test('keeps distinct clusters in the same region separate and compares ISO times
   assert.deepEqual(planRes.observed_remediated_exposures, ['payments-gateway@eu/blue|CVE-2024-22243']);
   assert.deepEqual(planRes.residual_exposures, ['payments-gateway@eu/green|CVE-2024-22243']);
 });
+
+test('requires a valid observation timestamp before granting verified remediation credit (#28)', () => {
+  const basePlan = {
+    plan_id: 'plan-timestamp-validation',
+    opportunity_id: 'opp-spring-web-ts',
+    current_stage: 'deployed',
+    source_artifact_purl: 'pkg:maven/org.springframework/spring-web@5.3.20',
+    selected_artifact_purl: 'pkg:maven/org.springframework/spring-web@5.3.20-osera-00002',
+    required_environment: 'production',
+    target_applications: ['payments-gateway'],
+    expected_fixed_advisories: ['CVE-2024-22243'],
+  };
+
+  for (const invalidObs of [
+    {
+      application_id: 'payments-gateway',
+      environment: 'production',
+      observed_purl: 'pkg:maven/org.springframework/spring-web@5.3.20-osera-00002',
+      validation_status: 'passed',
+    },
+    {
+      application_id: 'payments-gateway',
+      environment: 'production',
+      observed_purl: 'pkg:maven/org.springframework/spring-web@5.3.20-osera-00002',
+      observed_at: '',
+      validation_status: 'passed',
+    },
+    {
+      application_id: 'payments-gateway',
+      environment: 'production',
+      observed_purl: 'pkg:maven/org.springframework/spring-web@5.3.20-osera-00002',
+      observed_at: 'not-a-timestamp',
+      validation_status: 'passed',
+    },
+  ]) {
+    const report = reconcilePatchPlansWithObservations({ deployment_observations: [invalidObs], plans: [basePlan] });
+    const planRes = report.plans[0];
+    assert.equal(planRes.reconciled_stage, 'partial_rollout_with_stale_inventory');
+    assert.notEqual(planRes.reconciled_stage, 'verified');
+    assert.deepEqual(planRes.observed_remediated_exposures, []);
+    assert.deepEqual(planRes.residual_exposures, ['payments-gateway|CVE-2024-22243']);
+    assert.deepEqual(planRes.application_breakdown.verified_applications, []);
+    assert.deepEqual(planRes.application_breakdown.deployed_unverified_applications, ['payments-gateway']);
+    assert.deepEqual(planRes.application_breakdown.stale_inventory_applications, ['payments-gateway']);
+    assert.deepEqual(planRes.occurrence_breakdown.verified_occurrences, []);
+    assert.deepEqual(planRes.occurrence_breakdown.deployed_unverified_occurrences, ['payments-gateway']);
+    assert.deepEqual(planRes.occurrence_breakdown.stale_inventory_occurrences, ['payments-gateway']);
+  }
+
+  const validReport = reconcilePatchPlansWithObservations({
+    deployment_observations: [
+      {
+        application_id: 'payments-gateway',
+        environment: 'production',
+        observed_purl: 'pkg:maven/org.springframework/spring-web@5.3.20-osera-00002',
+        observed_at: '2026-10-28T10:00:00Z',
+        validation_status: 'passed',
+      },
+    ],
+    plans: [basePlan],
+  });
+  const validPlan = validReport.plans[0];
+  assert.equal(validPlan.reconciled_stage, 'verified');
+  assert.deepEqual(validPlan.observed_remediated_exposures, ['payments-gateway|CVE-2024-22243']);
+  assert.deepEqual(validPlan.residual_exposures, []);
+});

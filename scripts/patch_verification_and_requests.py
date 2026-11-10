@@ -71,14 +71,22 @@ PRIVATE_ESTATE_KEYS = frozenset(
 # ============================================================================
 
 
+ISO_TIMESTAMP_RE = re.compile(
+    r"^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|([+-])(\d{2}):?(\d{2}))?$",
+    re.IGNORECASE,
+)
+
+
 def _parse_iso_timestamp_epoch(raw_ts: Any) -> tuple[int, float]:
     """Parse an ISO-8601 timestamp into (valid_flag, utc_epoch_seconds).
 
     Missing or unparseable timestamps return (0, -inf) so valid timestamps always sort newer
     and timezone offsets (e.g. +02:00 vs Z) are compared by actual UTC instant rather than ASCII text.
     """
-    ts_str = str(raw_ts or "").strip()
-    if not ts_str:
+    if not isinstance(raw_ts, str):
+        return (0, float("-inf"))
+    ts_str = raw_ts.strip()
+    if not ts_str or not ISO_TIMESTAMP_RE.match(ts_str):
         return (0, float("-inf"))
     try:
         normalized = ts_str[:-1] + "+00:00" if ts_str.endswith(("Z", "z")) else ts_str
@@ -371,17 +379,16 @@ def reconcile_patch_plans_with_observations(
                 obs_purl = str(obs.get("observed_purl") or "").strip()
                 obs_digest = str(obs.get("observed_artifact_digest") or "").strip() or None
                 obs_env = str(obs.get("environment") or "production").strip().lower()
-                obs_ts = str(obs.get("observed_at") or "").strip()
+                obs_ts = obs.get("observed_at")
                 obs_ts_valid, obs_ts_epoch = _parse_iso_timestamp_epoch(obs_ts)
                 validation_status = str(obs.get("validation_status") or "pending").strip().lower()
                 previously_deployed = bool(obs.get("previously_deployed_target", False)) or prior_stage == "verified"
 
+                # A valid observation timestamp is required before granting verified remediation credit (#28).
+                # Missing, empty, or invalid timestamps are never treated as fresh.
                 is_stale = bool(
-                    obs_ts
-                    and (
-                        obs_ts_valid == 0
-                        or (cutoff_valid == 1 and obs_ts_epoch < cutoff_epoch)
-                    )
+                    obs_ts_valid == 0
+                    or (cutoff_valid == 1 and obs_ts_epoch < cutoff_epoch)
                 )
                 if is_stale:
                     app_stale_count += 1
@@ -397,7 +404,7 @@ def reconcile_patch_plans_with_observations(
                     if validation_status == "failed":
                         app_fail_count += 1
                         failed_validation_occurrences.append(occ_label)
-                    elif validation_status == "passed" and not is_stale:
+                    elif validation_status == "passed" and obs_ts_valid == 1 and not is_stale:
                         app_ver_count += 1
                         verified_occurrences.append(occ_label)
                     else:

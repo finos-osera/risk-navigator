@@ -287,6 +287,73 @@ def test_distinct_clusters_in_same_region_and_timezone_offset_timestamp_ordering
     assert plan_res["residual_exposures"] == ["payments-gateway@eu/green|CVE-2024-22243"]
 
 
+def test_missing_empty_and_invalid_timestamps_cannot_verify_remediation():
+    """Require a valid fresh observation timestamp before granting verified remediation credit (#28)."""
+    base_plan = {
+        "plan_id": "plan-timestamp-validation",
+        "opportunity_id": "opp-spring-web-ts",
+        "current_stage": "deployed",
+        "source_artifact_purl": "pkg:maven/org.springframework/spring-web@5.3.20",
+        "selected_artifact_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00002",
+        "required_environment": "production",
+        "target_applications": ["payments-gateway"],
+        "expected_fixed_advisories": ["CVE-2024-22243"],
+    }
+
+    for invalid_obs in (
+        {
+            "application_id": "payments-gateway",
+            "environment": "production",
+            "observed_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00002",
+            "validation_status": "passed",
+        },
+        {
+            "application_id": "payments-gateway",
+            "environment": "production",
+            "observed_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00002",
+            "observed_at": "",
+            "validation_status": "passed",
+        },
+        {
+            "application_id": "payments-gateway",
+            "environment": "production",
+            "observed_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00002",
+            "observed_at": "not-a-timestamp",
+            "validation_status": "passed",
+        },
+    ):
+        report = reconcile_patch_plans_with_observations(
+            {"deployment_observations": [invalid_obs], "plans": [base_plan]}
+        )
+        plan_res = report["plans"][0]
+        assert plan_res["reconciled_stage"] == "partial_rollout_with_stale_inventory"
+        assert plan_res["reconciled_stage"] != "verified"
+        assert plan_res["observed_remediated_exposures"] == []
+        assert plan_res["residual_exposures"] == ["payments-gateway|CVE-2024-22243"]
+        assert plan_res["application_breakdown"]["verified_applications"] == []
+        assert plan_res["application_breakdown"]["deployed_unverified_applications"] == ["payments-gateway"]
+        assert plan_res["application_breakdown"]["stale_inventory_applications"] == ["payments-gateway"]
+        assert plan_res["occurrence_breakdown"]["verified_occurrences"] == []
+        assert plan_res["occurrence_breakdown"]["deployed_unverified_occurrences"] == ["payments-gateway"]
+        assert plan_res["occurrence_breakdown"]["stale_inventory_occurrences"] == ["payments-gateway"]
+
+    # A valid fresh timestamp on the same matching observation still verifies successfully
+    valid_fresh_obs = {
+        "application_id": "payments-gateway",
+        "environment": "production",
+        "observed_purl": "pkg:maven/org.springframework/spring-web@5.3.20-osera-00002",
+        "observed_at": "2026-10-28T10:00:00Z",
+        "validation_status": "passed",
+    }
+    valid_report = reconcile_patch_plans_with_observations(
+        {"deployment_observations": [valid_fresh_obs], "plans": [base_plan]}
+    )
+    valid_plan = valid_report["plans"][0]
+    assert valid_plan["reconciled_stage"] == "verified"
+    assert valid_plan["observed_remediated_exposures"] == ["payments-gateway|CVE-2024-22243"]
+    assert valid_plan["residual_exposures"] == []
+
+
 class PatchVerificationAndRequestsTestCase(unittest.TestCase):
     def test_all(self):
         test_closed_ticket_recipe_or_osera_issue_without_deployment_cannot_verify_remediation()
@@ -295,6 +362,7 @@ class PatchVerificationAndRequestsTestCase(unittest.TestCase):
         test_unsupported_ecosystem_rejection_and_authenticated_intake_deduplication_with_rare_request_privacy()
         test_multi_occurrence_reconciliation_order_independence_staging_isolation_and_scoped_plans()
         test_distinct_clusters_in_same_region_and_timezone_offset_timestamp_ordering()
+        test_missing_empty_and_invalid_timestamps_cannot_verify_remediation()
 
 
 if __name__ == "__main__":
