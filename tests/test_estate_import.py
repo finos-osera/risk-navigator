@@ -860,6 +860,294 @@ def test_equivalent_spdx_and_cyclonedx_inputs_produce_identical_identities_and_c
     assert cdx_comp["affected_deployment_count"] == spdx_comp["affected_deployment_count"] == 2
 
 
+def test_public_export_strips_internal_qualifiers_and_subpaths_beyond_fixtures() -> None:
+    """Packages with internal PURL qualifiers (`?build_id=...`) or subpaths (`#services/...`) never leak in public export."""
+
+    doc = parse_cyclonedx_document(
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "metadata": {
+                "timestamp": "2026-11-01T12:00:00Z",
+                "properties": [
+                    {"name": "osera:application_id", "value": "github|finbank|fx-pricing-service|main"},
+                    {"name": "osera:build_id", "value": "payments-release-784"},
+                    {"name": "osera:deployment_id", "value": "deploy-fx-prod-ny4"},
+                    {"name": "osera:environment", "value": "production"},
+                ],
+                "component": {
+                    "type": "application",
+                    "bom-ref": "root-app",
+                    "group": "finbank",
+                    "name": "fx-pricing-service",
+                    "version": "3.1.0",
+                },
+            },
+            "components": [
+                {
+                    "type": "library",
+                    "bom-ref": "lib-1",
+                    "purl": (
+                        "pkg:maven/org.apache.logging.log4j/log4j-core@2.17.1"
+                        "?arch=x86_64&build_id=payments-release-784&classifier=payments-release-784"
+                        "&vcs_url=https://git.finbank.internal/services/payments-engine"
+                        "#services/payments-engine"
+                    ),
+                },
+                {
+                    "type": "library",
+                    "bom-ref": "lib-2",
+                    "purl": (
+                        "pkg:golang/github.com/gin-gonic/gin@1.9.1+build.payments-release-784"
+                        "?commit=9a8b7c6d&distro=rhel-9.3&env=prod-ny4"
+                        "#internal/pkg/fx-pricing-service/router"
+                    ),
+                },
+            ],
+            "dependencies": [
+                {"ref": "root-app", "dependsOn": ["lib-1", "lib-2"]},
+            ],
+        }
+    )
+
+    contract = merge_estate_observations([doc])
+    sanitized = sanitize_for_public_export(contract)
+    serialized = json.dumps(sanitized)
+
+    forbidden_internal_strings = [
+        "build_id",
+        "payments-release-784",
+        "services/payments-engine",
+        "payments-engine",
+        "fx-pricing-service",
+        "finbank",
+        "deploy-fx-prod-ny4",
+        "prod-ny4",
+        "vcs_url",
+        "9a8b7c6d",
+        "internal/pkg",
+    ]
+    for token in forbidden_internal_strings:
+        assert token not in serialized, f"Internal detail leaked into public export: {token!r}"
+
+    libs_by_proj = {lib["proj"]: lib for lib in sanitized["libraries"]}
+    log4j_pub = libs_by_proj["log4j-core"]
+    assert log4j_pub["qualifiers"] == {"arch": ["x86_64"]}
+    assert log4j_pub["subpaths"] == []
+    assert log4j_pub["repackaged_internal_coordinates_redacted"] is True
+
+    gin_pub = libs_by_proj["gin"]
+    assert gin_pub["release"] == "1.9.1"
+    assert gin_pub["qualifiers"] == {"distro": ["rhel-9.3"]}
+    assert gin_pub["subpaths"] == []
+    assert gin_pub["repackaged_internal_coordinates_redacted"] is True
+
+
+def test_replacement_build_same_version_and_staging_build_same_version_isolation() -> None:
+    """Replacement build b2 of the same app version 1.0.0 supersedes b1, and staging 1.0.0 never leaks into prod views."""
+
+    # Production build b1 of app 1.0.0 uses Log4j 2.14.1
+    prod_b1 = parse_cyclonedx_document(
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "metadata": {
+                "timestamp": "2026-11-01T10:00:00Z",
+                "properties": [
+                    {"name": "osera:build_id", "value": "b1"},
+                    {"name": "osera:deployment_id", "value": "deploy-prod-main"},
+                    {"name": "osera:environment", "value": "production"},
+                    {"name": "osera:deployed_at", "value": "2026-11-01T10:00:00Z"},
+                ],
+                "component": {
+                    "type": "application",
+                    "bom-ref": "root",
+                    "group": "acme",
+                    "name": "risk-engine",
+                    "version": "1.0.0",
+                },
+            },
+            "components": [
+                {
+                    "type": "library",
+                    "bom-ref": "log4j-old",
+                    "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+                }
+            ],
+            "dependencies": [{"ref": "root", "dependsOn": ["log4j-old"]}],
+        }
+    )
+
+    # Replacement production build b2 with the SAME app version (1.0.0) and SAME deployment uses Log4j 2.17.1
+    prod_b2 = parse_cyclonedx_document(
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "metadata": {
+                "timestamp": "2026-11-02T10:00:00Z",
+                "properties": [
+                    {"name": "osera:build_id", "value": "b2"},
+                    {"name": "osera:deployment_id", "value": "deploy-prod-main"},
+                    {"name": "osera:environment", "value": "production"},
+                    {"name": "osera:deployed_at", "value": "2026-11-02T10:00:00Z"},
+                ],
+                "component": {
+                    "type": "application",
+                    "bom-ref": "root",
+                    "group": "acme",
+                    "name": "risk-engine",
+                    "version": "1.0.0",
+                },
+            },
+            "components": [
+                {
+                    "type": "library",
+                    "bom-ref": "log4j-fixed",
+                    "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.17.1",
+                }
+            ],
+            "dependencies": [{"ref": "root", "dependsOn": ["log4j-fixed"]}],
+        }
+    )
+
+    # Active staging build sharing the same app version (1.0.0) has a vulnerable staging-only dependency (snakeyaml 1.30)
+    staging_b3 = parse_cyclonedx_document(
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "metadata": {
+                "timestamp": "2026-11-03T10:00:00Z",
+                "properties": [
+                    {"name": "osera:build_id", "value": "b3-staging"},
+                    {"name": "osera:deployment_id", "value": "deploy-staging-main"},
+                    {"name": "osera:environment", "value": "staging"},
+                    {"name": "osera:deployed_at", "value": "2026-11-03T10:00:00Z"},
+                ],
+                "component": {
+                    "type": "application",
+                    "bom-ref": "root",
+                    "group": "acme",
+                    "name": "risk-engine",
+                    "version": "1.0.0",
+                },
+            },
+            "components": [
+                {
+                    "type": "library",
+                    "bom-ref": "snakeyaml-vuln",
+                    "purl": "pkg:maven/org.yaml/snakeyaml@1.30",
+                }
+            ],
+            "dependencies": [{"ref": "root", "dependsOn": ["snakeyaml-vuln"]}],
+        }
+    )
+
+    contract = merge_estate_observations([prod_b1, prod_b2, staging_b3])
+
+    # 1. Superseded build b1 (log4j 2.14.1) must NOT appear in any active view
+    active_deploy_lids = {c["library_id"] for c in evaluate_estate_view(contract, "all_active_deployments")["components"]}
+    assert "maven|org.apache.logging.log4j|log4j-core|2.14.1" not in active_deploy_lids
+    assert active_deploy_lids == {
+        "maven|org.apache.logging.log4j|log4j-core|2.17.1",
+        "maven|org.yaml|snakeyaml|1.30",
+    }
+
+    # 2. Production-only views must include ONLY replacement build b2 (log4j 2.17.1) and exclude both b1 (2.14.1) and staging b3 (snakeyaml 1.30)
+    all_prod_lids = {c["library_id"] for c in evaluate_estate_view(contract, "all_active_production")["components"]}
+    assert all_prod_lids == {"maven|org.apache.logging.log4j|log4j-core|2.17.1"}
+
+    latest_prod_lids = {c["library_id"] for c in evaluate_estate_view(contract, "latest_production_version")["components"]}
+    assert latest_prod_lids == {"maven|org.apache.logging.log4j|log4j-core|2.17.1"}
+
+    # 3. Historical view (all_imported) still preserves b1 for auditability
+    all_imported_lids = {c["library_id"] for c in evaluate_estate_view(contract, "all_imported")["components"]}
+    assert all_imported_lids == {
+        "maven|org.apache.logging.log4j|log4j-core|2.14.1",
+        "maven|org.apache.logging.log4j|log4j-core|2.17.1",
+        "maven|org.yaml|snakeyaml|1.30",
+    }
+
+
+def test_latest_version_selection_ranks_final_release_above_release_candidate() -> None:
+    """With both 2.0.0-rc.1 and 2.0.0 active in production, latest_production_version selects 2.0.0."""
+
+    prod_final = parse_cyclonedx_document(
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "metadata": {
+                "timestamp": "2026-11-01T10:00:00Z",
+                "properties": [
+                    {"name": "osera:build_id", "value": "build-200-final"},
+                    {"name": "osera:deployment_id", "value": "deploy-prod-us"},
+                    {"name": "osera:environment", "value": "production"},
+                    {"name": "osera:deployed_at", "value": "2026-11-01T10:00:00Z"},
+                ],
+                "component": {
+                    "type": "application",
+                    "bom-ref": "root",
+                    "group": "acme",
+                    "name": "clearing-router",
+                    "version": "2.0.0",
+                },
+            },
+            "components": [
+                {
+                    "type": "library",
+                    "bom-ref": "log4j-safe",
+                    "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.17.1",
+                }
+            ],
+            "dependencies": [{"ref": "root", "dependsOn": ["log4j-safe"]}],
+        }
+    )
+
+    prod_rc = parse_cyclonedx_document(
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.5",
+            "metadata": {
+                # Deliberately given a newer timestamp to ensure version precedence beats timestamp
+                "timestamp": "2026-11-05T15:00:00Z",
+                "properties": [
+                    {"name": "osera:build_id", "value": "build-200-rc1"},
+                    {"name": "osera:deployment_id", "value": "deploy-prod-canary"},
+                    {"name": "osera:environment", "value": "production"},
+                    {"name": "osera:deployed_at", "value": "2026-11-05T15:00:00Z"},
+                ],
+                "component": {
+                    "type": "application",
+                    "bom-ref": "root",
+                    "group": "acme",
+                    "name": "clearing-router",
+                    "version": "2.0.0-rc.1",
+                },
+            },
+            "components": [
+                {
+                    "type": "library",
+                    "bom-ref": "log4j-rc-vuln",
+                    "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+                }
+            ],
+            "dependencies": [{"ref": "root", "dependsOn": ["log4j-rc-vuln"]}],
+        }
+    )
+
+    contract = merge_estate_observations([prod_final, prod_rc])
+    app = contract["applications"][0]
+    assert app["active_production_versions"] == ["2.0.0-rc.1", "2.0.0"]
+    assert app["latest_production_version"] == "2.0.0"
+    assert app["latest_version"] == "2.0.0"
+    assert app["release"] == "2.0.0"
+
+    latest_prod_view = evaluate_estate_view(contract, "latest_production_version")
+    assert latest_prod_view["evaluated_application_version_ids"] == ["github|acme|clearing-router|main@2.0.0"]
+    latest_lids = {c["library_id"] for c in latest_prod_view["components"]}
+    assert latest_lids == {"maven|org.apache.logging.log4j|log4j-core|2.17.1"}
+    assert "maven|org.apache.logging.log4j|log4j-core|2.14.1" not in latest_lids
+
+
 import tempfile  # noqa: E402
 import unittest  # noqa: E402
 
@@ -887,6 +1175,15 @@ class EstateImportUnitTests(unittest.TestCase):
 
     def test_spdx_cyclonedx_equivalence(self) -> None:
         test_equivalent_spdx_and_cyclonedx_inputs_produce_identical_identities_and_counts()
+
+    def test_public_export_internal_qualifiers_and_subpaths(self) -> None:
+        test_public_export_strips_internal_qualifiers_and_subpaths_beyond_fixtures()
+
+    def test_replacement_and_staging_build_isolation(self) -> None:
+        test_replacement_build_same_version_and_staging_build_same_version_isolation()
+
+    def test_final_release_ranks_above_rc(self) -> None:
+        test_latest_version_selection_ranks_final_release_above_release_candidate()
 
 
 if __name__ == "__main__":

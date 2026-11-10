@@ -70,6 +70,56 @@ ACTIVE_RUNTIME_ENVIRONMENTS = {
     "sandbox",
 }
 SYMBOLIC_VERSION_TOKENS = {"main", "master", "head", "trunk", "latest", "0.0.0", "unspecified", "unknown", ""}
+FINAL_RELEASE_MODIFIERS = {"final", "ga", "release"}
+POST_RELEASE_MODIFIERS = {"sp", "post", "pl", "patch"}
+PRERELEASE_STAGE_ORDER = {
+    "dev": 0,
+    "devel": 0,
+    "nightly": 1,
+    "canary": 1,
+    "snapshot": 2,
+    "alpha": 3,
+    "a": 3,
+    "ea": 3,
+    "pre": 4,
+    "preview": 4,
+    "beta": 5,
+    "b": 5,
+    "milestone": 6,
+    "m": 6,
+    "rc": 7,
+    "cr": 7,
+}
+PUBLIC_EXPORT_ALLOWED_QUALIFIER_KEYS = frozenset(
+    {
+        "arch",
+        "classifier",
+        "distro",
+        "extension",
+        "jdk",
+        "os",
+        "packaging",
+        "type",
+    }
+)
+PUBLIC_EXPORT_ALLOWED_SCOPES = frozenset(
+    {
+        "required",
+        "optional",
+        "excluded",
+        "runtime",
+        "compile",
+        "provided",
+        "test",
+        "build",
+        "system",
+        "import",
+    }
+)
+PUBLIC_EXPORT_SAFE_QUALIFIER_VALUE_RE = re.compile(r"^[A-Za-z0-9._+-]{1,64}$")
+PUBLIC_EXPORT_INTERNAL_VALUE_TOKEN_RE = re.compile(
+    r"(?i)(?:^|[-+_.])(internal|corp|repackaged|private|inhouse|secret|staging|preprod|uat|dev|build|deploy|release|commit|pr|mr|jira|ticket|eon|tai|acme)(?:$|[-+_.0-9])"
+)
 
 REPACKAGED_VERSION_RE = re.compile(
     r"(?i)(?:[.+_-])(internal|corp|repackaged|vendor|patched|hotfix|custom|redhat|rhel\d*|el\d+|amzn\d+|deb\d+|ubuntu\d+|alpine\d*|fips)(?:$|[.+_-])"
@@ -523,28 +573,118 @@ def _extract_properties_dict(props: Any) -> Dict[str, str]:
     return out
 
 
-def _version_sort_key(version: Any) -> Tuple[int, Tuple[Tuple[int, Any], ...], str]:
-    """Return a deterministic semantic version comparison key (never ordering by SBOM import timestamp)."""
+def _timestamp_sort_key(value: Any) -> float:
+    """Parse an ISO-8601 timestamp into UTC epoch seconds for chronological ordering."""
+
+    if not isinstance(value, str) or not value.strip():
+        return float("-inf")
+    raw = value.strip()
+    try:
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).timestamp()
+    except ValueError:
+        return float("-inf")
+
+
+def _parse_prerelease_tokens(suffix: str) -> Tuple[Tuple[int, int, str], ...]:
+    """Parse prerelease or modifier tokens according to SemVer 2.0.0 + stage precedence."""
+
+    tokens: List[Tuple[int, int, str]] = []
+    for seg in re.split(r"[._-]+", suffix):
+        if not seg:
+            continue
+        if seg.isdigit():
+            tokens.append((0, int(seg), ""))
+            continue
+        m = re.match(r"^([A-Za-z]+)(\d+)$", seg)
+        if m and m.group(1).lower() in PRERELEASE_STAGE_ORDER:
+            tag = m.group(1).lower()
+            tokens.append((1, PRERELEASE_STAGE_ORDER[tag], tag))
+            tokens.append((0, int(m.group(2)), ""))
+            continue
+        lower_seg = seg.lower()
+        if lower_seg in PRERELEASE_STAGE_ORDER:
+            tokens.append((1, PRERELEASE_STAGE_ORDER[lower_seg], lower_seg))
+        else:
+            tokens.append((1, 10, lower_seg))
+    return tuple(tokens)
+
+
+def _version_sort_key(version: Any) -> Tuple[int, Tuple[Tuple[int, Any], ...], int, Tuple[Any, ...]]:
+    """Return a deterministic prerelease-aware semantic version comparison key.
+
+    Invariants:
+    - Symbolic version tokens (`main`, `0.0.0`, `unspecified`, etc.) rank below concrete releases.
+    - Build metadata (`+...`) is ignored for version precedence per SemVer 2.0.0 §10.
+    - Final releases (`stage_rank = 1`, e.g. `2.0.0`, `2.0.0.Final`, `2.0.0-GA`) rank strictly above
+      prereleases of the same numeric version (`stage_rank = 0`, e.g. `2.0.0-alpha.1`, `2.0.0-rc.1`, `2.0.0-SNAPSHOT`).
+    - Non-semantic versions fall back to deterministic numeric/lexical token comparison with final > prerelease.
+    """
 
     raw = str(version or "").strip()
     lower = raw.lower()
     if lower in SYMBOLIC_VERSION_TOKENS:
-        return (0, (), lower)
+        return (0, (), 0, (lower,))
+
     cleaned = re.sub(r"^[vV](?=\d)", "", raw)
-    parts: List[Tuple[int, Any]] = []
-    for token in re.split(r"[._+-]", cleaned):
-        if not token:
-            continue
-        if token.isdigit():
-            parts.append((1, int(token)))
+    core_and_pre = cleaned.split("+", 1)[0].strip()
+    if not core_and_pre:
+        return (0, (), 0, (lower,))
+
+    m_sem = re.match(r"^(?P<nums>\d+(?:\.\d+)*)(?P<rest>.*)$", core_and_pre)
+    if m_sem:
+        num_ints = [int(x) for x in m_sem.group("nums").split(".")]
+        while len(num_ints) < 3:
+            num_ints.append(0)
+        num_tuple = tuple((1, n) for n in num_ints)
+        rest = m_sem.group("rest").strip()
+        if not rest:
+            return (2, num_tuple, 1, ())
+
+        suffix = re.sub(r"^[-._]+", "", rest)
+        raw_parts = [p for p in re.split(r"[-._]+", suffix) if p]
+        first_raw = raw_parts[0].lower() if raw_parts else ""
+        first_alpha_m = re.match(r"^([a-z]+)(\d*)$", first_raw)
+        first_alpha = first_alpha_m.group(1) if first_alpha_m else first_raw
+
+        if first_raw in FINAL_RELEASE_MODIFIERS and len(raw_parts) == 1:
+            return (2, num_tuple, 1, ())
+
+        if first_alpha in POST_RELEASE_MODIFIERS or (rest.startswith("-") and first_raw.isdigit()):
+            post_tokens: List[Tuple[int, Any]] = []
+            for tok in re.findall(r"\d+|[A-Za-z]+", suffix):
+                if tok.isdigit():
+                    post_tokens.append((1, int(tok)))
+                else:
+                    post_tokens.append((0, tok.lower()))
+            return (2, num_tuple, 2, tuple(post_tokens))
+
+        return (2, num_tuple, 0, _parse_prerelease_tokens(suffix))
+
+    # Deterministic fallback for non-semantic versions (e.g. `r2026b`, `release-42-rc1`)
+    pre_match = re.search(
+        r"(?i)[-_.]?(dev|devel|nightly|canary|snapshot|alpha|beta|milestone|pre|preview|rc|cr)(?:[-_.]?\d+(?:[._-][A-Za-z0-9]+)*)?$",
+        core_and_pre,
+    )
+    if pre_match and pre_match.start() > 0:
+        base_str = core_and_pre[: pre_match.start()]
+        pre_str = re.sub(r"^[-._]+", "", core_and_pre[pre_match.start() :])
+        stage_rank = 0
+        pre_key: Tuple[Any, ...] = _parse_prerelease_tokens(pre_str)
+    else:
+        base_str = core_and_pre
+        stage_rank = 1
+        pre_key = ()
+
+    fallback_parts: List[Tuple[int, Any]] = []
+    for tok in re.findall(r"\d+|[A-Za-z]+", base_str):
+        if tok.isdigit():
+            fallback_parts.append((1, int(tok)))
         else:
-            m = re.match(r"^(\d+)([A-Za-z].*)$", token)
-            if m:
-                parts.append((1, int(m.group(1))))
-                parts.append((0, m.group(2).lower()))
-            else:
-                parts.append((0, token.lower()))
-    return (1, tuple(parts), lower)
+            fallback_parts.append((0, tok.lower()))
+    return (1, tuple(fallback_parts), stage_rank, pre_key)
 
 
 def _parse_bool_flag(raw: Any, default: Optional[bool] = None) -> Optional[bool]:
@@ -740,10 +880,16 @@ def parse_cyclonedx_document(
         or "build"
     ).strip().lower()
     region = str(props.get("region") or props.get("deployment:region") or "global").strip()
+    cluster = str(props.get("cluster") or props.get("deployment:cluster") or "").strip()
+    default_deploy_slot = (
+        f"deploy:{app_identity['proj']}:{environment}:{region}:{cluster}"
+        if cluster
+        else f"deploy:{app_identity['proj']}:{environment}:{region}"
+    )
     deployment_id = str(
         props.get("deployment_id")
         or props.get("deployment:id")
-        or f"deploy:{app_identity['proj']}:{environment}:{region}:{build_id}"
+        or default_deploy_slot
     ).strip()
     lifecycle_status = str(
         props.get("status")
@@ -1054,7 +1200,13 @@ def parse_spdx_document(
     build_id = meta_kv.get("build_id") or (doc_namespace if doc_namespace else f"spdx:{app_identity['proj']}:{app_version}")
     environment = (meta_kv.get("environment") or meta_kv.get("env") or "build").lower()
     region = meta_kv.get("region") or "global"
-    deployment_id = meta_kv.get("deployment_id") or f"deploy:{app_identity['proj']}:{environment}:{region}:{build_id}"
+    cluster = meta_kv.get("cluster") or ""
+    default_deploy_slot = (
+        f"deploy:{app_identity['proj']}:{environment}:{region}:{cluster}"
+        if cluster
+        else f"deploy:{app_identity['proj']}:{environment}:{region}"
+    )
+    deployment_id = meta_kv.get("deployment_id") or default_deploy_slot
     deployed_at = normalize_iso_timestamp(meta_kv.get("deployed_at") or observed_at, fallback=observed_at)
     lifecycle_status = str(
         meta_kv.get("status")
@@ -1314,7 +1466,33 @@ def parse_company_inventory_feed(
                 tai = str(app.get("tai_system") or app_name).strip()
                 builds = app.get("builds") if isinstance(app.get("builds"), list) else [{}]
                 deployments = app.get("deployments") if isinstance(app.get("deployments"), list) else [{}]
-                components = app.get("components") if isinstance(app.get("components"), list) else []
+                components: List[Dict[str, Any]] = [
+                    dict(c) for c in (app.get("components") or []) if isinstance(c, dict)
+                ]
+                for b_obj in builds:
+                    if isinstance(b_obj, dict) and isinstance(b_obj.get("components"), list):
+                        for b_comp in b_obj["components"]:
+                            if isinstance(b_comp, dict):
+                                c_copy = dict(b_comp)
+                                if b_obj.get("build_id") and not c_copy.get("build_id"):
+                                    c_copy["build_id"] = b_obj["build_id"]
+                                if b_obj.get("version") and not c_copy.get("build_version"):
+                                    c_copy["build_version"] = b_obj["version"]
+                                if b_obj.get("observed_at") and not c_copy.get("observed_at"):
+                                    c_copy["observed_at"] = b_obj["observed_at"]
+                                components.append(c_copy)
+                for d_obj in deployments:
+                    if isinstance(d_obj, dict) and isinstance(d_obj.get("components"), list):
+                        for d_comp in d_obj["components"]:
+                            if isinstance(d_comp, dict):
+                                c_copy = dict(d_comp)
+                                if d_obj.get("deployment_id") and not c_copy.get("deployment_id"):
+                                    c_copy["deployment_id"] = d_obj["deployment_id"]
+                                if d_obj.get("build_id") and not c_copy.get("build_id"):
+                                    c_copy["build_id"] = d_obj["build_id"]
+                                if d_obj.get("environment") and not c_copy.get("environment"):
+                                    c_copy["environment"] = d_obj["environment"]
+                                components.append(c_copy)
 
                 primary_build = builds[0] if builds and isinstance(builds[0], dict) else {}
                 primary_deploy = deployments[0] if deployments and isinstance(deployments[0], dict) else {}
@@ -1354,12 +1532,13 @@ def parse_company_inventory_feed(
     grouped: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
     normalized_docs: List[Dict[str, Any]] = []
 
-    for rec in records:
+    for rec_idx, rec in enumerate(records):
         if "components" in rec and isinstance(rec["components"], list):
             grouped_key = (
                 str(rec.get("application_id") or rec.get("application_name") or "app"),
                 str(rec.get("build_id") or "build-1"),
                 str(rec.get("deployment_id") or "deploy-1"),
+                str(rec_idx),
             )
             grouped[grouped_key] = rec
         else:
@@ -1596,8 +1775,20 @@ def parse_company_inventory_feed(
             supplier = str(comp.get("supplier") or comp.get("vendor") or "").strip()
             comp_observed = normalize_iso_timestamp(comp.get("observed_at"), fallback=observed_at)
             comp_bid = str(comp.get("build_id") or build_id).strip()
-            comp_did = str(comp.get("deployment_id") or deploy_id).strip()
-            comp_env = str(comp.get("environment") or environment).strip().lower()
+            matching_deploy = next(
+                (d_item for d_item in extra_deployments if d_item.get("build_id") == comp_bid),
+                None,
+            )
+            comp_did = str(
+                comp.get("deployment_id")
+                or (matching_deploy["deployment_id"] if matching_deploy else "")
+                or deploy_id
+            ).strip()
+            comp_env = str(
+                comp.get("environment")
+                or (matching_deploy["environment"] if matching_deploy else "")
+                or environment
+            ).strip().lower()
             comp_bver = normalize_version_text(
                 str(comp.get("build_version") or version_by_build_id.get(comp_bid) or build_version).strip()
             )
@@ -1854,7 +2045,29 @@ def _aggregate_components_for_view(
                 if did not in in_scope_deployment_ids:
                     in_scope_deployment_ids.append(did)
 
-            for comp in av.get("components") or []:
+            active_builds_set = set(av.get("active_builds") or [])
+            dep_set = set(dep_list)
+
+            if view_mode in {"all_active_production", "latest_production_version"} and "production_components" in av:
+                candidate_components = av.get("production_components") or []
+            elif view_mode == "all_imported" and "all_imported_components" in av:
+                candidate_components = av.get("all_imported_components") or []
+            else:
+                candidate_components = av.get("components") or []
+
+            for comp in candidate_components:
+                if view_mode != "all_imported":
+                    comp_bids = comp.get("build_ids") or []
+                    if active_builds_set and comp_bids and not any(b in active_builds_set for b in comp_bids):
+                        continue
+                    comp_dids = comp.get("deployment_ids") or []
+                    if dep_set and comp_dids and not any(d in dep_set for d in comp_dids):
+                        continue
+                    if view_mode in {"all_active_production", "latest_production_version"}:
+                        comp_envs = [str(e).lower() for e in (comp.get("environments") or [])]
+                        if comp_envs and not any(e in PRODUCTION_ENVIRONMENTS for e in comp_envs):
+                            continue
+
                 lid = comp["library_id"]
                 comp_purls = list(comp.get("observed_purls") or [comp["purl"]])
                 agg = agg_by_lid.get(lid)
@@ -2056,7 +2269,7 @@ def merge_estate_observations(
             if not prev_b or (b_copy.get("observed_at") or "") >= (prev_b.get("observed_at") or ""):
                 app_entry["builds_by_id"][bid] = b_copy
 
-        for d in [doc["deployment"]] + list(doc.get("extra_deployments") or []):
+        for d_idx, d in enumerate([doc["deployment"]] + list(doc.get("extra_deployments") or [])):
             d_copy = dict(d)
             d_bid = str(d_copy.get("build_id") or doc["build"]["build_id"])
             d_ver = normalize_version_text(
@@ -2077,6 +2290,13 @@ def merge_estate_observations(
             d_active = _is_active_lifecycle(d_status, d_env, _parse_bool_flag(d_copy.get("active"), default=None))
             d_copy["active"] = d_active
             d_copy["status"] = d_status if d_active else ("inactive" if d_status == "active" else d_status)
+            d_copy["observed_at"] = str(
+                d_copy.get("observed_at")
+                or app_entry["builds_by_id"].get(d_bid, {}).get("observed_at")
+                or doc["build"].get("observed_at")
+                or ""
+            )
+            d_copy["_import_seq"] = len(app_entry["deployments_list"]) + d_idx
             app_entry["deployments_list"].append(d_copy)
 
         for obs in observations:
@@ -2123,12 +2343,16 @@ def merge_estate_observations(
             d_sorted = sorted(
                 d_candidates,
                 key=lambda x: (
-                    str(x.get("deployed_at") or ""),
+                    1 if x.get("active", True) and builds_by_id.get(str(x.get("build_id") or ""), {}).get("active", True) else 0,
+                    _timestamp_sort_key(x.get("deployed_at") or x.get("observed_at")),
+                    _timestamp_sort_key(x.get("observed_at")),
                     _version_sort_key(x.get("version")),
+                    int(x.get("_import_seq", 0)),
                     str(x.get("build_id") or ""),
                 ),
             )
             winner = dict(d_sorted[-1])
+            winner.pop("_import_seq", None)
             for older in d_sorted[:-1]:
                 if older.get("build_id") and older.get("build_id") != winner.get("build_id"):
                     superseded_build_ids.add(str(older["build_id"]))
@@ -2193,6 +2417,9 @@ def merge_estate_observations(
                     "latest_deployed_at": "",
                     "latest_observed_at": "",
                     "components_by_purl": {},
+                    "production_components_by_purl": {},
+                    "all_components_by_purl": {},
+                    "historical_components_by_purl": {},
                 },
             )
             if b["build_id"] not in ver_entry["builds"]:
@@ -2220,6 +2447,9 @@ def merge_estate_observations(
                     "latest_deployed_at": "",
                     "latest_observed_at": "",
                     "components_by_purl": {},
+                    "production_components_by_purl": {},
+                    "all_components_by_purl": {},
+                    "historical_components_by_purl": {},
                 },
             )
             did = d["deployment_id"]
@@ -2248,12 +2478,25 @@ def merge_estate_observations(
             obs_active = bool(obs.get("active", True))
             if b_rec and not b_rec.get("active", True):
                 obs_active = False
-            if d_rec and not d_rec.get("active", True):
-                obs_active = False
+            if d_rec:
+                if not d_rec.get("active", True):
+                    obs_active = False
+                elif obs_bid and d_rec.get("build_id") and str(d_rec.get("build_id")) != str(obs_bid):
+                    # This deployment slot was superseded by a replacement build (`d_rec["build_id"]`)
+                    obs_active = False
+
+            obs_env = str(d_rec.get("environment") or obs.get("environment") or "").strip().lower()
+            obs_active_prod = bool(obs_active and obs_env in PRODUCTION_ENVIRONMENTS)
 
             ver_entry = versions_map.get(obs_ver)
             if ver_entry is not None:
-                _merge_observation_into_bucket(ver_entry["components_by_purl"], obs)
+                _merge_observation_into_bucket(ver_entry["all_components_by_purl"], obs)
+                if obs_active:
+                    _merge_observation_into_bucket(ver_entry["components_by_purl"], obs)
+                    if obs_active_prod:
+                        _merge_observation_into_bucket(ver_entry["production_components_by_purl"], obs)
+                else:
+                    _merge_observation_into_bucket(ver_entry["historical_components_by_purl"], obs)
 
             if obs_active:
                 _merge_observation_into_bucket(active_components_by_purl, obs)
@@ -2266,6 +2509,9 @@ def merge_estate_observations(
             ver_active = bool(ve["active_deployments"] or ve["active_builds"])
             ver_active_prod = bool(ve["active_production_deployments"])
             ver_comps = sorted(ve["components_by_purl"].values(), key=lambda c: c["purl"])
+            ver_prod_comps = sorted(ve["production_components_by_purl"].values(), key=lambda c: c["purl"])
+            ver_all_comps = sorted(ve["all_components_by_purl"].values(), key=lambda c: c["purl"])
+            ver_hist_comps = sorted(ve["historical_components_by_purl"].values(), key=lambda c: c["purl"])
             av_record = {
                 "application_version_id": ve["application_version_id"],
                 "application_id": app_id,
@@ -2282,6 +2528,9 @@ def merge_estate_observations(
                 "latest_deployed_at": ve["latest_deployed_at"] or ve["latest_observed_at"],
                 "component_count": len(ver_comps),
                 "components": ver_comps,
+                "production_components": ver_prod_comps,
+                "all_imported_components": ver_all_comps,
+                "historical_components": ver_hist_comps,
             }
             app_versions_list.append(av_record)
             all_application_versions.append(av_record)
@@ -2293,7 +2542,11 @@ def merge_estate_observations(
         if active_prod_versions:
             best_prod = max(
                 active_prod_versions,
-                key=lambda av: (_version_sort_key(av["version"]), av.get("latest_deployed_at") or "", av["version"]),
+                key=lambda av: (
+                    _version_sort_key(av["version"]),
+                    _timestamp_sort_key(av.get("latest_deployed_at")),
+                    av["version"],
+                ),
             )
             latest_production_version = best_prod["version"]
         else:
@@ -2304,13 +2557,21 @@ def merge_estate_observations(
         elif active_any_versions:
             best_active = max(
                 active_any_versions,
-                key=lambda av: (_version_sort_key(av["version"]), av.get("latest_deployed_at") or "", av["version"]),
+                key=lambda av: (
+                    _version_sort_key(av["version"]),
+                    _timestamp_sort_key(av.get("latest_deployed_at")),
+                    av["version"],
+                ),
             )
             latest_version = best_active["version"]
         elif app_versions_list:
             best_all = max(
                 app_versions_list,
-                key=lambda av: (_version_sort_key(av["version"]), av.get("latest_deployed_at") or "", av["version"]),
+                key=lambda av: (
+                    _version_sort_key(av["version"]),
+                    _timestamp_sort_key(av.get("latest_deployed_at")),
+                    av["version"],
+                ),
             )
             latest_version = best_all["version"]
         else:
@@ -2914,43 +3175,97 @@ INTERNAL_REPACKAGED_SUFFIX_RE = re.compile(
 )
 
 
-def _strip_internal_version_suffix(version: str) -> Tuple[str, bool]:
+def _strip_internal_version_suffix(
+    version: str,
+    known_internal_tokens: Optional[Set[str]] = None,
+) -> Tuple[str, bool]:
     raw = str(version or "").strip()
     if not raw:
         return raw, False
-    cleaned = INTERNAL_REPACKAGED_SUFFIX_RE.sub("", raw)
-    if cleaned != raw and cleaned:
-        return cleaned, True
-    return raw, False
+    redacted = False
+    cleaned = raw
+    if "+" in cleaned:
+        cleaned = cleaned.split("+", 1)[0].strip()
+        if cleaned != raw and cleaned:
+            redacted = True
+    stripped = INTERNAL_REPACKAGED_SUFFIX_RE.sub("", cleaned)
+    if stripped != cleaned and stripped:
+        cleaned = stripped
+        redacted = True
+    if known_internal_tokens:
+        for tok in sorted(known_internal_tokens, key=len, reverse=True):
+            if len(tok) < 3:
+                continue
+            pat = re.compile(r"(?i)[-+_.]" + re.escape(tok) + r"(?:[-+_A-Za-z0-9.]*)?$")
+            next_cleaned = pat.sub("", cleaned)
+            if next_cleaned != cleaned and next_cleaned:
+                cleaned = next_cleaned
+                redacted = True
+    return cleaned, redacted
 
 
-def _sanitize_library_id_token(token: str, known_app_ids: Set[str]) -> str:
+def _is_public_safe_qualifier_value(
+    key_lower: str,
+    value: str,
+    known_internal_tokens: Set[str],
+) -> bool:
+    val = str(value or "").strip()
+    if not val:
+        return False
+    if key_lower not in PUBLIC_EXPORT_ALLOWED_QUALIFIER_KEYS:
+        return False
+    if not PUBLIC_EXPORT_SAFE_QUALIFIER_VALUE_RE.match(val):
+        return False
+    val_lower = val.lower()
+    if PUBLIC_EXPORT_INTERNAL_VALUE_TOKEN_RE.search(val_lower):
+        return False
+    for tok in known_internal_tokens:
+        tok_lower = tok.lower()
+        if len(tok_lower) >= 3 and tok_lower in val_lower:
+            return False
+    return True
+
+
+def _sanitize_library_id_token(
+    token: str,
+    known_app_ids: Set[str],
+    known_internal_tokens: Optional[Set[str]] = None,
+) -> str:
     val = str(token or "").strip()
     if not val:
         return val
-    if val in known_app_ids or val.startswith("github|") or val.startswith("gitlab|") or val.startswith("bitbucket|"):
+    if val in known_app_ids or val.startswith(("github|", "gitlab|", "bitbucket|", "internal|", "app|")):
         return "<redacted-application>"
+    if val.startswith("pkg:"):
+        parsed = parse_purl_rich(val)
+        if parsed.get("valid"):
+            clean_ver, _ = _strip_internal_version_suffix(parsed["release"], known_internal_tokens)
+            return make_library_id(parsed["namespace"], parsed["meta"], parsed["proj"], clean_ver)
     if "|" in val:
         parts = val.split("|")
         if len(parts) == 4:
-            clean_ver, _ = _strip_internal_version_suffix(parts[3])
+            clean_ver, _ = _strip_internal_version_suffix(parts[3], known_internal_tokens)
             return f"{parts[0]}|{parts[1]}|{parts[2]}|{clean_ver}"
+    if known_internal_tokens and any(len(t) >= 3 and t.lower() in val.lower() for t in known_internal_tokens):
+        return "<redacted-application>"
     return val
 
 
 def _sanitize_public_library_entry(
     lib: Dict[str, Any],
     known_app_ids: Set[str],
+    known_internal_tokens: Optional[Set[str]] = None,
 ) -> Dict[str, Any]:
     """Build an allowlisted public library/component entry with zero internal application or repo identifiers."""
 
+    internal_tokens = known_internal_tokens or set()
     ns = str(lib.get("namespace") or "")
     meta = str(lib.get("meta") or "")
     proj = str(lib.get("proj") or "")
     raw_rel = str(lib.get("release") or "")
-    clean_rel, rel_redacted = _strip_internal_version_suffix(raw_rel)
+    clean_rel, rel_redacted = _strip_internal_version_suffix(raw_rel, internal_tokens)
     clean_lid = make_library_id(ns, meta, proj, clean_rel) if (ns and proj and clean_rel) else _sanitize_library_id_token(
-        str(lib.get("id") or lib.get("library_id") or ""), known_app_ids
+        str(lib.get("id") or lib.get("library_id") or ""), known_app_ids, internal_tokens
     )
 
     coord_path = "/".join(
@@ -2964,26 +3279,39 @@ def _sanitize_public_library_entry(
         else ""
     )
 
-    # Filter qualifiers to public-safe package qualifiers only (drop repository_url and internal vendor tags)
+    # Filter qualifiers strictly by an explicit public key + value allowlist
     raw_quals = lib.get("qualifiers")
     clean_quals: Dict[str, Any] = {}
     qual_redacted = False
     if isinstance(raw_quals, dict):
         for qk, qv in sorted(raw_quals.items()):
-            qk_lower = str(qk).lower()
-            if qk_lower in {"repository_url", "repo_url", "internal_url", "registry_url", "vendor"}:
+            qk_str = str(qk).strip()
+            qk_lower = qk_str.lower()
+            if qk_lower not in PUBLIC_EXPORT_ALLOWED_QUALIFIER_KEYS:
                 qual_redacted = True
                 continue
             vals = qv if isinstance(qv, list) else [qv]
             safe_vals = [
-                str(v)
+                str(v).strip()
                 for v in vals
-                if v is not None and not any(tok in str(v).lower() for tok in (".internal", ".corp", "private", "acme"))
+                if v is not None and _is_public_safe_qualifier_value(qk_lower, str(v), internal_tokens)
             ]
             if len(safe_vals) != len(vals):
                 qual_redacted = True
             if safe_vals:
-                clean_quals[str(qk)] = safe_vals if isinstance(qv, list) else safe_vals[0]
+                clean_quals[qk_lower] = safe_vals if isinstance(qv, list) else safe_vals[0]
+
+    # Strip PURL subpaths from public demand exports so internal repository/service paths never leak
+    raw_subpaths = list(lib.get("subpaths") or ([lib["subpath"]] if lib.get("subpath") else []))
+    subpath_redacted = bool(raw_subpaths)
+    clean_subpaths: List[str] = []
+
+    # Filter scopes strictly to standard dependency scope tokens
+    clean_scopes = [
+        str(sc).strip().lower()
+        for sc in (lib.get("scopes") or [])
+        if str(sc).strip().lower() in PUBLIC_EXPORT_ALLOWED_SCOPES
+    ]
 
     # Sanitize dependency paths: replace application root nodes with "<redacted-application>"
     raw_paths = lib.get("dependency_paths") or []
@@ -2996,7 +3324,7 @@ def _sanitize_public_library_entry(
             if idx == 0:
                 sanitized_path.append("<redacted-application>")
             else:
-                sanitized_path.append(_sanitize_library_id_token(str(step), known_app_ids))
+                sanitized_path.append(_sanitize_library_id_token(str(step), known_app_ids, internal_tokens))
         if sanitized_path not in clean_paths:
             clean_paths.append(sanitized_path)
 
@@ -3005,7 +3333,7 @@ def _sanitize_public_library_entry(
     for vc in lib.get("version_chain") or []:
         if not isinstance(vc, dict):
             continue
-        vc_rel, vc_red = _strip_internal_version_suffix(str(vc.get("release") or ""))
+        vc_rel, vc_red = _strip_internal_version_suffix(str(vc.get("release") or ""), internal_tokens)
         if vc_red:
             continue
         clean_chain.append(
@@ -3031,7 +3359,9 @@ def _sanitize_public_library_entry(
             affected_count = int(amp.get("root_projects_affected_count") or 0)
         clean_amplifiers.append(
             {
-                "amplifier_id": _sanitize_library_id_token(str(amp.get("amplifier_id") or ""), known_app_ids),
+                "amplifier_id": _sanitize_library_id_token(
+                    str(amp.get("amplifier_id") or ""), known_app_ids, internal_tokens
+                ),
                 "amplifier_coords": str(amp.get("amplifier_coords") or ""),
                 "root_projects_affected_count": affected_count,
             }
@@ -3049,13 +3379,13 @@ def _sanitize_public_library_entry(
         "purl": clean_base_purl,
         "base_purl": clean_base_purl,
         "qualifiers": clean_quals,
-        "subpaths": list(lib.get("subpaths") or ([lib["subpath"]] if lib.get("subpath") else [])),
-        "scopes": list(lib.get("scopes") or []),
+        "subpaths": clean_subpaths,
+        "scopes": clean_scopes,
         "dependency_classification": str(lib.get("dependency_classification") or "unknown"),
         "dependency_paths": clean_paths,
         "identity_status": str(lib.get("identity_status") or "exact"),
         "is_repackaged": bool(lib.get("is_repackaged", False)),
-        "repackaged_internal_coordinates_redacted": bool(rel_redacted or qual_redacted),
+        "repackaged_internal_coordinates_redacted": bool(rel_redacted or qual_redacted or subpath_redacted),
         "total_consumer_count": int(lib.get("total_consumer_count") or 0),
         "direct_consumer_count": int(lib.get("direct_consumer_count") or 0),
         "transitive_consumer_count": int(lib.get("transitive_consumer_count") or 0),
@@ -3098,19 +3428,56 @@ def sanitize_for_public_export(dataset_or_requests: Dict[str, Any]) -> Dict[str,
       `unmapped_records`, `company_overlay`, and all internal consumer ID lists (`consumer_project_ids`,
       `direct_consumer_project_ids`, `unknown_consumer_project_ids`, `consumer_app_ids`, `project_ref`,
       `tai_system`, `eonid`, owner contacts, cost centers, and cluster names).
+    - Applies an explicit public allowlist to `qualifiers` keys and values and strips `subpaths` so
+      internal build identifiers (`?build_id=...`) and repository/service subpaths (`#services/...`) never survive.
     - Redacts application nodes in `dependency_paths` to `"<redacted-application>"` and strips internal
       corporate repackaged version suffixes and private repository URLs while retaining upstream package
       coordinates, vulnerability metadata, and aggregate consumer demand counts.
     """
 
     known_app_ids: Set[str] = set()
+    known_internal_tokens: Set[str] = set()
+
+    def _register_internal_token(raw_val: Any) -> None:
+        text = str(raw_val or "").strip()
+        if not text:
+            return
+        known_internal_tokens.add(text)
+        for part in re.split(r"[|/@:#?=&\s]+", text):
+            part = part.strip()
+            if len(part) >= 3 and part.lower() not in {"github", "gitlab", "bitbucket", "main", "master", "prod", "production", "staging", "global"}:
+                known_internal_tokens.add(part)
+
     projects_raw = dataset_or_requests.get("consumer_projects") or dataset_or_requests.get("applications") or []
     for proj in projects_raw:
         if isinstance(proj, dict):
-            for key in ("id", "application_id", "project_ref", "name", "proj", "eonid", "tai_system"):
+            for key in ("id", "application_id", "project_ref", "name", "proj", "meta", "eonid", "tai_system", "department"):
                 val = str(proj.get(key) or "").strip()
                 if val:
                     known_app_ids.add(val)
+                    _register_internal_token(val)
+            for list_k in ("builds", "active_builds", "deployments", "active_deployments"):
+                for item_id in proj.get(list_k) or []:
+                    _register_internal_token(item_id)
+            ctx = proj.get("company_context")
+            if isinstance(ctx, dict):
+                own = ctx.get("ownership") if isinstance(ctx.get("ownership"), dict) else {}
+                for ok in ("team", "contact", "business_unit", "cost_center"):
+                    _register_internal_token(own.get(ok))
+
+    for eval_id in dataset_or_requests.get("evaluated_application_ids") or []:
+        known_app_ids.add(str(eval_id))
+        _register_internal_token(eval_id)
+    for eval_did in dataset_or_requests.get("evaluated_deployment_ids") or []:
+        _register_internal_token(eval_did)
+    for b_rec in dataset_or_requests.get("builds") or []:
+        if isinstance(b_rec, dict):
+            _register_internal_token(b_rec.get("build_id"))
+            _register_internal_token(b_rec.get("commit_sha"))
+    for d_rec in dataset_or_requests.get("deployments") or []:
+        if isinstance(d_rec, dict):
+            _register_internal_token(d_rec.get("deployment_id"))
+            _register_internal_token(d_rec.get("cluster"))
 
     raw_libs = dataset_or_requests.get("libraries")
     if not isinstance(raw_libs, list):
@@ -3126,13 +3493,18 @@ def sanitize_for_public_export(dataset_or_requests: Dict[str, Any]) -> Dict[str,
                 "direct_app_ids",
                 "transitive_app_ids",
                 "unknown_app_ids",
+                "consumer_application_version_ids",
             ):
                 for cid in lib.get(list_key) or []:
                     if cid:
                         known_app_ids.add(str(cid))
+                        _register_internal_token(cid)
+            for id_list_key in ("build_ids", "deployment_ids", "consumer_deployment_ids"):
+                for bid in lib.get(id_list_key) or []:
+                    _register_internal_token(bid)
 
     sanitized_libraries = [
-        _sanitize_public_library_entry(lib, known_app_ids)
+        _sanitize_public_library_entry(lib, known_app_ids, known_internal_tokens)
         for lib in raw_libs
         if isinstance(lib, dict)
     ]
@@ -3144,8 +3516,16 @@ def sanitize_for_public_export(dataset_or_requests: Dict[str, Any]) -> Dict[str,
         or now_iso()
     )
 
+    total_projects_count = (
+        len(projects_raw)
+        if projects_raw
+        else int(
+            dataset_or_requests.get("evaluated_application_count")
+            or len(dataset_or_requests.get("evaluated_application_ids") or [])
+        )
+    )
     consumer_summary = {
-        "total_consumer_projects": len(projects_raw),
+        "total_consumer_projects": total_projects_count,
         "total_libraries": len(sanitized_libraries),
         "private_inventory_redacted": True,
     }
