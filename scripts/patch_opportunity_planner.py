@@ -603,12 +603,19 @@ def rank_patch_opportunities(
             or opp.get("application_version_id")
             or ""
         ).strip()
+        opp_comp_disc = str(opp.get("deployed_purl") or opp.get("library") or opp_id).strip()
 
-        def _make_exposure_prefix(app_id: str, explicit_occ: str, adv_id: str) -> str:
+        def _make_exposure_prefix(app_id: str, explicit_occ: str, adv_id: str, comp_hint: str = "") -> str:
+            needs_comp_disc = (
+                action_kind.lower() != "framework_bom_patch"
+                and non_bom_app_adv_counts.get((app_id, adv_id), 0) > 1
+            )
+            disc = (comp_hint or opp_comp_disc).strip()
             if explicit_occ:
+                if (needs_comp_disc or comp_hint) and disc and disc not in explicit_occ.split("@@"):
+                    return f"{app_id}@@{explicit_occ}@@{disc}"
                 return f"{app_id}@@{explicit_occ}"
-            if action_kind.lower() != "framework_bom_patch" and non_bom_app_adv_counts.get((app_id, adv_id), 0) > 1:
-                disc = str(opp.get("deployed_purl") or opp_id).strip()
+            if needs_comp_disc or comp_hint:
                 return f"{app_id}@@{disc}"
             return app_id
 
@@ -621,14 +628,25 @@ def rank_patch_opportunities(
                 if isinstance(exp, dict):
                     app_id = str(exp.get("application_id") or "app").strip()
                     adv_id = canonical_adv(str(exp.get("advisory_id") or "").strip())
-                    exp_occ = str(
-                        exp.get("occurrence_id")
-                        or exp.get("deployment_id")
-                        or exp.get("module_id")
-                        or exp.get("component_purl")
-                        or opp_occ_id
+                    occ_parts: list[str] = []
+                    for candidate in (
+                        exp.get("occurrence_id"),
+                        exp.get("deployment_id"),
+                        exp.get("module_id"),
+                    ):
+                        c_str = str(candidate or "").strip()
+                        if c_str and c_str not in occ_parts:
+                            occ_parts.append(c_str)
+                    if not occ_parts and opp_occ_id:
+                        occ_parts.append(opp_occ_id)
+                    exp_occ = "@@".join(occ_parts)
+                    comp_hint = str(
+                        exp.get("component_purl")
+                        or exp.get("component")
+                        or exp.get("library")
+                        or ""
                     ).strip()
-                    prefix = _make_exposure_prefix(app_id, exp_occ, adv_id)
+                    prefix = _make_exposure_prefix(app_id, exp_occ, adv_id, comp_hint=comp_hint)
                     exp_key = f"{prefix}|{adv_id}"
                     exposure_instances.append(exp_key)
                     all_estate_exposures.add(exp_key)
@@ -919,25 +937,47 @@ def assemble_portfolio_plan(
     reduction twice, while independently vulnerable occurrences in the same application retain distinct credit and
     target-version residual advisories remain visible in portfolio totals.
     """
+    all_opportunities = ranked_result.get("opportunities")
+    if not isinstance(all_opportunities, list) or not all_opportunities:
+        queues_dict = ranked_result.get("queues") or {}
+        if isinstance(queues_dict, dict) and queues_dict:
+            all_opportunities = [
+                opp
+                for q_list in queues_dict.values()
+                if isinstance(q_list, list)
+                for opp in q_list
+            ]
+        else:
+            all_opportunities = []
+
+    def _matches_scope_filters(opp: dict[str, Any]) -> bool:
+        if owner and str(opp.get("owner") or "").lower() != owner.lower():
+            return False
+        if framework_or_runtime and str(opp.get("framework_or_runtime") or "").lower() != framework_or_runtime.lower():
+            return False
+        if change_window and str(opp.get("change_window") or "").lower() != change_window.lower():
+            return False
+        return True
+
+    in_scope_opportunities = [opp for opp in all_opportunities if _matches_scope_filters(opp)]
+
     ready_candidates = ranked_result.get("queues", {}).get(QUEUE_READY_TO_PLAN) or [
-        o for o in (ranked_result.get("opportunities") or []) if o.get("eligible_for_ready_ranking")
+        o for o in all_opportunities if o.get("eligible_for_ready_ranking")
     ]
 
     selected: list[dict[str, Any]] = []
     for opp in ready_candidates:
         if selected_opportunity_ids is not None and opp["opportunity_id"] not in selected_opportunity_ids:
             continue
-        if owner and opp["owner"].lower() != owner.lower():
-            continue
-        if framework_or_runtime and opp["framework_or_runtime"].lower() != framework_or_runtime.lower():
-            continue
-        if change_window and opp["change_window"].lower() != change_window.lower():
+        if not _matches_scope_filters(opp):
             continue
         selected.append(opp)
 
     cumulative_addressed: set[str] = set()
     all_scope_exposures: set[str] = set()
     target_residual_exposures: set[str] = set()
+    for opp in in_scope_opportunities:
+        all_scope_exposures.update(opp.get("exposure_instances") or [])
     for opp in selected:
         all_scope_exposures.update(opp.get("exposure_instances") or [])
         target_residual_exposures.update(opp.get("residual_exposure_instances") or [])

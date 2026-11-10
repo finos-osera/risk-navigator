@@ -137,3 +137,92 @@ test('handles pipe-delimited application IDs, independent occurrences, target-ve
   assert.equal(driftedReport.drifted, true);
   assert.equal(driftedReport.catalog_options_changed, true);
 });
+
+test('keeps assessment scope independent of selected actions and preserves distinct components in the same deployment (#26, #27)', () => {
+  const payload = {
+    opportunities: [
+      {
+        opportunity_id: 'opp-comp-a-prod-eu',
+        action_kind: 'library_patch',
+        library: 'org.example:comp-a',
+        deployed_purl: 'pkg:maven/org.example/comp-a@1.0.0',
+        deployment_id: 'prod-eu',
+        framework_or_runtime: 'spring-6',
+        owner: 'team-payments',
+        change_window: 'standard_weekly',
+        identity_status: 'confirmed',
+        dependency_scope: 'direct',
+        affected_applications: ['payments-app'],
+        advisories: [{ id: 'CVE-2026-1111', kev: false, cvss_score: 8.2 }],
+        options: [
+          {
+            patch_id: 'comp-a-1.0.1',
+            provider: 'Upstream',
+            provider_kind: 'upstream',
+            replacement_purl: 'pkg:maven/org.example/comp-a@1.0.1',
+            ready: true,
+            fixed_advisories: ['CVE-2026-1111'],
+            residual_advisories: [],
+          },
+        ],
+      },
+      {
+        opportunity_id: 'opp-comp-b-prod-eu',
+        action_kind: 'library_patch',
+        library: 'org.example:comp-b',
+        deployed_purl: 'pkg:maven/org.example/comp-b@2.0.0',
+        deployment_id: 'prod-eu',
+        framework_or_runtime: 'spring-6',
+        owner: 'team-payments',
+        change_window: 'standard_weekly',
+        identity_status: 'confirmed',
+        dependency_scope: 'direct',
+        affected_applications: ['payments-app'],
+        advisories: [{ id: 'CVE-2026-1111', kev: false, cvss_score: 8.2 }],
+        options: [
+          {
+            patch_id: 'comp-b-2.0.1',
+            provider: 'Upstream',
+            provider_kind: 'upstream',
+            replacement_purl: 'pkg:maven/org.example/comp-b@2.0.1',
+            ready: true,
+            fixed_advisories: ['CVE-2026-1111'],
+            residual_advisories: [],
+          },
+        ],
+      },
+      {
+        opportunity_id: 'opp-unpatchable-comp-c-prod-eu',
+        action_kind: 'library_patch',
+        library: 'org.example:comp-c',
+        deployed_purl: 'pkg:maven/org.example/comp-c@3.0.0',
+        deployment_id: 'prod-eu',
+        framework_or_runtime: 'spring-6',
+        owner: 'team-payments',
+        change_window: 'standard_weekly',
+        identity_status: 'confirmed',
+        dependency_scope: 'direct',
+        affected_applications: ['payments-app'],
+        advisories: [{ id: 'CVE-2026-2222', kev: false, cvss_score: 7.5 }],
+        options: [],
+      },
+    ],
+  };
+
+  const ranked = rankPatchOpportunities(payload);
+  assert.equal(ranked.summary_metrics.exposure_instance_count, 3);
+
+  const partialPlan = assemblePortfolioPlan(ranked, { selected_opportunity_ids: ['opp-comp-a-prod-eu'] });
+  assert.equal(partialPlan.selected_count, 1);
+  assert.equal(partialPlan.portfolio_metrics.total_scope_exposure_instances, 3);
+  assert.equal(partialPlan.portfolio_metrics.deduplicated_addressed_exposure_instances, 1);
+  assert.equal(partialPlan.portfolio_metrics.residual_exposure_instance_count, 2);
+  assert.deepEqual(partialPlan.portfolio_metrics.residual_unique_advisories.sort(), ['CVE-2026-1111', 'CVE-2026-2222']);
+
+  const fullPlan = assemblePortfolioPlan(ranked);
+  assert.equal(fullPlan.selected_count, 2);
+  assert.equal(fullPlan.portfolio_metrics.total_scope_exposure_instances, 3);
+  assert.equal(fullPlan.portfolio_metrics.deduplicated_addressed_exposure_instances, 2);
+  assert.equal(fullPlan.portfolio_metrics.residual_exposure_instance_count, 1);
+  assert.deepEqual(fullPlan.portfolio_metrics.residual_unique_advisories, ['CVE-2026-2222']);
+});

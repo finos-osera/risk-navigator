@@ -233,11 +233,17 @@ export function rankPatchOpportunities(payload, companyPolicy = null) {
     apps.forEach(a => allApps.add(a));
 
     const oppOccId = String(opp.occurrence_id || opp.deployment_id || opp.module_id || opp.application_version_id || '').trim();
-    const makePrefix = (appId, explicitOcc, advId) => {
-      if (explicitOcc) return `${appId}@@${explicitOcc}`;
-      if (actionKind.toLowerCase() !== 'framework_bom_patch' && (nonBomAppAdvCounts.get(`${appId}|||${advId}`) || 0) > 1) {
-        return `${appId}@@${String(opp.deployed_purl || oppId).trim()}`;
+    const oppCompDisc = String(opp.deployed_purl || opp.library || oppId).trim();
+    const makePrefix = (appId, explicitOcc, advId, compHint = '') => {
+      const needsCompDisc = actionKind.toLowerCase() !== 'framework_bom_patch' && (nonBomAppAdvCounts.get(`${appId}|||${advId}`) || 0) > 1;
+      const disc = String(compHint || oppCompDisc).trim();
+      if (explicitOcc) {
+        if ((needsCompDisc || compHint) && disc && !explicitOcc.split('@@').includes(disc)) {
+          return `${appId}@@${explicitOcc}@@${disc}`;
+        }
+        return `${appId}@@${explicitOcc}`;
       }
+      if (needsCompDisc || compHint) return `${appId}@@${disc}`;
       return appId;
     };
 
@@ -253,7 +259,7 @@ export function rankPatchOpportunities(payload, companyPolicy = null) {
             if (typeof e === 'string') {
               const [rawPref, advRaw] = splitExposureKey(e);
               const appId = extractAppIdFromPrefix(rawPref);
-              const explicitOcc = rawPref.includes('@@') ? rawPref.split('@@')[1] : oppOccId;
+              const explicitOcc = rawPref.includes('@@') ? rawPref.slice(rawPref.indexOf('@@') + 2) : oppOccId;
               const advId = canonicalAdv(advRaw);
               const pref = makePrefix(appId, explicitOcc, advId);
               allApps.add(appId);
@@ -262,8 +268,15 @@ export function rankPatchOpportunities(payload, companyPolicy = null) {
             }
             const appId = String(e.application_id || 'app').trim();
             const advId = canonicalAdv(e.advisory_id || '');
-            const explicitOcc = String(e.occurrence_id || e.deployment_id || e.module_id || e.component_purl || oppOccId).trim();
-            const pref = makePrefix(appId, explicitOcc, advId);
+            const occParts = [];
+            for (const cand of [e.occurrence_id, e.deployment_id, e.module_id]) {
+              const cStr = String(cand || '').trim();
+              if (cStr && !occParts.includes(cStr)) occParts.push(cStr);
+            }
+            if (!occParts.length && oppOccId) occParts.push(oppOccId);
+            const explicitOcc = occParts.join('@@');
+            const compHint = String(e.component_purl || e.component || e.library || '').trim();
+            const pref = makePrefix(appId, explicitOcc, advId, compHint);
             allApps.add(appId);
             recordPrefix(appId, pref);
             return `${pref}|${advId}`;
@@ -511,15 +524,26 @@ export function rankPatchOpportunities(payload, companyPolicy = null) {
 }
 
 export function assemblePortfolioPlan(rankedResult, filters = {}) {
-  const ready = rankedResult?.queues?.ready_to_plan || (rankedResult?.opportunities || []).filter(o => o.eligible_for_ready_ranking);
+  const allOpportunities = Array.isArray(rankedResult?.opportunities) && rankedResult.opportunities.length
+    ? rankedResult.opportunities
+    : Object.values(rankedResult?.queues || {}).flat().filter(Boolean);
+
+  const matchesScopeFilters = opp =>
+    (!filters.owner || String(opp.owner || '').toLowerCase() === filters.owner.toLowerCase()) &&
+    (!filters.framework_or_runtime || String(opp.framework_or_runtime || '').toLowerCase() === filters.framework_or_runtime.toLowerCase()) &&
+    (!filters.change_window || String(opp.change_window || '').toLowerCase() === filters.change_window.toLowerCase());
+
+  const inScopeOpportunities = allOpportunities.filter(matchesScopeFilters);
+  const ready = rankedResult?.queues?.ready_to_plan || allOpportunities.filter(o => o.eligible_for_ready_ranking);
   const selected = ready.filter(opp =>
     (!filters.selected_opportunity_ids || filters.selected_opportunity_ids.includes(opp.opportunity_id)) &&
-    (!filters.owner || opp.owner.toLowerCase() === filters.owner.toLowerCase()) &&
-    (!filters.framework_or_runtime || opp.framework_or_runtime.toLowerCase() === filters.framework_or_runtime.toLowerCase()) &&
-    (!filters.change_window || opp.change_window.toLowerCase() === filters.change_window.toLowerCase())
+    matchesScopeFilters(opp)
   );
 
   const cumulativeAddressed = new Set(), allScopeExposures = new Set(), targetResidualExposures = new Set();
+  inScopeOpportunities.forEach(o => {
+    (o.exposure_instances || []).forEach(e => allScopeExposures.add(e));
+  });
   selected.forEach(o => {
     (o.exposure_instances || []).forEach(e => allScopeExposures.add(e));
     (o.residual_exposure_instances || []).forEach(e => targetResidualExposures.add(e));

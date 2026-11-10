@@ -268,6 +268,102 @@ def test_pipe_delimited_app_ids_independent_occurrences_target_residuals_and_dri
     assert any(d["kind"] == "target_option_withdrawn_or_blocked" for d in drift_report["drift_events"])
 
 
+def test_assessment_scope_independence_and_distinct_components_in_same_deployment():
+    """Verify assessment scope stays independent of selected actions and distinct components in one deployment never collide (#26, #27)."""
+    payload = {
+        "opportunities": [
+            {
+                "opportunity_id": "opp-comp-a-prod-eu",
+                "action_kind": "library_patch",
+                "library": "org.example:comp-a",
+                "deployed_purl": "pkg:maven/org.example/comp-a@1.0.0",
+                "deployment_id": "prod-eu",
+                "framework_or_runtime": "spring-6",
+                "owner": "team-payments",
+                "change_window": "standard_weekly",
+                "identity_status": "confirmed",
+                "dependency_scope": "direct",
+                "affected_applications": ["payments-app"],
+                "advisories": [{"id": "CVE-2026-1111", "kev": False, "cvss_score": 8.2}],
+                "options": [
+                    {
+                        "patch_id": "comp-a-1.0.1",
+                        "provider": "Upstream",
+                        "provider_kind": "upstream",
+                        "replacement_purl": "pkg:maven/org.example/comp-a@1.0.1",
+                        "ready": True,
+                        "fixed_advisories": ["CVE-2026-1111"],
+                        "residual_advisories": [],
+                    }
+                ],
+            },
+            {
+                "opportunity_id": "opp-comp-b-prod-eu",
+                "action_kind": "library_patch",
+                "library": "org.example:comp-b",
+                "deployed_purl": "pkg:maven/org.example/comp-b@2.0.0",
+                "deployment_id": "prod-eu",
+                "framework_or_runtime": "spring-6",
+                "owner": "team-payments",
+                "change_window": "standard_weekly",
+                "identity_status": "confirmed",
+                "dependency_scope": "direct",
+                "affected_applications": ["payments-app"],
+                "advisories": [{"id": "CVE-2026-1111", "kev": False, "cvss_score": 8.2}],
+                "options": [
+                    {
+                        "patch_id": "comp-b-2.0.1",
+                        "provider": "Upstream",
+                        "provider_kind": "upstream",
+                        "replacement_purl": "pkg:maven/org.example/comp-b@2.0.1",
+                        "ready": True,
+                        "fixed_advisories": ["CVE-2026-1111"],
+                        "residual_advisories": [],
+                    }
+                ],
+            },
+            {
+                "opportunity_id": "opp-unpatchable-comp-c-prod-eu",
+                "action_kind": "library_patch",
+                "library": "org.example:comp-c",
+                "deployed_purl": "pkg:maven/org.example/comp-c@3.0.0",
+                "deployment_id": "prod-eu",
+                "framework_or_runtime": "spring-6",
+                "owner": "team-payments",
+                "change_window": "standard_weekly",
+                "identity_status": "confirmed",
+                "dependency_scope": "direct",
+                "affected_applications": ["payments-app"],
+                "advisories": [{"id": "CVE-2026-2222", "kev": False, "cvss_score": 7.5}],
+                "options": [],
+            },
+        ]
+    }
+    ranked = rank_patch_opportunities(payload)
+    # 3 distinct component exposures in prod-eu (comp-a|CVE-2026-1111, comp-b|CVE-2026-1111, comp-c|CVE-2026-2222)
+    assert ranked["summary_metrics"]["exposure_instance_count"] == 3
+
+    # Selecting ONLY opp-comp-a-prod-eu must keep comp-b AND unpatchable comp-c in the assessment scope as residual!
+    partial_plan = assemble_portfolio_plan(ranked, selected_opportunity_ids=["opp-comp-a-prod-eu"])
+    assert partial_plan["selected_count"] == 1
+    assert partial_plan["portfolio_metrics"]["total_scope_exposure_instances"] == 3
+    assert partial_plan["portfolio_metrics"]["deduplicated_addressed_exposure_instances"] == 1
+    assert partial_plan["portfolio_metrics"]["residual_exposure_instance_count"] == 2
+    assert set(partial_plan["portfolio_metrics"]["residual_unique_advisories"]) == {
+        "CVE-2026-1111",
+        "CVE-2026-2222",
+    }
+
+    # Selecting all ready opportunities addresses comp-a and comp-b (2 distinct exposures) while unpatchable comp-c remains residual
+    ready_plan = assemble_portfolio_plan(ranked)
+    assert ready_plan["selected_count"] == 2
+    assert ready_plan["portfolio_metrics"]["total_scope_exposure_instances"] == 3
+    assert ready_plan["portfolio_metrics"]["deduplicated_addressed_exposure_instances"] == 2
+    assert ready_plan["portfolio_metrics"]["duplicate_overlap_prevented"] == 0
+    assert ready_plan["portfolio_metrics"]["residual_exposure_instance_count"] == 1
+    assert ready_plan["portfolio_metrics"]["residual_unique_advisories"] == ["CVE-2026-2222"]
+
+
 class PatchOpportunityPlannerTestCase(unittest.TestCase):
     def test_all(self):
         test_osera_ordered_inclusion_p0_p1_p2_kev_and_medium_with_signal()
@@ -276,6 +372,7 @@ class PatchOpportunityPlannerTestCase(unittest.TestCase):
         test_overlapping_library_and_framework_bom_fixes_receive_only_incremental_portfolio_credit()
         test_recipe_suppression_comparison_drawer_owner_export_and_empty_data_states()
         test_pipe_delimited_app_ids_independent_occurrences_target_residuals_and_drift_exports()
+        test_assessment_scope_independence_and_distinct_components_in_same_deployment()
 
 
 if __name__ == "__main__":
