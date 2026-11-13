@@ -46,6 +46,6 @@
     "refresh:finos": "python3 scripts/refresh_finos.py"
   },
   "devDependencies": {
-    "vite": "^8.3.4"
+    "vite": "^8.3.6"
   }
 }
