@@ -7,16 +7,30 @@ import Mermaid from '@theme/Mermaid';
 
 ## Status and Date
 
-- **Status:** Accepted (`2026-11-09`)
+- **Status:** Accepted Target Architecture (`2026-11-09`); Phase 1 Foundation Delivered in PR `#78` (`Refs #73`), Phase 2 Operational Integration Tracked in [`#73`](https://github.com/finos-osera/risk-navigator/issues/73)
 - **Issue Reference:** [`finos-osera/risk-navigator#73`](https://github.com/finos-osera/risk-navigator/issues/73)
 
 ## Context and Decision
 
-Routine generated production datasets (`finos-github-org`, `finos-labs`, and `oss-project-risk` scorecards) are published as **validated, immutable artifacts** and bundled at site-build time from a pinned deployment manifest rather than continuously committed through automated data-refresh pull requests.
+Under the **target architecture** adopted for `#73`, routine generated production datasets (`finos-github-org`, `finos-labs`, and `oss-project-risk` scorecards) will be published as **validated, immutable artifacts** and bundled at site-build time from a pinned deployment manifest rather than continuously committed through automated data-refresh pull requests.
 
-Changes to collector code, schemas, scoring rules, curated demo fixtures, collection configurations (`data/collections/collections.json`), and GitHub Actions workflows continue to go through standard pull-request review. Once merged to protected `main`, scheduled and manual refresh workflows execute that approved code, validate outputs against schema/coverage/shrink/size gates, publish uniquely versioned immutable snapshot bundles, and invoke the site build/deploy workflow with the exact pinned snapshot IDs.
+Changes to collector code, schemas, scoring rules, curated demo fixtures, collection configurations (`data/collections/collections.json`), and GitHub Actions workflows continue to go through standard pull-request review. In the target operational pipeline, once merged to protected `main`, scheduled and manual refresh workflows will execute that approved code, validate outputs against schema/coverage/shrink/size gates, publish uniquely versioned immutable snapshot bundles, and invoke the site build/deploy workflow with the exact pinned snapshot IDs.
 
-This architecture removes the operational fragility of bot-opened data PRs (such as Actions run `42567446545`, where collection, validation, and all tests succeeded before failing only at automated pull-request creation) while keeping every published assessment cryptographically traceable and reproducible.
+This target architecture addresses the operational fragility of bot-opened data PRs (such as Actions run `42567446545`, where collection, validation, and all tests succeeded before failing only at automated pull-request creation) while keeping every published assessment cryptographically traceable and reproducible.
+
+## Implementation Scope (`PR #78` Foundation vs. `#73` Phase 2 Operational Integration)
+
+Delivery is intentionally split into two phases so the core data, provenance, caching, rollback, and status primitives are verified independently before replacing the live scheduled workflow and Pages deployment path:
+
+| Capability Area | Phase 1 — Delivered in Foundation PR `#78` (`Refs #73`) | Phase 2 — Target Architecture Deferred Under `#73` |
+| :--- | :--- | :--- |
+| **Collection Config & Incremental Inventory** | `data/collections/collections.json` and `run_incremental_inventory_scan()` (tree-manifest SHA reuse, rename/archive reconciliation, 20% shrink guard). | Wiring incremental GitHub manifest scanning into the live scheduled workflow in place of full-clone `scripts/refresh_finos.py`. |
+| **Inventory-Scoped OSV & Shared Evidence** | `resolve_inventory_scoped_osv_across_collections()` (cross-collection exact-coordinate deduplication, pagination, positive/negative TTL cache, SQLite cache) and `refresh_shared_evidence_sources_conditionally()` (`ETag` / `Last-Modified` `304`). | Replacing the global OSV `all.zip` download in `.github/workflows/refresh-finos.yml` and persisting live runner caches/digests across scheduled runs. |
+| **Evidence-Only Reassessment & Replay** | `reassess_inventory_with_refreshed_evidence()` (reconciling both newly disclosed and withdrawn/obsolete CVEs while preserving incomplete states), `compare_assessment_snapshots()`, and `verify_offline_replay_determinism()`. | Invoking conditional evidence-only reassessment automatically from scheduled GitHub Actions runs. |
+| **Receipts, Provenance & Safe Rollback** | `build_assessment_receipt()`, `validate_assessment_receipt()` (content-bound `snapshot_id`, captured source payload digests, explicit `partial_historical` marking), `publish_collection_artifacts_safely()`, `build_deployment_manifest()`, and `verify_promotion_candidate_not_stale()`. | Calling `publish_collection_artifacts_safely()` from production refresh scripts, uploading immutable `data-snapshot-<hash>` GitHub Release assets, and retiring automated branch-push / `gh pr create` steps. |
+| **Public Status Contract & Packaged Site UI** | `update_pipeline_status_document()` (controlled default failure messages and full `Authorization` / credential / path redaction), `validate_public_pipeline_status_provenance()`, `tool/pipeline-status.mjs`, and illustrative fixtures under `tests/fixtures/pipeline/`. | Copying status/receipt assets in `website/scripts/copy-tool-assets.mjs`, mounting `pipeline-status.mjs` in `tool/risk-navigator.html` and `oss-risk/browser.html`, reusable pinned Pages build/deploy workflows, and independent failed/unchanged status publication in CI. |
+
+> **Note on Sections 1–6 Below:** Sections 1–6 specify the complete **target operational design** for `#73`. Helper functions named in code spans (`publish_collection_artifacts_safely()`, `build_deployment_manifest()`, `verify_promotion_candidate_not_stale()`, `update_pipeline_status_document()`, `validate_assessment_receipt()`, `validate_public_pipeline_status_provenance()`) are implemented and unit-tested in `scripts/incremental_refresh_pipeline.py` in Phase 1; workflow triggers, GitHub Release uploads, reusable Pages deployment jobs, and packaged HTML mounting remain Phase 2 deliverables under `#73`.
 
 ---
 

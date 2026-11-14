@@ -510,9 +510,14 @@ def test_canonical_hash_receipt_comparison_modes_and_safe_publication_rollback()
         assert not rec_path.exists(), "Receipt must remain absent on rollback"
 
 
+FIXTURE_PIPELINE_ROOT = ROOT_DIR / "tests" / "fixtures" / "pipeline"
+FIXTURE_PIPELINE_STATUS_PATH = FIXTURE_PIPELINE_ROOT / "data" / "pipeline-status.json"
+
+
 def test_pipeline_status_updates_stale_running_reconciliation_and_secret_redaction():
-    """Verify @DovOps Item 3: URL credentials, query-param secrets, Linux/macOS/Windows paths, and controlled codes are sanitized across full serialized status JSON."""
-    status_doc = json.loads(DEFAULT_PIPELINE_STATUS_PATH.read_text(encoding="utf-8"))
+    """Verify controlled default failure messages and full Authorization/credential/path redaction across serialized status JSON."""
+    status_doc = json.loads(FIXTURE_PIPELINE_STATUS_PATH.read_text(encoding="utf-8"))
+    orig_finos_snap_id = status_doc["pipelines"][0]["currently_published_snapshot"]["snapshot_id"]
 
     status_doc["pipelines"][1]["latest_attempt"] = {
         "run_id": "111",
@@ -522,25 +527,18 @@ def test_pipeline_status_updates_stale_running_reconciliation_and_secret_redacti
 
     synthetic_error = (
         "GET https://ci-user:s3cr3tPass!@feed.internal.example/v1/vulns?api_key=ak_live_998877&token=tok_abc123 "
+        "Authorization: Bearer SYNTHETIC_SECRET_123456 "
+        "Authorization: Basic dXNlcjpzZWNyZXRfcGFzc3dvcmQ= "
+        "'Authorization': 'Bearer QUOTED_SECRET_987654' "
+        "Proxy-Authorization: CustomScheme CUSTOM_SECRET_55555 "
         "failed while reading /home/runner/work/risk-navigator/risk-navigator/data/local/raw "
         "and /Users/alice/secret/repo with ghp_1234567890abcdefghijklmnop and C:\\Users\\runneradmin\\work\\secret.json"
     )
-
-    updated = update_pipeline_status_document(
-        status_doc,
-        collection_id="finos-github-org",
-        attempt={
-            "run_id": "222",
-            "outcome": "failed",
-            "started_at": "2026-11-06T00:00:00Z",
-            "completed_at": "2026-11-06T00:01:00Z",
-        },
-        failure_summary=synthetic_error,
-        checked_at="2026-11-06T00:02:00Z",
-    )
-
-    serialized = json.dumps(updated)
-    for forbidden in (
+    forbidden_secrets = (
+        "SYNTHETIC_SECRET_123456",
+        "dXNlcjpzZWNyZXRfcGFzc3dvcmQ",
+        "QUOTED_SECRET_987654",
+        "CUSTOM_SECRET_55555",
         "ci-user",
         "s3cr3tPass",
         "ak_live_998877",
@@ -549,40 +547,69 @@ def test_pipeline_status_updates_stale_running_reconciliation_and_secret_redacti
         "/home/runner/work",
         "/Users/alice",
         "C:\\Users\\runneradmin",
-    ):
-        assert forbidden not in serialized, f"Leaked sensitive substring {forbidden!r} in serialized public status"
+    )
 
-    by_cid = {p["collection_id"]: p for p in updated["pipelines"]}
-    assert by_cid["finos-labs"]["latest_attempt"]["outcome"] == "stale_unknown"
-    assert by_cid["finos-labs"]["failure_code"] == "stale_running_timeout"
-
-    finos_pipe = by_cid["finos-github-org"]
-    assert finos_pipe["publication_state"] == "previous_snapshot_retained_after_failure"
-    assert finos_pipe["previous_valid_snapshot_retained"] is True
-    assert finos_pipe["currently_published_snapshot"]["snapshot_id"] == "finos-github-org-20261103"
-    assert finos_pipe["failure_code"] == "upstream_feed_request_failed"
-    assert "[REDACTED_CREDENTIAL]" in finos_pipe["failure_summary"]
-    assert "[REDACTED_PATH]" in finos_pipe["failure_summary"]
-
-    # Also verify controlled public error message mode
-    updated_controlled = update_pipeline_status_document(
+    # 1. Default behavior: controlled public failure message (zero raw upstream text exposed)
+    updated_default = update_pipeline_status_document(
         status_doc,
         collection_id="finos-github-org",
-        attempt={"run_id": "223", "outcome": "failed"},
-        failure_summary=synthetic_error,
-        prefer_controlled_failure_message=True,
-        checked_at="2026-11-06T00:03:00Z",
+        attempt={
+            "run_id": "222",
+            "outcome": "failed",
+            "started_at": "2026-11-06T00:00:00Z",
+            "completed_at": "2026-11-06T00:01:00Z",
+        },
+        failure_summary="Authorization: Bearer SYNTHETIC_SECRET_123456",
+        checked_at="2026-11-06T00:02:00Z",
     )
-    finos_controlled = next(p for p in updated_controlled["pipelines"] if p["collection_id"] == "finos-github-org")
-    assert finos_controlled["failure_summary"] == (
+    serialized_default = json.dumps(updated_default)
+    assert "SYNTHETIC_SECRET_123456" not in serialized_default
+    by_cid_default = {p["collection_id"]: p for p in updated_default["pipelines"]}
+    assert by_cid_default["finos-labs"]["latest_attempt"]["outcome"] == "stale_unknown"
+    assert by_cid_default["finos-labs"]["failure_code"] == "stale_running_timeout"
+    assert by_cid_default["finos-github-org"]["failure_code"] == "upstream_feed_request_failed"
+    assert by_cid_default["finos-github-org"]["failure_summary"] == (
         "Upstream advisory or metadata feed request failed; retaining previous published snapshot."
     )
+    assert by_cid_default["finos-github-org"]["currently_published_snapshot"]["snapshot_id"] == orig_finos_snap_id
+
+    # 2. Explicit raw sanitization mode (prefer_controlled_failure_message=False): full header & scheme value redacted
+    assert (
+        sanitize_public_failure_summary("Authorization: Bearer SYNTHETIC_SECRET_123456", prefer_controlled_message=False)
+        == "Authorization: [REDACTED_CREDENTIAL]"
+    )
+    assert (
+        sanitize_public_failure_summary("Authorization: Basic dXNlcjpzZWNyZXRfcGFzc3dvcmQ=", prefer_controlled_message=False)
+        == "Authorization: [REDACTED_CREDENTIAL]"
+    )
+
+    updated_raw = update_pipeline_status_document(
+        status_doc,
+        collection_id="finos-github-org",
+        attempt={
+            "run_id": "223",
+            "outcome": "failed",
+            "started_at": "2026-11-06T00:00:00Z",
+            "completed_at": "2026-11-06T00:01:00Z",
+        },
+        failure_summary=synthetic_error,
+        prefer_controlled_failure_message=False,
+        checked_at="2026-11-06T00:03:00Z",
+    )
+    serialized_raw = json.dumps(updated_raw)
+    for forbidden in forbidden_secrets:
+        assert forbidden not in serialized_raw, f"Leaked sensitive substring {forbidden!r} in serialized public status"
+
+    finos_raw = next(p for p in updated_raw["pipelines"] if p["collection_id"] == "finos-github-org")
+    assert finos_raw["publication_state"] == "previous_snapshot_retained_after_failure"
+    assert finos_raw["previous_valid_snapshot_retained"] is True
+    assert "[REDACTED_CREDENTIAL]" in finos_raw["failure_summary"]
 
     updated2 = update_pipeline_status_document(
-        updated,
+        updated_default,
         collection_id="finos-labs",
         attempt={"run_id": "333", "outcome": "succeeded"},
-        validated_candidate={"snapshot_id": "finos-labs-cand-1", "content_sha256": "deadbeef"},
+        validated_candidate={"snapshot_id": "finos-labs-cand-1", "content_sha256": "d" * 64},
         promote_to_published=False,
         pending_pr_url="https://github.com/finos-osera/risk-navigator/pull/99",
         checked_at="2026-11-06T00:10:00Z",
@@ -593,19 +620,98 @@ def test_pipeline_status_updates_stale_running_reconciliation_and_secret_redacti
     assert labs_pipe["latest_validated_candidate"]["snapshot_id"] == "finos-labs-cand-1"
 
 
-def test_public_pipeline_status_provenance_and_committed_receipts_match_artifacts():
-    """Verify @DovOps Item 4: committed pipeline-status.json and receipts exist on disk and match canonical dataset SHA-256 digests."""
-    status_doc = json.loads(DEFAULT_PIPELINE_STATUS_PATH.read_text(encoding="utf-8"))
-    errors = validate_public_pipeline_status_provenance(status_doc, root_dir=ROOT_DIR)
-    assert errors == [], f"Unexpected provenance errors in data/pipeline-status.json: {errors}"
+def test_public_pipeline_status_provenance_same_date_uniqueness_and_historical_honesty():
+    """Verify fixture provenance, unique content-bound snapshot IDs on same date, synthetic-hash rejection, and honest historical state."""
+    # Phase 1 Foundation invariant: illustrative status/receipts live in tests/fixtures/pipeline, not live data/
+    assert not DEFAULT_PIPELINE_STATUS_PATH.exists(), "Live data/pipeline-status.json must remain absent in Phase 1 foundation PR"
+    assert not (ROOT_DIR / "data" / "receipts" / "finos-github-org.receipt.json").exists()
 
-    # Verify that if a receipt link is broken or digest is altered, validate_public_pipeline_status_provenance catches it
+    status_doc = json.loads(FIXTURE_PIPELINE_STATUS_PATH.read_text(encoding="utf-8"))
+    errors = validate_public_pipeline_status_provenance(status_doc, root_dir=FIXTURE_PIPELINE_ROOT)
+    assert errors == [], f"Unexpected provenance errors in fixture pipeline-status.json: {errors}"
+
+    # Tampered receipt link or non-content-bound date-only snapshot_id is rejected
     tampered = copy.deepcopy(status_doc)
     tampered["pipelines"][0]["currently_published_snapshot"]["receipt_url"] = "../data/receipts/nonexistent.receipt.json"
-    tampered_errors = validate_public_pipeline_status_provenance(tampered, root_dir=ROOT_DIR)
+    tampered_errors = validate_public_pipeline_status_provenance(tampered, root_dir=FIXTURE_PIPELINE_ROOT)
     assert any("does not exist on disk" in e for e in tampered_errors)
 
-    # Verify that in a clean directory without receipts, build_public_pipeline_status_from_artifacts initializes as awaiting_initial_publication
+    date_only_tampered = copy.deepcopy(status_doc)
+    date_only_tampered["pipelines"][0]["currently_published_snapshot"]["snapshot_id"] = "finos-github-org-20261105"
+    date_only_errors = validate_public_pipeline_status_provenance(date_only_tampered, root_dir=FIXTURE_PIPELINE_ROOT)
+    assert any("not immutably bound to content_sha256" in e for e in date_only_errors)
+
+    # Reproduction: two different datasets on the SAME inventory date receive distinct immutable snapshot IDs
+    with tempfile.TemporaryDirectory() as tmp_a, tempfile.TemporaryDirectory() as tmp_b:
+        for idx, tmp_str in enumerate((tmp_a, tmp_b)):
+            root = Path(tmp_str)
+            (root / "data").mkdir(parents=True, exist_ok=True)
+            ds_payload = json.loads((FIXTURE_PIPELINE_ROOT / "data" / "finos-github-org.json").read_text(encoding="utf-8"))
+            cov_payload = json.loads((FIXTURE_PIPELINE_ROOT / "data" / "finos-coverage.json").read_text(encoding="utf-8"))
+            cov_payload["inventory_completed_at"] = "2026-11-03T06:00:00Z"
+            ds_payload["meta"]["inventory_scanned_at"] = "2026-11-03T06:00:00Z"
+            if idx == 1:
+                ds_payload["libraries"][0]["cves"].append({"cve_id": "CVE-2026-90909", "summary": "Second dataset diff"})
+            (root / "data" / "finos-github-org.json").write_text(json.dumps(ds_payload), encoding="utf-8")
+            (root / "data" / "finos-coverage.json").write_text(json.dumps(cov_payload), encoding="utf-8")
+
+        st_a = build_public_pipeline_status_from_artifacts(root_dir=Path(tmp_a), checked_at="2026-11-06T00:00:00Z", write_receipts=True)
+        st_b = build_public_pipeline_status_from_artifacts(root_dir=Path(tmp_b), checked_at="2026-11-06T00:00:00Z", write_receipts=True)
+        assert validate_public_pipeline_status_provenance(st_a, root_dir=Path(tmp_a)) == []
+        assert validate_public_pipeline_status_provenance(st_b, root_dir=Path(tmp_b)) == []
+
+        snap_a = st_a["pipelines"][0]["currently_published_snapshot"]
+        snap_b = st_b["pipelines"][0]["currently_published_snapshot"]
+        assert snap_a["snapshot_id"].startswith("finos-github-org-20261103-")
+        assert snap_b["snapshot_id"].startswith("finos-github-org-20261103-")
+        assert snap_a["snapshot_id"] != snap_b["snapshot_id"]
+        assert snap_a["content_sha256"] != snap_b["content_sha256"]
+
+        # Synthetic timestamp-wrapper source digest is rejected by receipt & status provenance validators
+        rec_a_path = Path(tmp_a) / "data" / "receipts" / "finos-github-org.receipt.json"
+        rec_a_doc = json.loads(rec_a_path.read_text(encoding="utf-8"))
+        rec_a_doc["sources"][2]["sha256"] = pipeline._sha256_json({"kev_fetched_at": rec_a_doc["sources"][2]["retrieved_at"]})
+        rec_a_path.write_text(json.dumps(rec_a_doc), encoding="utf-8")
+        synth_errors = validate_public_pipeline_status_provenance(st_a, root_dir=Path(tmp_a))
+        assert any("synthetic timestamp" in e for e in synth_errors)
+
+    # Historical repo artifacts without captured KEV/EPSS digests or run metadata are represented honestly (never hardcoded)
+    with tempfile.TemporaryDirectory() as hist_tmp:
+        hist_root = Path(hist_tmp)
+        (hist_root / "data").mkdir(parents=True, exist_ok=True)
+        (hist_root / "oss-risk" / "data").mkdir(parents=True, exist_ok=True)
+        for rel in (
+            "data/finos-github-org.json",
+            "data/finos-coverage.json",
+            "oss-risk/data/finos-osera-backpatch-scorecards.json",
+            "oss-risk/data/finos-osera-backpatch-libraries.json",
+        ):
+            (hist_root / rel).write_bytes((ROOT_DIR / rel).read_bytes())
+
+        hist_status = build_public_pipeline_status_from_artifacts(
+            root_dir=hist_root,
+            checked_at="2026-11-06T00:00:00Z",
+            write_receipts=True,
+        )
+        hist_finos = hist_status["pipelines"][0]
+        assert hist_finos["publication_state"] == "partial_historical_provenance"
+        assert hist_finos["provenance_completeness"] == "partial_historical"
+        assert hist_finos["latest_attempt"]["run_id"] is None
+        assert hist_finos["latest_attempt"]["code_sha"] is None
+        assert hist_finos["currently_published_snapshot"]["osera_openvex_version"] is None
+        assert hist_finos["currently_published_snapshot"]["oss_risk_snapshot_id"] is None
+
+        hist_rec = json.loads((hist_root / "data" / "receipts" / "finos-github-org.receipt.json").read_text(encoding="utf-8"))
+        kev_entry = next(s for s in hist_rec["sources"] if s["name"] == "cisa-kev")
+        assert kev_entry["sha256"] is None
+        assert kev_entry["status"] == "unavailable_historical"
+
+        # Default strict validator rejects partial_historical_provenance as verified public evidence
+        strict_hist_errors = validate_public_pipeline_status_provenance(hist_status, root_dir=hist_root)
+        assert any("partial_historical_provenance" in e for e in strict_hist_errors)
+        assert validate_public_pipeline_status_provenance(hist_status, root_dir=hist_root, allow_partial_historical=True) == []
+
+    # Clean empty directory initializes all collections as awaiting_initial_publication
     with tempfile.TemporaryDirectory() as tmpdir:
         empty_status = build_public_pipeline_status_from_artifacts(
             root_dir=Path(tmpdir),
@@ -618,7 +724,7 @@ def test_public_pipeline_status_provenance_and_committed_receipts_match_artifact
 
 
 def test_conditional_shared_evidence_refresh_evidence_only_reassessment_and_offline_replay_cli():
-    """Verify @DovOps Item 5: conditional shared-source refresh, evidence-only reassessment, offline replay verification, and CLI entry point."""
+    """Verify conditional shared-source refresh, obsolete-CVE removal + incomplete preservation on reassessment, replay, and CLI."""
     source_specs = {
         "osera_openvex": {"url": "https://feed.finos.org/openvex.json", "freshness_ttl_seconds": 86400},
         "cisa_kev": {"url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"},
@@ -682,6 +788,13 @@ def test_conditional_shared_evidence_refresh_evidence_only_reassessment_and_offl
             "counts": {"consumer_projects": 4, "distinct_cve_libraries": 1, "unique_cves": 1},
             "coverage": {"repositories": 4, "vulnerable_library_versions": 1, "unique_cves": 1},
         },
+        "consumer_projects": [
+            {
+                "id": "finos-labs/app-1",
+                "vulnerable_library_ids": ["maven|org.springframework|spring-web|5.3.20"],
+                "vulnerable_library_count": 1,
+            }
+        ],
         "libraries": [
             {
                 "id": "maven|org.springframework|spring-web|5.3.20",
@@ -698,8 +811,9 @@ def test_conditional_shared_evidence_refresh_evidence_only_reassessment_and_offl
         dataset=base_ds,
         inventory_snapshot_id="finos-labs-inv-fixed",
         evidence_snapshot_ids={"osv": "osv-1", "kev": "kev-1"},
-        sources=[{"name": "osv", "sha256": "s1", "retrieved_at": "2026-11-01T00:05:00Z"}],
+        sources=[{"name": "osv", "sha256": "a" * 64, "retrieved_at": "2026-11-01T00:05:00Z"}],
         artifacts=[{"role": "dataset", "path": "data/finos-labs.json"}],
+        collector_commit="07ee91e7e264a530b7be987e40477fbb48d613af",
         generated_at="2026-11-01T00:10:00Z",
     )
 
@@ -708,6 +822,7 @@ def test_conditional_shared_evidence_refresh_evidence_only_reassessment_and_offl
         baseline_dataset=base_ds,
         baseline_receipt=base_rec,
         refreshed_osv_collection_result={
+            "evaluated_library_ids": ["maven|org.springframework|spring-web|5.3.20"],
             "cve_findings": [
                 {
                     "library_id": "maven|org.springframework|spring-web|5.3.20",
@@ -720,7 +835,7 @@ def test_conditional_shared_evidence_refresh_evidence_only_reassessment_and_offl
         kev_cve_ids={"CVE-2026-55555"},
         epss_by_cve={"CVE-2024-22243": 0.45, "CVE-2026-55555": 0.89},
         refreshed_evidence_snapshot_ids={"osv": "osv-2", "kev": "kev-2"},
-        refreshed_sources=[{"name": "osv", "sha256": "s2", "retrieved_at": "2026-11-06T12:00:00Z"}],
+        refreshed_sources=[{"name": "osv", "sha256": "b" * 64, "retrieved_at": "2026-11-06T12:00:00Z"}],
         assessed_at="2026-11-06T12:05:00Z",
     )
     assert reassessed["material_change"] is True
@@ -728,6 +843,104 @@ def test_conditional_shared_evidence_refresh_evidence_only_reassessment_and_offl
     assert reassessed["comparison"]["inventory_changed"] is False
     assert reassessed["comparison"]["newly_observed_cves"] == ["CVE-2026-55555"]
     assert reassessed["dataset"]["meta"]["inventory_scanned_at"] == "2026-11-01T00:00:00Z"
+
+    # Finding 4A: Complete refreshed result with 0 CVE findings and 1 clean evaluated package clears obsolete CVE
+    for clean_result_payload in (
+        {
+            "evaluated_library_ids": ["maven|org.springframework|spring-web|5.3.20"],
+            "cve_findings": [],
+            "clean_exact_package_versions": 1,
+        },
+        {
+            "cve_findings": [],
+            "clean_exact_package_versions": 1,
+        },
+    ):
+        cleared = reassess_inventory_with_refreshed_evidence(
+            collection_id="finos-labs",
+            baseline_dataset=base_ds,
+            baseline_receipt=base_rec,
+            refreshed_osv_collection_result=clean_result_payload,
+            refreshed_evidence_snapshot_ids={"osv": "osv-3", "kev": "kev-2"},
+            refreshed_sources=[{"name": "osv", "sha256": "c" * 64, "retrieved_at": "2026-11-07T12:00:00Z"}],
+            assessed_at="2026-11-07T12:05:00Z",
+        )
+        assert cleared["material_change"] is True
+        assert cleared["dataset"]["libraries"] == []
+        assert cleared["dataset"]["meta"]["counts"]["distinct_cve_libraries"] == 0
+        assert cleared["dataset"]["meta"]["counts"]["unique_cves"] == 0
+        assert cleared["dataset"]["consumer_projects"][0]["vulnerable_library_ids"] == []
+        assert cleared["dataset"]["consumer_projects"][0]["vulnerable_library_count"] == 0
+        assert cleared["comparison"]["resolved_cves"] == ["CVE-2024-22243"]
+        assert cleared["comparison"]["resolved_libraries"] == ["maven|org.springframework|spring-web|5.3.20"]
+
+    # Finding 4B: Partial CVE withdrawal + new CVE addition on the same library reconciles both
+    partial_withdrawn = reassess_inventory_with_refreshed_evidence(
+        collection_id="finos-labs",
+        baseline_dataset=reassessed["dataset"],
+        baseline_receipt=reassessed["receipt"],
+        refreshed_osv_collection_result={
+            "evaluated_library_ids": ["maven|org.springframework|spring-web|5.3.20"],
+            "cve_findings": [
+                {
+                    "library_id": "maven|org.springframework|spring-web|5.3.20",
+                    "cve_aliases": ["CVE-2026-55555", "CVE-2026-88888"],
+                    "summary": "CVE-2024-22243 withdrawn; CVE-2026-88888 added",
+                }
+            ],
+        },
+        refreshed_evidence_snapshot_ids={"osv": "osv-4", "kev": "kev-2"},
+        refreshed_sources=[{"name": "osv", "sha256": "d" * 64, "retrieved_at": "2026-11-08T12:00:00Z"}],
+        assessed_at="2026-11-08T12:05:00Z",
+    )
+    assert [c["cve_id"] for c in partial_withdrawn["dataset"]["libraries"][0]["cves"]] == [
+        "CVE-2026-55555",
+        "CVE-2026-88888",
+    ]
+    assert partial_withdrawn["comparison"]["resolved_cves"] == ["CVE-2024-22243"]
+    assert partial_withdrawn["comparison"]["newly_observed_cves"] == ["CVE-2026-88888"]
+
+    # Finding 4C: Explicit unknown/incomplete states are preserved untouched when not cleanly assessed
+    ds_with_incomplete = copy.deepcopy(base_ds)
+    ds_with_incomplete["libraries"].append(
+        {
+            "id": "npm||lodash|^4.17.0",
+            "namespace": "npm",
+            "meta": "",
+            "proj": "lodash",
+            "release": "^4.17.0",
+            "assessment_status": "unknown_unresolved_range",
+            "cves": [],
+        }
+    )
+    rec_with_incomplete = build_assessment_receipt(
+        collection_id="finos-labs",
+        dataset=ds_with_incomplete,
+        inventory_snapshot_id="finos-labs-inv-inc",
+        evidence_snapshot_ids={"osv": "osv-1", "kev": "kev-1"},
+        sources=[{"name": "osv", "sha256": "e" * 64, "retrieved_at": "2026-11-01T00:05:00Z"}],
+        artifacts=[{"role": "dataset", "path": "data/finos-labs.json"}],
+        collector_commit="07ee91e7e264a530b7be987e40477fbb48d613af",
+        generated_at="2026-11-01T00:10:00Z",
+    )
+    preserved_inc = reassess_inventory_with_refreshed_evidence(
+        collection_id="finos-labs",
+        baseline_dataset=ds_with_incomplete,
+        baseline_receipt=rec_with_incomplete,
+        refreshed_osv_collection_result={
+            "evaluated_library_ids": ["maven|org.springframework|spring-web|5.3.20"],
+            "cve_findings": [],
+            "clean_exact_package_versions": 1,
+            "unresolved_range_edges": [{"ecosystem": "npm", "package": "lodash", "version": "^4.17.0"}],
+        },
+        refreshed_evidence_snapshot_ids={"osv": "osv-5", "kev": "kev-2"},
+        refreshed_sources=[{"name": "osv", "sha256": "f" * 64, "retrieved_at": "2026-11-09T12:00:00Z"}],
+        assessed_at="2026-11-09T12:05:00Z",
+    )
+    remaining_ids = [lib["id"] for lib in preserved_inc["dataset"]["libraries"]]
+    assert remaining_ids == ["npm||lodash|^4.17.0"]
+    assert preserved_inc["dataset"]["libraries"][0]["assessment_status"] == "unknown_unresolved_range"
+    assert preserved_inc["dataset"]["meta"]["counts"]["distinct_cve_libraries"] == 0
 
     # Offline replay verification
     replay_check = verify_offline_replay_determinism(
@@ -761,15 +974,26 @@ def test_conditional_shared_evidence_refresh_evidence_only_reassessment_and_offl
     # Older candidate cannot overwrite newer deployed manifest
     assert verify_promotion_candidate_not_stale(dep_m2, dep_m1)["promotable"] is False
 
-    # CLI entry point verification
-    assert cli_main(["--validate-status"]) == 0
+    # CLI entry point verification against complete-provenance fixture tree
+    assert (
+        cli_main(
+            [
+                "--validate-status",
+                "--root-dir",
+                str(FIXTURE_PIPELINE_ROOT),
+                "--status-path",
+                str(FIXTURE_PIPELINE_STATUS_PATH),
+            ]
+        )
+        == 0
+    )
     assert (
         cli_main(
             [
                 "--verify-replay",
-                str(ROOT_DIR / "data" / "finos-github-org.json"),
+                str(FIXTURE_PIPELINE_ROOT / "data" / "finos-github-org.json"),
                 "--receipt",
-                str(ROOT_DIR / "data" / "receipts" / "finos-github-org.receipt.json"),
+                str(FIXTURE_PIPELINE_ROOT / "data" / "receipts" / "finos-github-org.receipt.json"),
             ]
         )
         == 0
@@ -783,7 +1007,7 @@ class IncrementalRefreshPipelineTestCase(unittest.TestCase):
         test_omitted_timestamps_use_current_clock_and_expire_positive_and_negative_osv_cache()
         test_canonical_hash_receipt_comparison_modes_and_safe_publication_rollback()
         test_pipeline_status_updates_stale_running_reconciliation_and_secret_redaction()
-        test_public_pipeline_status_provenance_and_committed_receipts_match_artifacts()
+        test_public_pipeline_status_provenance_same_date_uniqueness_and_historical_honesty()
         test_conditional_shared_evidence_refresh_evidence_only_reassessment_and_offline_replay_cli()
 
 

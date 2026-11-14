@@ -1,0 +1,63 @@
+{
+  "meta": {
+    "schema_version": "1",
+    "scope_name": "finos-github-org",
+    "generated_at": "2026-11-05T06:10:00Z",
+    "inventory_scanned_at": "2026-11-05T06:05:00Z",
+    "vulnerabilities_queried_at": "2026-11-05T06:08:00Z",
+    "counts": {
+      "consumer_projects": 2,
+      "distinct_cve_libraries": 1,
+      "unique_cves": 1
+    },
+    "coverage": {
+      "repositories": 2,
+      "repositories_with_dependencies": 2,
+      "repositories_failed": 0,
+      "vulnerable_library_versions": 1,
+      "unique_cves": 1
+    }
+  },
+  "dependency_inventory": {
+    "finos/fixture-service-a": {
+      "commit_sha": "a11ce00000000000000000000000000000000001",
+      "edges": [
+        {
+          "ecosystem": "maven",
+          "package": "org.springframework:spring-web",
+          "version": "5.3.20"
+        }
+      ]
+    },
+    "finos/fixture-service-b": {
+      "commit_sha": "b22df00000000000000000000000000000000002",
+      "edges": [
+        {
+          "ecosystem": "pypi",
+          "package": "urllib3",
+          "version": "2.2.3"
+        }
+      ]
+    }
+  },
+  "libraries": [
+    {
+      "id": "maven|org.springframework|spring-web|5.3.20",
+      "namespace": "maven",
+      "meta": "org.springframework",
+      "proj": "spring-web",
+      "release": "5.3.20",
+      "cve_count": 1,
+      "is_kev_listed": false,
+      "epss_max": 0.0142,
+      "cves": [
+        {
+          "cve_id": "CVE-2024-22243",
+          "summary": "Illustrative fixture advisory for spring-web 5.3.20",
+          "kev": false,
+          "epss": 0.0142
+        }
+      ]
+    }
+  ]
+}
