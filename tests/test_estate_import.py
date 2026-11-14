@@ -1154,14 +1154,23 @@ def test_latest_version_selection_ranks_final_release_above_release_candidate() 
 
 
 def test_osera_java_patch_version_ordering_and_patch_sequences() -> None:
-    """REL-003-JAVA OSERA patched versions rank after their numeric or qualified baselines and preserve patch sequence ordering."""
+    """REL-003-JAVA OSERA patched versions rank after their numeric or qualified baselines, match Maven ComparableVersion, and keep SemVer scoped."""
 
     assert APPLICATION_VERSION_ORDERING_POLICY["policy_version"] == "osera-application-version-ordering/v1"
 
-    # 1. Numeric-base Java example: 5.3.39 < 5.3.39.1-osera-00001 < 5.3.39.1-osera-00002
+    # 1. Numeric-base and final-qualified Java examples:
+    #    5.3.39 < 5.3.39.1-osera-00001 < 5.3.39.1-osera-00002
+    #    2.0.0-final < 2.0.0-osera-0001 < 2.0.0-osera-0002
+    #    2.0.0.Final < 2.0.0.Final-osera-00001 < 2.0.0.Final-osera-00002
     assert _version_sort_key("5.3.39", "maven") < _version_sort_key("5.3.39.1-osera-00001", "maven")
     assert _version_sort_key("5.3.39.1-osera-00001", "maven") < _version_sort_key("5.3.39.1-osera-00002", "maven")
     assert compare_application_versions("5.3.39", "5.3.39.1-osera-00001", "maven") == -1
+    assert _version_sort_key("2.0.0-final", "maven") < _version_sort_key("2.0.0-osera-0001", "maven")
+    assert _version_sort_key("2.0.0-osera-0001", "maven") < _version_sort_key("2.0.0-osera-0002", "maven")
+    assert compare_application_versions("2.0.0-final", "2.0.0-osera-0001", "maven") == -1
+    assert compare_application_versions("2.0.0-final", "2.0.0-osera-0001", "rel-003-java") == -1
+    assert compare_application_versions("2.0.0-final", "2.0.0-osera-0001", "care") == -1
+    assert _version_sort_key("2.0.0.Final", "maven") < _version_sort_key("2.0.0.Final-osera-00001", "maven")
 
     # 2. Qualified Java examples: 5.6.15.Final < 5.6.15.Final-osera-00001 and 2.0.0.RELEASE < 2.0.0.RELEASE-osera-00001
     assert _version_sort_key("5.6.15.Final", "maven") < _version_sort_key("5.6.15.Final-osera-00001", "maven")
@@ -1173,28 +1182,77 @@ def test_osera_java_patch_version_ordering_and_patch_sequences() -> None:
     assert _version_sort_key("9.4.51.v20230217", "maven") < _version_sort_key("9.4.51.v20230217-osera-00001", "maven")
     assert _version_sort_key("9.4.51.v20230217-osera-00001", "maven") < _version_sort_key("9.4.51.v20230218", "maven")
 
-    # 4. Genuine prereleases / release candidates remain below the final release under both Maven and SemVer
+    # 4. Maven qualifier aliases and equivalence: CR1 = RC1, a1 = alpha-1, b1 = beta-1, m1 = milestone-1, and final = ga = release = ""
+    assert _version_sort_key("2.0.0-CR1", "maven") == _version_sort_key("2.0.0-RC1", "maven")
+    assert compare_application_versions("2.0.0-CR1", "2.0.0-RC1", "maven") == 0
+    assert _version_sort_key("5.6.15.CR1", "maven") == _version_sort_key("5.6.15.RC1", "maven")
+    assert compare_application_versions("5.6.15.CR1", "5.6.15.RC1", "maven") == 0
+    assert compare_application_versions("2.0.0-a1", "2.0.0-alpha-1", "maven") == 0
+    assert compare_application_versions("2.0.0-b1", "2.0.0-beta-1", "maven") == 0
+    assert compare_application_versions("2.0.0-m1", "2.0.0-milestone-1", "maven") == 0
+    assert compare_application_versions("2.0.0-final", "2.0.0", "maven") == 0
+    assert compare_application_versions("2.0.0.Final", "2.0.0.RELEASE", "maven") == 0
+    assert compare_application_versions("2.0.0.RELEASE", "2.0.0-GA", "maven") == 0
+
+    # 5. Maven qualifier ordering: alpha < beta < milestone < rc = cr < snapshot < final < sp < osera < numeric build
+    assert compare_application_versions("2.0.0-rc1", "2.0.0-SNAPSHOT", "maven") == -1
+    assert compare_application_versions("2.0.0-SNAPSHOT", "2.0.0-final", "maven") == -1
     maven_chain = [
-        "5.6.15-SNAPSHOT",
         "5.6.15.Alpha1",
         "5.6.15.Beta1",
         "5.6.15.M1",
-        "5.6.15.CR1",
         "5.6.15.RC1",
+        "5.6.15-SNAPSHOT",
         "5.6.15.Final",
         "5.6.15.Final-osera-00001",
         "5.6.15.Final-osera-00002",
     ]
     assert sorted(reversed(maven_chain), key=lambda v: _version_sort_key(v, "maven")) == maven_chain
 
+    maven_full_chain = [
+        "2.0.0-alpha-1",
+        "2.0.0-beta-1",
+        "2.0.0-milestone-1",
+        "2.0.0-rc1",
+        "2.0.0-SNAPSHOT",
+        "2.0.0-final",
+        "2.0.0-sp1",
+        "2.0.0-osera-0001",
+        "2.0.0-osera-0002",
+        "2.0.0-1",
+        "2.0.0-2",
+    ]
+    assert sorted(reversed(maven_full_chain), key=lambda v: _version_sort_key(v, "maven")) == maven_full_chain
+
+    # 6. Explicit SemVer inputs retain genuine SemVer 2.0.0 §11 behavior:
+    #    - 2.0.0-osera-00001 < 2.0.0 (hyphen suffix is a SemVer pre-release, NOT post-release)
+    #    - 2.0.0-final < 2.0.0 (-final is a SemVer pre-release, NOT equivalent to 2.0.0)
+    assert _version_sort_key("2.0.0-osera-00001", "semver") < _version_sort_key("2.0.0", "semver")
+    assert compare_application_versions("2.0.0-osera-00001", "2.0.0", "semver") == -1
+    assert _version_sort_key("2.0.0-final", "semver") < _version_sort_key("2.0.0", "semver")
+    assert compare_application_versions("2.0.0-final", "2.0.0", "semver") == -1
+
+    semver_spec_chain = [
+        "1.0.0-alpha",
+        "1.0.0-alpha.1",
+        "1.0.0-alpha.beta",
+        "1.0.0-beta",
+        "1.0.0-beta.2",
+        "1.0.0-beta.11",
+        "1.0.0-rc.1",
+        "1.0.0",
+    ]
+    assert sorted(reversed(semver_spec_chain), key=lambda v: _version_sort_key(v, "semver")) == semver_spec_chain
+
     semver_chain = [
         "2.0.0-alpha.1",
         "2.0.0-beta.1",
+        "2.0.0-final",
+        "2.0.0-osera-00001",
+        "2.0.0-osera-00002",
         "2.0.0-rc.1",
         "2.0.0-rc.2",
         "2.0.0",
-        "2.0.0-osera-00001",
-        "2.0.0-osera-00002",
     ]
     assert sorted(reversed(semver_chain), key=lambda v: _version_sort_key(v, "semver")) == semver_chain
 
@@ -1348,6 +1406,50 @@ def test_maven_versus_semver_numeric_hyphen_suffix_and_explicit_convention_polic
     semver_latest_lids = {c["library_id"] for c in evaluate_estate_view(semver_contract, "latest_production_version")["components"]}
     assert semver_latest_lids == {"maven|org.springframework|spring-web@5.3.32".replace("@", "|")}
 
+    # Explicit SemVer applications retain genuine SemVer behavior even when version strings use
+    # `-osera-00001` or `-final` and even when the application consumes Java/Maven dependencies:
+    for prerelease_ver in ("2.0.0-osera-00001", "2.0.0-final"):
+        semver_entries = [
+            {
+                "application_id": "github|acme|semver-polyglot-app|main",
+                "name": "semver-polyglot-app",
+                "version": "2.0.0",
+                "version_convention": "semver",
+                "build_id": "b-200-normal",
+                "deployment_id": "d-prod-normal",
+                "environment": "production",
+                "observed_at": "2026-11-01T10:00:00Z",
+                "dependencies": [{"purl": "pkg:maven/org.springframework/spring-web@5.3.32", "direct": True}],
+            },
+            {
+                "application_id": "github|acme|semver-polyglot-app|main",
+                "name": "semver-polyglot-app",
+                "version": prerelease_ver,
+                "version_convention": "semver",
+                "build_id": f"b-{prerelease_ver}",
+                "deployment_id": "d-prod-prerelease",
+                "environment": "production",
+                "observed_at": "2026-11-09T10:00:00Z",
+                "dependencies": [{"purl": "pkg:maven/org.springframework/spring-web@5.3.20", "direct": True}],
+            },
+        ]
+        for ordered_entries in (semver_entries, list(reversed(semver_entries))):
+            parsed_semver_feed = parse_company_inventory_feed({"applications": ordered_entries})
+            explicit_semver_contract = merge_estate_observations(parsed_semver_feed)
+            explicit_semver_app = explicit_semver_contract["applications"][0]
+            assert explicit_semver_app["version_convention"] == "semver"
+            assert explicit_semver_app["active_production_versions"] == [prerelease_ver, "2.0.0"]
+            assert explicit_semver_app["latest_production_version"] == "2.0.0"
+            latest_sem_view = evaluate_estate_view(explicit_semver_contract, "latest_production_version")
+            assert {c["library_id"] for c in latest_sem_view["components"]} == {
+                "maven|org.springframework|spring-web|5.3.32"
+            }
+            all_active_sem_view = evaluate_estate_view(explicit_semver_contract, "all_active_production")
+            assert {c["library_id"] for c in all_active_sem_view["components"]} == {
+                "maven|org.springframework|spring-web|5.3.20",
+                "maven|org.springframework|spring-web|5.3.32",
+            }
+
     # Unsupported / opaque version schemes (e.g. git commit SHAs) do not claim a fake universal latest version
     conv, src, status = resolve_application_version_convention("", "", ["a1b2c3d4e5f6", "f6e5d4c3b2a1"])
     assert conv == "unsupported"
@@ -1355,12 +1457,15 @@ def test_maven_versus_semver_numeric_hyphen_suffix_and_explicit_convention_polic
 
 
 def test_estate_latest_production_version_view_with_osera_patched_releases_and_all_active_preservation() -> None:
-    """Exercise latest_production_version and all_active_production views across all 3 REL-003-JAVA examples regardless of import order."""
+    """Exercise latest_production_version and all_active_production views across REL-003-JAVA and Maven qualifier examples regardless of import order."""
 
     cases = [
         ("numeric-app", "5.3.39", "5.3.39.1-osera-00001"),
+        ("final-hyphen-app", "2.0.0-final", "2.0.0-osera-0001"),
+        ("final-dot-app", "2.0.0.Final", "2.0.0.Final-osera-00001"),
         ("hibernate-app", "5.6.15.Final", "5.6.15.Final-osera-00001"),
         ("spring-release-app", "2.0.0.RELEASE", "2.0.0.RELEASE-osera-00001"),
+        ("maven-snapshot-vs-rc-app", "2.0.0-rc1", "2.0.0-SNAPSHOT"),
     ]
 
     for app_name, baseline_ver, patched_ver in cases:

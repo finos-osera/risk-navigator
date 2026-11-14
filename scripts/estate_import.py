@@ -14,12 +14,13 @@ Provides:
   - Resolves the application's version convention from explicit metadata (`version_convention` /
     `version_scheme`), the application's own root artifact PURL (`pkg:maven/...` vs `pkg:npm/...`),
     or unambiguous `REL-003-JAVA` qualified/patch syntax (`.Final`, `.RELEASE`, `.GA`, `-osera-NNNNN`).
-  - Under the Java/Maven profile (`REL-003-JAVA`), orders OSERA patched numeric and qualified
-    versions strictly after their baselines (`5.3.39 < 5.3.39.1-osera-00001`,
-    `5.6.15.Final < 5.6.15.Final-osera-00001`, `2.0.0.RELEASE < 2.0.0.RELEASE-osera-00001`)
-    and preserves patch sequence ordering (`...-osera-00001 < ...-osera-00002`).
-  - Preserves prerelease ordering (`alpha < beta < milestone < rc/cr < final`) and distinguishes
-    Maven numeric hyphen build numbers (`2.0.0 < 2.0.0-1`) from SemVer prereleases (`2.0.0-1 < 2.0.0`).
+  - Under the Java/Maven profile (`REL-003-JAVA` / CARE), orders OSERA patched numeric and qualified
+    versions strictly after their baselines (`2.0.0-final < 2.0.0-osera-0001`, `5.3.39 < 5.3.39.1-osera-00001`,
+    `5.6.15.Final < 5.6.15.Final-osera-00001`, `2.0.0.RELEASE < 2.0.0.RELEASE-osera-00001`),
+    preserves patch sequence ordering (`...-osera-00001 < ...-osera-00002`), and matches Apache Maven
+    `ComparableVersion` qualifier precedence (`alpha < beta < milestone < rc = cr < snapshot < final`).
+  - Separates explicit SemVer (`convention = "semver"`) from Java/Maven rules so SemVer releases follow
+    genuine SemVer 2.0.0 §11 precedence (`2.0.0-1 < 2.0.0`, `2.0.0-final < 2.0.0`, `2.0.0-osera-00001 < 2.0.0`).
   - Handles ambiguous or unsupported version schemes honestly (`version_ordering_status` =
     `"ambiguous_convention"` or `"unsupported_scheme"`) without silently claiming a universal
     `latest_production_version` or discarding releases from all-supplied-inventory views.
@@ -38,6 +39,7 @@ from __future__ import annotations
 
 import copy
 import csv
+import functools
 import json
 import re
 import urllib.parse
@@ -86,7 +88,7 @@ ACTIVE_RUNTIME_ENVIRONMENTS = {
 SYMBOLIC_VERSION_TOKENS = {"main", "master", "head", "trunk", "latest", "0.0.0", "unspecified", "unknown", ""}
 FINAL_RELEASE_MODIFIERS = {"final", "ga", "release"}
 POST_RELEASE_MODIFIERS = {"sp", "post", "pl", "patch", "osera"}
-MAVEN_VERSION_CONVENTIONS = {"maven", "java", "rel-003-java"}
+MAVEN_VERSION_CONVENTIONS = {"maven", "java", "rel-003-java", "rel-003", "care"}
 SEMVER_VERSION_CONVENTIONS = {"semver", "semver2", "npm", "cargo", "golang", "nuget", "pypi"}
 CALVER_VERSION_CONVENTIONS = {"calver", "calendar"}
 UNSUPPORTED_VERSION_CONVENTIONS = {"unsupported", "opaque", "unversioned", "git-sha", "hash", "custom"}
@@ -105,7 +107,7 @@ APPLICATION_VERSION_ORDERING_POLICY: Dict[str, Any] = {
     ),
     "java_profile_standard": "REL-003-JAVA",
 }
-JAVA_QUALIFIER_RE = re.compile(r"(?i)[._-](?:final|release|ga)(?=$|[._-])")
+JAVA_QUALIFIER_RE = re.compile(r"(?i)[._-](?:final|release|ga|snapshot|cr\d*)(?=$|[._-])")
 OSERA_PATCH_SUFFIX_RE = re.compile(r"(?i)-osera-\d+")
 NUMERIC_HYPHEN_SUFFIX_RE = re.compile(r"^[vV]?\d+(?:\.\d+)*-\d+(?:[._-]\d+)*(?:\+.*)?$")
 ORDERABLE_NUMERIC_START_RE = re.compile(
@@ -114,22 +116,15 @@ ORDERABLE_NUMERIC_START_RE = re.compile(
 )
 GIT_SHA_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
 PRERELEASE_STAGE_ORDER = {
-    "dev": 0,
-    "devel": 0,
-    "nightly": 1,
-    "canary": 1,
-    "snapshot": 2,
-    "alpha": 3,
-    "a": 3,
-    "ea": 3,
-    "pre": 4,
-    "preview": 4,
-    "beta": 5,
-    "b": 5,
-    "milestone": 6,
-    "m": 6,
-    "rc": 7,
-    "cr": 7,
+    "alpha": 0,
+    "a": 0,
+    "beta": 1,
+    "b": 1,
+    "milestone": 2,
+    "m": 2,
+    "rc": 3,
+    "cr": 3,
+    "snapshot": 4,
 }
 PUBLIC_EXPORT_ALLOWED_QUALIFIER_KEYS = frozenset(
     {
@@ -629,37 +624,298 @@ def _timestamp_sort_key(value: Any) -> float:
         return float("-inf")
 
 
-def _parse_prerelease_tokens(suffix: str) -> Tuple[Tuple[int, int, str], ...]:
-    """Parse prerelease or modifier tokens according to SemVer 2.0.0 + stage precedence."""
+@functools.total_ordering
+class _MavenItem:
+    """Base item for Apache Maven ComparableVersion ordering."""
 
-    tokens: List[Tuple[int, int, str]] = []
-    for seg in re.split(r"[._-]+", suffix):
-        if not seg:
-            continue
-        if seg.isdigit():
-            tokens.append((0, int(seg), ""))
-            continue
-        m = re.match(r"^([A-Za-z]+)(\d+)$", seg)
-        if m and m.group(1).lower() in PRERELEASE_STAGE_ORDER:
-            tag = m.group(1).lower()
-            tokens.append((1, PRERELEASE_STAGE_ORDER[tag], tag))
-            tokens.append((0, int(m.group(2)), ""))
-            continue
-        lower_seg = seg.lower()
-        if lower_seg in PRERELEASE_STAGE_ORDER:
-            tokens.append((1, PRERELEASE_STAGE_ORDER[lower_seg], lower_seg))
+    item_type: int = -1
+
+    def is_null(self) -> bool:
+        return False
+
+    def compare_to(self, other: Optional["_MavenItem"]) -> int:
+        raise NotImplementedError
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, _MavenItem):
+            return NotImplemented
+        return self.compare_to(other) == 0
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, _MavenItem):
+            return NotImplemented
+        return self.compare_to(other) < 0
+
+
+class _MavenIntItem(_MavenItem):
+    """Integer item in Apache Maven ComparableVersion (covers IntItem, LongItem, BigIntegerItem)."""
+
+    item_type = 0
+
+    def __init__(self, raw: str = "0") -> None:
+        stripped = raw.lstrip("0") or "0"
+        self.value = int(stripped)
+
+    def is_null(self) -> bool:
+        return self.value == 0
+
+    def compare_to(self, other: Optional[_MavenItem]) -> int:
+        if other is None:
+            return 0 if self.value == 0 else 1
+        if other.item_type == 0:
+            assert isinstance(other, _MavenIntItem)
+            return -1 if self.value < other.value else (1 if self.value > other.value else 0)
+        if other.item_type in (1, 2):
+            return 1
+        raise TypeError(f"Invalid Maven item type: {other!r}")
+
+    def __repr__(self) -> str:
+        return str(self.value)
+
+
+class _MavenStringItem(_MavenItem):
+    """Qualifier item in Apache Maven ComparableVersion (`alpha < beta < milestone < rc = cr < snapshot < '' = final = ga = release < sp`)."""
+
+    item_type = 1
+    QUALIFIERS: Tuple[str, ...] = ("alpha", "beta", "milestone", "rc", "snapshot", "", "sp")
+    ALIASES: Dict[str, str] = {
+        "ga": "",
+        "final": "",
+        "release": "",
+        "cr": "rc",
+    }
+    RELEASE_VERSION_INDEX: str = str(QUALIFIERS.index(""))
+
+    def __init__(self, value: str, followed_by_digit: bool = False) -> None:
+        val = value.lower()
+        if followed_by_digit and len(val) == 1:
+            if val == "a":
+                val = "alpha"
+            elif val == "b":
+                val = "beta"
+            elif val == "m":
+                val = "milestone"
+        self.value = self.ALIASES.get(val, val)
+
+    @classmethod
+    def comparable_qualifier(cls, value: str) -> str:
+        if value in cls.QUALIFIERS:
+            return str(cls.QUALIFIERS.index(value))
+        return f"{len(cls.QUALIFIERS)}-{value}"
+
+    def is_null(self) -> bool:
+        return self.comparable_qualifier(self.value) == self.RELEASE_VERSION_INDEX
+
+    def compare_to(self, other: Optional[_MavenItem]) -> int:
+        if other is None:
+            lhs = self.comparable_qualifier(self.value)
+            rhs = self.RELEASE_VERSION_INDEX
+            return -1 if lhs < rhs else (1 if lhs > rhs else 0)
+        if other.item_type == 0:
+            return -1
+        if other.item_type == 1:
+            assert isinstance(other, _MavenStringItem)
+            lhs = self.comparable_qualifier(self.value)
+            rhs = self.comparable_qualifier(other.value)
+            return -1 if lhs < rhs else (1 if lhs > rhs else 0)
+        if other.item_type == 2:
+            return -1
+        raise TypeError(f"Invalid Maven item type: {other!r}")
+
+    def __repr__(self) -> str:
+        return repr(self.value)
+
+
+class _MavenListItem(_MavenItem):
+    """Sublist item in Apache Maven ComparableVersion."""
+
+    item_type = 2
+
+    def __init__(self, items: Optional[Iterable[_MavenItem]] = None) -> None:
+        self.items: List[_MavenItem] = list(items) if items is not None else []
+
+    def append(self, item: _MavenItem) -> None:
+        self.items.append(item)
+
+    def is_empty(self) -> bool:
+        return len(self.items) == 0
+
+    def is_null(self) -> bool:
+        return len(self.items) == 0
+
+    def normalize(self) -> None:
+        for idx in range(len(self.items) - 1, -1, -1):
+            last_item = self.items[idx]
+            if last_item.is_null():
+                del self.items[idx]
+            elif not isinstance(last_item, _MavenListItem):
+                break
+
+    def compare_to(self, other: Optional[_MavenItem]) -> int:
+        if other is None:
+            if not self.items:
+                return 0
+            for item in self.items:
+                res = item.compare_to(None)
+                if res != 0:
+                    return res
+            return 0
+        if other.item_type == 0:
+            return -1
+        if other.item_type == 1:
+            return 1
+        if other.item_type == 2:
+            assert isinstance(other, _MavenListItem)
+            max_len = max(len(self.items), len(other.items))
+            for idx in range(max_len):
+                left_item = self.items[idx] if idx < len(self.items) else None
+                right_item = other.items[idx] if idx < len(other.items) else None
+                if left_item is None:
+                    res = (-1 * right_item.compare_to(left_item)) if right_item is not None else 0
+                else:
+                    res = left_item.compare_to(right_item)
+                if res != 0:
+                    return res
+            return 0
+        raise TypeError(f"Invalid Maven item type: {other!r}")
+
+    def __repr__(self) -> str:
+        return f"{self.items!r}"
+
+
+def _parse_maven_item(is_digit: bool, buf: str) -> _MavenItem:
+    if is_digit:
+        return _MavenIntItem(buf)
+    return _MavenStringItem(buf, followed_by_digit=False)
+
+
+def _parse_maven_comparable_version(version: str) -> _MavenListItem:
+    """Parse a version string using Apache Maven's ComparableVersion state machine."""
+
+    root = _MavenListItem()
+    ver = version.strip().lower()
+    if not ver:
+        return root
+
+    cur_list = root
+    stack: List[_MavenListItem] = [cur_list]
+    is_digit = False
+    start_index = 0
+
+    for i, ch in enumerate(ver):
+        if ch == ".":
+            if i == start_index:
+                cur_list.append(_MavenIntItem("0"))
+            else:
+                cur_list.append(_parse_maven_item(is_digit, ver[start_index:i]))
+            start_index = i + 1
+        elif ch == "-":
+            if i == start_index:
+                cur_list.append(_MavenIntItem("0"))
+            else:
+                cur_list.append(_parse_maven_item(is_digit, ver[start_index:i]))
+            start_index = i + 1
+            sub = _MavenListItem()
+            cur_list.append(sub)
+            cur_list = sub
+            stack.append(cur_list)
+        elif ch.isdigit():
+            if not is_digit and i > start_index:
+                if not cur_list.is_empty():
+                    sub = _MavenListItem()
+                    cur_list.append(sub)
+                    cur_list = sub
+                    stack.append(cur_list)
+                cur_list.append(_MavenStringItem(ver[start_index:i], followed_by_digit=True))
+                start_index = i
+                sub = _MavenListItem()
+                cur_list.append(sub)
+                cur_list = sub
+                stack.append(cur_list)
+            is_digit = True
         else:
-            tokens.append((1, 10, lower_seg))
-    return tuple(tokens)
+            if is_digit and i > start_index:
+                cur_list.append(_parse_maven_item(True, ver[start_index:i]))
+                start_index = i
+                sub = _MavenListItem()
+                cur_list.append(sub)
+                cur_list = sub
+                stack.append(cur_list)
+            is_digit = False
+
+    if len(ver) > start_index:
+        if not is_digit and not cur_list.is_empty():
+            sub = _MavenListItem()
+            cur_list.append(sub)
+            cur_list = sub
+            stack.append(cur_list)
+        cur_list.append(_parse_maven_item(is_digit, ver[start_index:]))
+
+    while stack:
+        node = stack.pop()
+        node.normalize()
+
+    return root
+
+
+def _semver_sort_key(
+    core_and_pre: str,
+    *,
+    pad_three: bool = True,
+) -> Tuple[int, Tuple[Tuple[int, Any], ...], int, Tuple[Tuple[int, Any], ...]]:
+    """Return a genuine SemVer 2.0.0 §11 precedence sort key."""
+
+    m_sem = re.match(r"^(?P<nums>\d+(?:\.\d+)*)(?:-(?P<pre>[0-9A-Za-z.-]+))?$", core_and_pre)
+    if m_sem:
+        num_ints = [int(x) for x in m_sem.group("nums").split(".")]
+        if pad_three:
+            while len(num_ints) < 3:
+                num_ints.append(0)
+            while len(num_ints) > 3 and num_ints[-1] == 0:
+                num_ints.pop()
+        num_tuple = tuple((1, n) for n in num_ints)
+        pre = m_sem.group("pre")
+        if pre is None:
+            return (2, num_tuple, 1, ())
+        pre_tokens: List[Tuple[int, Any]] = []
+        for seg in pre.split("."):
+            if seg.isdigit():
+                pre_tokens.append((0, int(seg)))
+            else:
+                pre_tokens.append((1, seg))
+        return (2, num_tuple, 0, tuple(pre_tokens))
+
+    m_loose = re.match(r"^(?P<nums>\d+(?:\.\d+)*)(?P<rest>.+)$", core_and_pre)
+    if m_loose:
+        num_ints = [int(x) for x in m_loose.group("nums").split(".")]
+        if pad_three:
+            while len(num_ints) < 3:
+                num_ints.append(0)
+            while len(num_ints) > 3 and num_ints[-1] == 0:
+                num_ints.pop()
+        num_tuple = tuple((1, n) for n in num_ints)
+        suffix = re.sub(r"^[-._]+", "", m_loose.group("rest").strip())
+        pre_tokens = [
+            (0, int(seg)) if seg.isdigit() else (1, seg)
+            for seg in re.split(r"[._]+", suffix)
+            if seg
+        ]
+        return (2, num_tuple, 0, tuple(pre_tokens))
+
+    fallback_parts: List[Tuple[int, Any]] = [
+        (1, int(tok)) if tok.isdigit() else (0, tok.lower())
+        for tok in re.findall(r"\d+|[A-Za-z]+", core_and_pre)
+    ]
+    return (1, tuple(fallback_parts), 1, ())
 
 
 def normalize_version_convention(raw_convention: Any) -> str:
     """Normalize an explicit application version-ordering convention identifier (#85).
 
     Supported canonical conventions:
-    - ``"maven"``: Maven ``ComparableVersion`` + FINOS OSERA ``REL-003-JAVA`` Java Patch Version Naming
-      (accepts aliases ``"java"``, ``"rel-003-java"``, ``"maven"``).
-    - ``"semver"``: Semantic Versioning 2.0.0 + OSERA ``-osera-NNNNN`` post-release patch sequence
+    - ``"maven"``: Maven ``ComparableVersion`` + FINOS OSERA ``REL-003-JAVA`` / CARE Java Patch Version Naming
+      (accepts aliases ``"java"``, ``"rel-003-java"``, ``"rel-003"``, ``"care"``, ``"maven"``).
+    - ``"semver"``: Genuine Semantic Versioning 2.0.0 (§11 precedence)
       (accepts aliases ``"semver"``, ``"semver2"``, ``"npm"``, ``"cargo"``, ``"golang"``, ``"nuget"``, ``"pypi"``).
     - ``"calver"``: Calendar versioning with numeric date segments (accepts ``"calver"``, ``"calendar"``).
     - ``"unsupported"``: Opaque, hash-based, or unsupported version schemes where a single universal
@@ -725,8 +981,8 @@ def resolve_application_version_convention(
     3. Otherwise, inspect the application's release strings:
        - If multiple active releases exist and any release is opaque/unorderable (e.g. git commit SHA,
          symbolic branch token), return ``("unsupported", "unorderable_tokens", "unsupported_scheme")``.
-       - If any release uses unambiguous Java / Maven release qualifiers (``.Final``, ``.RELEASE``, ``.GA``),
-         establish ``("maven", "rel_003_java_pattern", "ordered")``.
+       - If any release uses unambiguous Java / Maven release qualifiers (``.Final``, ``.RELEASE``, ``.GA``,
+         ``-SNAPSHOT``, ``.CR1``), establish ``("maven", "rel_003_java_pattern", "ordered")``.
        - If multiple releases include a convention-sensitive numeric hyphen suffix (e.g. ``2.0.0`` and
          ``2.0.0-1``) with no explicit convention or application root PURL, return
          ``("ambiguous", "ambiguous_numeric_hyphen", "ambiguous_convention")`` rather than guessing
@@ -775,132 +1031,43 @@ def resolve_application_version_convention(
 def _version_sort_key(
     version: Any,
     convention: str = "semver",
-) -> Tuple[int, Tuple[Tuple[int, Any], ...], int, Tuple[Any, ...], int, Tuple[Any, ...]]:
+) -> Tuple[Any, ...]:
     """Return a deterministic convention-aware version comparison key (#85).
 
-    Invariants:
-    - Symbolic version tokens (`main`, `0.0.0`, `unspecified`, etc.) rank below concrete releases.
-    - Build metadata (`+...`) is ignored for version precedence per SemVer 2.0.0 §10.
-    - Final releases (`base_stage_rank = 1`, e.g. `2.0.0`, `5.6.15.Final`, `2.0.0.RELEASE`, `2.0.0-GA`) rank
-      strictly above prereleases of the same numeric version (`base_stage_rank = 0`, e.g. `2.0.0-alpha.1`,
-      `2.0.0-rc.1`, `5.6.15.CR1`, `2.0.0-SNAPSHOT`).
-    - Under OSERA Java Patch Version Naming (`REL-003-JAVA`) and post-release conventions (`post_patch_rank = 1`),
-      patched releases rank strictly after their unpatched baselines (`5.3.39 < 5.3.39.1-osera-00001`,
-      `5.6.15.Final < 5.6.15.Final-osera-00001`, `2.0.0.RELEASE < 2.0.0.RELEASE-osera-00001`) and
-      preserve patch sequence ordering (`...-osera-00001 < ...-osera-00002`).
-    - Numeric hyphen suffixes (`2.0.0-1`) follow the selected `convention`:
-      - Under `convention="semver"`: `2.0.0-1 < 2.0.0` (SemVer 2.0.0 §9 prerelease identifier).
-      - Under `convention="maven"` (`"java"` / `"rel-003-java"`): `2.0.0 < 2.0.0-1 < 2.0.0-2` (Maven build number).
+    Separates comparison paths by convention:
+    - Under ``convention="maven"`` (``"java"``, ``"rel-003-java"``, ``"care"``):
+      Uses Apache Maven ``ComparableVersion`` ordering (``alpha < beta < milestone < rc = cr < snapshot < '' = final = ga = release < sp``)
+      where OSERA patched releases (``-osera-NNNNN``) rank strictly after their numeric or qualified baselines
+      (``2.0.0-final < 2.0.0-osera-0001``, ``5.3.39 < 5.3.39.1-osera-00001``,
+      ``5.6.15.Final < 5.6.15.Final-osera-00001``, ``2.0.0.RELEASE < 2.0.0.RELEASE-osera-00001``)
+      and preserve patch sequence ordering (``00001 < 00002``).
+    - Under ``convention="semver"``:
+      Uses genuine SemVer 2.0.0 §11 precedence: any ``-<prerelease>`` suffix (including ``2.0.0-1``,
+      ``2.0.0-final``, or ``2.0.0-osera-00001``) is a pre-release that ranks strictly below ``2.0.0``,
+      and dot-separated pre-release identifiers are compared numerically when all-digits and lexically
+      in ASCII sort order otherwise.
     """
 
     norm_conv = normalize_version_convention(convention) or "semver"
     raw = str(version or "").strip()
     lower = raw.lower()
     if lower in SYMBOLIC_VERSION_TOKENS or lower in AMBIGUOUS_VERSION_TOKENS:
-        return (0, (), 0, (lower,), 0, ())
+        return (0, norm_conv, lower)
 
     cleaned = re.sub(r"^[vV](?=\d)", "", raw)
     core_and_pre = cleaned.split("+", 1)[0].strip()
     if not core_and_pre:
-        return (0, (), 0, (lower,), 0, ())
+        return (0, norm_conv, lower)
 
-    m_sem = re.match(r"^(?P<nums>\d+(?:\.\d+)*)(?P<rest>.*)$", core_and_pre)
-    if m_sem:
-        num_ints = [int(x) for x in m_sem.group("nums").split(".")]
-        while len(num_ints) < 3:
-            num_ints.append(0)
-        while len(num_ints) > 3 and num_ints[-1] == 0:
-            num_ints.pop()
-        num_tuple = tuple((1, n) for n in num_ints)
-        rest = m_sem.group("rest").strip()
-        if not rest:
-            return (2, num_tuple, 1, (), 0, ())
+    if norm_conv == "maven":
+        return (2, "maven", _parse_maven_comparable_version(core_and_pre))
 
-        suffix = re.sub(r"^[-._]+", "", rest)
-        raw_parts = [p for p in re.split(r"[-._]+", suffix) if p]
-        rem_parts = list(raw_parts)
-        while rem_parts and rem_parts[0].lower() in FINAL_RELEASE_MODIFIERS:
-            rem_parts.pop(0)
+    if norm_conv == "calver":
+        rank, num_tuple, stage_rank, pre_tuple = _semver_sort_key(core_and_pre, pad_three=False)
+        return (rank, "calver", num_tuple, stage_rank, pre_tuple)
 
-        if not rem_parts:
-            return (2, num_tuple, 1, (), 0, ())
-
-        post_idx: Optional[int] = None
-        for idx, seg in enumerate(rem_parts):
-            seg_lower = seg.lower()
-            seg_alpha_m = re.match(r"^([a-z]+)(\d*)$", seg_lower)
-            seg_alpha = seg_alpha_m.group(1) if seg_alpha_m else seg_lower
-            if seg_alpha in POST_RELEASE_MODIFIERS or seg_lower.startswith("osera"):
-                post_idx = idx
-                break
-
-        if post_idx is not None:
-            base_parts = rem_parts[:post_idx]
-            post_parts = rem_parts[post_idx:]
-        elif norm_conv == "maven" and rem_parts[0].isdigit():
-            base_parts = []
-            post_parts = rem_parts
-        else:
-            base_parts = rem_parts
-            post_parts = []
-
-        while base_parts and base_parts[-1].lower() in FINAL_RELEASE_MODIFIERS:
-            base_parts.pop()
-
-        if not base_parts:
-            base_stage_rank = 1
-            base_qual_tokens: Tuple[Any, ...] = ()
-        elif norm_conv == "semver":
-            base_stage_rank = 0
-            base_qual_tokens = _parse_prerelease_tokens("-".join(base_parts))
-        else:
-            first_b = base_parts[0].lower()
-            m_b = re.match(r"^([a-z]+)(\d*)$", first_b)
-            b_alpha = m_b.group(1) if m_b else first_b
-            if b_alpha in PRERELEASE_STAGE_ORDER or first_b in PRERELEASE_STAGE_ORDER:
-                base_stage_rank = 0
-            else:
-                base_stage_rank = 1
-            base_qual_tokens = _parse_prerelease_tokens("-".join(base_parts))
-
-        if not post_parts:
-            post_patch_rank = 0
-            post_patch_tokens: Tuple[Any, ...] = ()
-        else:
-            post_patch_rank = 1
-            p_tokens: List[Tuple[int, Any]] = []
-            for seg in post_parts:
-                for tok in re.findall(r"\d+|[A-Za-z]+", seg):
-                    if tok.isdigit():
-                        p_tokens.append((1, int(tok)))
-                    else:
-                        p_tokens.append((0, tok.lower()))
-            post_patch_tokens = tuple(p_tokens)
-
-        return (2, num_tuple, base_stage_rank, base_qual_tokens, post_patch_rank, post_patch_tokens)
-
-    # Deterministic fallback for non-semantic versions (e.g. `r2026b`, `release-42-rc1`)
-    pre_match = re.search(
-        r"(?i)[-_.]?(dev|devel|nightly|canary|snapshot|alpha|beta|milestone|pre|preview|rc|cr)(?:[-_.]?\d+(?:[._-][A-Za-z0-9]+)*)?$",
-        core_and_pre,
-    )
-    if pre_match and pre_match.start() > 0:
-        base_str = core_and_pre[: pre_match.start()]
-        pre_str = re.sub(r"^[-._]+", "", core_and_pre[pre_match.start() :])
-        stage_rank = 0
-        pre_key: Tuple[Any, ...] = _parse_prerelease_tokens(pre_str)
-    else:
-        base_str = core_and_pre
-        stage_rank = 1
-        pre_key = ()
-
-    fallback_parts: List[Tuple[int, Any]] = []
-    for tok in re.findall(r"\d+|[A-Za-z]+", base_str):
-        if tok.isdigit():
-            fallback_parts.append((1, int(tok)))
-        else:
-            fallback_parts.append((0, tok.lower()))
-    return (1, tuple(fallback_parts), stage_rank, pre_key, 0, ())
+    rank, num_tuple, stage_rank, pre_tuple = _semver_sort_key(core_and_pre, pad_three=True)
+    return (rank, "semver", num_tuple, stage_rank, pre_tuple)
 
 
 def compare_application_versions(
