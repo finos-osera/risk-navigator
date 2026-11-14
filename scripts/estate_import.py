@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import company software estates across CycloneDX, SPDX, and inventory feeds (#22).
+"""Import company software estates across CycloneDX, SPDX, and inventory feeds (#22, #85).
 
 Provides:
 - Versioned estate contract (`osera-estate-contract/v1`) and compatibility mapper
@@ -9,6 +9,21 @@ Provides:
 - Explicit separation of `application`, `build`, and `deployment` identities so
   repeated SBOM imports across builds and environments do not inflate application
   or exposure counts while keeping distinct deployments traceable.
+- Convention-aware application release ordering (`APPLICATION_VERSION_ORDERING_POLICY`, #85):
+  - Never assumes an application uses Maven ordering merely because it consumes Java dependencies.
+  - Resolves the application's version convention from explicit metadata (`version_convention` /
+    `version_scheme`), the application's own root artifact PURL (`pkg:maven/...` vs `pkg:npm/...`),
+    or unambiguous `REL-003-JAVA` qualified/patch syntax (`.Final`, `.RELEASE`, `.GA`, `-osera-NNNNN`).
+  - Under the Java/Maven profile (`REL-003-JAVA` / CARE), orders OSERA patched numeric and qualified
+    versions strictly after their baselines (`2.0.0-final < 2.0.0-osera-0001`, `5.3.39 < 5.3.39.1-osera-00001`,
+    `5.6.15.Final < 5.6.15.Final-osera-00001`, `2.0.0.RELEASE < 2.0.0.RELEASE-osera-00001`),
+    preserves patch sequence ordering (`...-osera-00001 < ...-osera-00002`), and matches Apache Maven
+    `ComparableVersion` qualifier precedence (`alpha < beta < milestone < rc = cr < snapshot < final`).
+  - Separates explicit SemVer (`convention = "semver"`) from Java/Maven rules so SemVer releases follow
+    genuine SemVer 2.0.0 §11 precedence (`2.0.0-1 < 2.0.0`, `2.0.0-final < 2.0.0`, `2.0.0-osera-00001 < 2.0.0`).
+  - Handles ambiguous or unsupported version schemes honestly (`version_ordering_status` =
+    `"ambiguous_convention"` or `"unsupported_scheme"`) without silently claiming a universal
+    `latest_production_version` or discarding releases from all-supplied-inventory views.
 - Preservation of full PURLs, vendor/distro/classifier qualifiers, subpaths,
   cryptographic digests, dependency paths, scopes, and observation timestamps.
 - Explicit `unknown` dependency classification when dependency graph data is
@@ -24,6 +39,7 @@ from __future__ import annotations
 
 import copy
 import csv
+import functools
 import json
 import re
 import urllib.parse
@@ -71,24 +87,44 @@ ACTIVE_RUNTIME_ENVIRONMENTS = {
 }
 SYMBOLIC_VERSION_TOKENS = {"main", "master", "head", "trunk", "latest", "0.0.0", "unspecified", "unknown", ""}
 FINAL_RELEASE_MODIFIERS = {"final", "ga", "release"}
-POST_RELEASE_MODIFIERS = {"sp", "post", "pl", "patch"}
+POST_RELEASE_MODIFIERS = {"sp", "post", "pl", "patch", "osera"}
+MAVEN_VERSION_CONVENTIONS = {"maven", "java", "rel-003-java", "rel-003", "care"}
+SEMVER_VERSION_CONVENTIONS = {"semver", "semver2", "npm", "cargo", "golang", "nuget", "pypi"}
+CALVER_VERSION_CONVENTIONS = {"calver", "calendar"}
+UNSUPPORTED_VERSION_CONVENTIONS = {"unsupported", "opaque", "unversioned", "git-sha", "hash", "custom"}
+APPLICATION_VERSION_ORDERING_POLICY: Dict[str, Any] = {
+    "policy_version": "osera-application-version-ordering/v1",
+    "default_convention": "semver",
+    "supported_conventions": ("maven", "semver", "calver"),
+    "dependency_inference_prohibited": True,
+    "resolution_precedence": (
+        "explicit",
+        "application_purl",
+        "rel_003_java_pattern",
+        "ambiguous_numeric_hyphen",
+        "unorderable_tokens",
+        "default_semver",
+    ),
+    "java_profile_standard": "REL-003-JAVA",
+}
+JAVA_QUALIFIER_RE = re.compile(r"(?i)[._-](?:final|release|ga|snapshot|cr\d*)(?=$|[._-])")
+OSERA_PATCH_SUFFIX_RE = re.compile(r"(?i)-osera-\d+")
+NUMERIC_HYPHEN_SUFFIX_RE = re.compile(r"^[vV]?\d+(?:\.\d+)*-\d+(?:[._-]\d+)*(?:\+.*)?$")
+ORDERABLE_NUMERIC_START_RE = re.compile(
+    r"^(?:[vV]?\d+(?:\.\d+)*(?:$|[._+-][A-Za-z0-9]|[A-Za-z]{1,6}\d+$)|r\d{4}[a-z]?(?:$|[._+-]))",
+    re.IGNORECASE,
+)
+GIT_SHA_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
 PRERELEASE_STAGE_ORDER = {
-    "dev": 0,
-    "devel": 0,
-    "nightly": 1,
-    "canary": 1,
-    "snapshot": 2,
-    "alpha": 3,
-    "a": 3,
-    "ea": 3,
-    "pre": 4,
-    "preview": 4,
-    "beta": 5,
-    "b": 5,
-    "milestone": 6,
-    "m": 6,
-    "rc": 7,
-    "cr": 7,
+    "alpha": 0,
+    "a": 0,
+    "beta": 1,
+    "b": 1,
+    "milestone": 2,
+    "m": 2,
+    "rc": 3,
+    "cr": 3,
+    "snapshot": 4,
 }
 PUBLIC_EXPORT_ALLOWED_QUALIFIER_KEYS = frozenset(
     {
@@ -588,103 +624,484 @@ def _timestamp_sort_key(value: Any) -> float:
         return float("-inf")
 
 
-def _parse_prerelease_tokens(suffix: str) -> Tuple[Tuple[int, int, str], ...]:
-    """Parse prerelease or modifier tokens according to SemVer 2.0.0 + stage precedence."""
+@functools.total_ordering
+class _MavenItem:
+    """Base item for Apache Maven ComparableVersion ordering."""
 
-    tokens: List[Tuple[int, int, str]] = []
-    for seg in re.split(r"[._-]+", suffix):
-        if not seg:
-            continue
-        if seg.isdigit():
-            tokens.append((0, int(seg), ""))
-            continue
-        m = re.match(r"^([A-Za-z]+)(\d+)$", seg)
-        if m and m.group(1).lower() in PRERELEASE_STAGE_ORDER:
-            tag = m.group(1).lower()
-            tokens.append((1, PRERELEASE_STAGE_ORDER[tag], tag))
-            tokens.append((0, int(m.group(2)), ""))
-            continue
-        lower_seg = seg.lower()
-        if lower_seg in PRERELEASE_STAGE_ORDER:
-            tokens.append((1, PRERELEASE_STAGE_ORDER[lower_seg], lower_seg))
+    item_type: int = -1
+
+    def is_null(self) -> bool:
+        return False
+
+    def compare_to(self, other: Optional["_MavenItem"]) -> int:
+        raise NotImplementedError
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, _MavenItem):
+            return NotImplemented
+        return self.compare_to(other) == 0
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, _MavenItem):
+            return NotImplemented
+        return self.compare_to(other) < 0
+
+
+class _MavenIntItem(_MavenItem):
+    """Integer item in Apache Maven ComparableVersion (covers IntItem, LongItem, BigIntegerItem)."""
+
+    item_type = 0
+
+    def __init__(self, raw: str = "0") -> None:
+        stripped = raw.lstrip("0") or "0"
+        self.value = int(stripped)
+
+    def is_null(self) -> bool:
+        return self.value == 0
+
+    def compare_to(self, other: Optional[_MavenItem]) -> int:
+        if other is None:
+            return 0 if self.value == 0 else 1
+        if other.item_type == 0:
+            assert isinstance(other, _MavenIntItem)
+            return -1 if self.value < other.value else (1 if self.value > other.value else 0)
+        if other.item_type in (1, 2):
+            return 1
+        raise TypeError(f"Invalid Maven item type: {other!r}")
+
+    def __repr__(self) -> str:
+        return str(self.value)
+
+
+class _MavenStringItem(_MavenItem):
+    """Qualifier item in Apache Maven ComparableVersion (`alpha < beta < milestone < rc = cr < snapshot < '' = final = ga = release < sp`)."""
+
+    item_type = 1
+    QUALIFIERS: Tuple[str, ...] = ("alpha", "beta", "milestone", "rc", "snapshot", "", "sp")
+    ALIASES: Dict[str, str] = {
+        "ga": "",
+        "final": "",
+        "release": "",
+        "cr": "rc",
+    }
+    RELEASE_VERSION_INDEX: str = str(QUALIFIERS.index(""))
+
+    def __init__(self, value: str, followed_by_digit: bool = False) -> None:
+        val = value.lower()
+        if followed_by_digit and len(val) == 1:
+            if val == "a":
+                val = "alpha"
+            elif val == "b":
+                val = "beta"
+            elif val == "m":
+                val = "milestone"
+        self.value = self.ALIASES.get(val, val)
+
+    @classmethod
+    def comparable_qualifier(cls, value: str) -> str:
+        if value in cls.QUALIFIERS:
+            return str(cls.QUALIFIERS.index(value))
+        return f"{len(cls.QUALIFIERS)}-{value}"
+
+    def is_null(self) -> bool:
+        return self.comparable_qualifier(self.value) == self.RELEASE_VERSION_INDEX
+
+    def compare_to(self, other: Optional[_MavenItem]) -> int:
+        if other is None:
+            lhs = self.comparable_qualifier(self.value)
+            rhs = self.RELEASE_VERSION_INDEX
+            return -1 if lhs < rhs else (1 if lhs > rhs else 0)
+        if other.item_type == 0:
+            return -1
+        if other.item_type == 1:
+            assert isinstance(other, _MavenStringItem)
+            lhs = self.comparable_qualifier(self.value)
+            rhs = self.comparable_qualifier(other.value)
+            return -1 if lhs < rhs else (1 if lhs > rhs else 0)
+        if other.item_type == 2:
+            return -1
+        raise TypeError(f"Invalid Maven item type: {other!r}")
+
+    def __repr__(self) -> str:
+        return repr(self.value)
+
+
+class _MavenListItem(_MavenItem):
+    """Sublist item in Apache Maven ComparableVersion."""
+
+    item_type = 2
+
+    def __init__(self, items: Optional[Iterable[_MavenItem]] = None) -> None:
+        self.items: List[_MavenItem] = list(items) if items is not None else []
+
+    def append(self, item: _MavenItem) -> None:
+        self.items.append(item)
+
+    def is_empty(self) -> bool:
+        return len(self.items) == 0
+
+    def is_null(self) -> bool:
+        return len(self.items) == 0
+
+    def normalize(self) -> None:
+        for idx in range(len(self.items) - 1, -1, -1):
+            last_item = self.items[idx]
+            if last_item.is_null():
+                del self.items[idx]
+            elif not isinstance(last_item, _MavenListItem):
+                break
+
+    def compare_to(self, other: Optional[_MavenItem]) -> int:
+        if other is None:
+            if not self.items:
+                return 0
+            for item in self.items:
+                res = item.compare_to(None)
+                if res != 0:
+                    return res
+            return 0
+        if other.item_type == 0:
+            return -1
+        if other.item_type == 1:
+            return 1
+        if other.item_type == 2:
+            assert isinstance(other, _MavenListItem)
+            max_len = max(len(self.items), len(other.items))
+            for idx in range(max_len):
+                left_item = self.items[idx] if idx < len(self.items) else None
+                right_item = other.items[idx] if idx < len(other.items) else None
+                if left_item is None:
+                    res = (-1 * right_item.compare_to(left_item)) if right_item is not None else 0
+                else:
+                    res = left_item.compare_to(right_item)
+                if res != 0:
+                    return res
+            return 0
+        raise TypeError(f"Invalid Maven item type: {other!r}")
+
+    def __repr__(self) -> str:
+        return f"{self.items!r}"
+
+
+def _parse_maven_item(is_digit: bool, buf: str) -> _MavenItem:
+    if is_digit:
+        return _MavenIntItem(buf)
+    return _MavenStringItem(buf, followed_by_digit=False)
+
+
+def _parse_maven_comparable_version(version: str) -> _MavenListItem:
+    """Parse a version string using Apache Maven's ComparableVersion state machine."""
+
+    root = _MavenListItem()
+    ver = version.strip().lower()
+    if not ver:
+        return root
+
+    cur_list = root
+    stack: List[_MavenListItem] = [cur_list]
+    is_digit = False
+    start_index = 0
+
+    for i, ch in enumerate(ver):
+        if ch == ".":
+            if i == start_index:
+                cur_list.append(_MavenIntItem("0"))
+            else:
+                cur_list.append(_parse_maven_item(is_digit, ver[start_index:i]))
+            start_index = i + 1
+        elif ch == "-":
+            if i == start_index:
+                cur_list.append(_MavenIntItem("0"))
+            else:
+                cur_list.append(_parse_maven_item(is_digit, ver[start_index:i]))
+            start_index = i + 1
+            sub = _MavenListItem()
+            cur_list.append(sub)
+            cur_list = sub
+            stack.append(cur_list)
+        elif ch.isdigit():
+            if not is_digit and i > start_index:
+                if not cur_list.is_empty():
+                    sub = _MavenListItem()
+                    cur_list.append(sub)
+                    cur_list = sub
+                    stack.append(cur_list)
+                cur_list.append(_MavenStringItem(ver[start_index:i], followed_by_digit=True))
+                start_index = i
+                sub = _MavenListItem()
+                cur_list.append(sub)
+                cur_list = sub
+                stack.append(cur_list)
+            is_digit = True
         else:
-            tokens.append((1, 10, lower_seg))
-    return tuple(tokens)
+            if is_digit and i > start_index:
+                cur_list.append(_parse_maven_item(True, ver[start_index:i]))
+                start_index = i
+                sub = _MavenListItem()
+                cur_list.append(sub)
+                cur_list = sub
+                stack.append(cur_list)
+            is_digit = False
+
+    if len(ver) > start_index:
+        if not is_digit and not cur_list.is_empty():
+            sub = _MavenListItem()
+            cur_list.append(sub)
+            cur_list = sub
+            stack.append(cur_list)
+        cur_list.append(_parse_maven_item(is_digit, ver[start_index:]))
+
+    while stack:
+        node = stack.pop()
+        node.normalize()
+
+    return root
 
 
-def _version_sort_key(version: Any) -> Tuple[int, Tuple[Tuple[int, Any], ...], int, Tuple[Any, ...]]:
-    """Return a deterministic prerelease-aware semantic version comparison key.
+def _semver_sort_key(
+    core_and_pre: str,
+    *,
+    pad_three: bool = True,
+) -> Tuple[int, Tuple[Tuple[int, Any], ...], int, Tuple[Tuple[int, Any], ...]]:
+    """Return a genuine SemVer 2.0.0 §11 precedence sort key."""
 
-    Invariants:
-    - Symbolic version tokens (`main`, `0.0.0`, `unspecified`, etc.) rank below concrete releases.
-    - Build metadata (`+...`) is ignored for version precedence per SemVer 2.0.0 §10.
-    - Final releases (`stage_rank = 1`, e.g. `2.0.0`, `2.0.0.Final`, `2.0.0-GA`) rank strictly above
-      prereleases of the same numeric version (`stage_rank = 0`, e.g. `2.0.0-alpha.1`, `2.0.0-rc.1`, `2.0.0-SNAPSHOT`).
-    - Non-semantic versions fall back to deterministic numeric/lexical token comparison with final > prerelease.
+    m_sem = re.match(r"^(?P<nums>\d+(?:\.\d+)*)(?:-(?P<pre>[0-9A-Za-z.-]+))?$", core_and_pre)
+    if m_sem:
+        num_ints = [int(x) for x in m_sem.group("nums").split(".")]
+        if pad_three:
+            while len(num_ints) < 3:
+                num_ints.append(0)
+            while len(num_ints) > 3 and num_ints[-1] == 0:
+                num_ints.pop()
+        num_tuple = tuple((1, n) for n in num_ints)
+        pre = m_sem.group("pre")
+        if pre is None:
+            return (2, num_tuple, 1, ())
+        pre_tokens: List[Tuple[int, Any]] = []
+        for seg in pre.split("."):
+            if seg.isdigit():
+                pre_tokens.append((0, int(seg)))
+            else:
+                pre_tokens.append((1, seg))
+        return (2, num_tuple, 0, tuple(pre_tokens))
+
+    m_loose = re.match(r"^(?P<nums>\d+(?:\.\d+)*)(?P<rest>.+)$", core_and_pre)
+    if m_loose:
+        num_ints = [int(x) for x in m_loose.group("nums").split(".")]
+        if pad_three:
+            while len(num_ints) < 3:
+                num_ints.append(0)
+            while len(num_ints) > 3 and num_ints[-1] == 0:
+                num_ints.pop()
+        num_tuple = tuple((1, n) for n in num_ints)
+        suffix = re.sub(r"^[-._]+", "", m_loose.group("rest").strip())
+        pre_tokens = [
+            (0, int(seg)) if seg.isdigit() else (1, seg)
+            for seg in re.split(r"[._]+", suffix)
+            if seg
+        ]
+        return (2, num_tuple, 0, tuple(pre_tokens))
+
+    fallback_parts: List[Tuple[int, Any]] = [
+        (1, int(tok)) if tok.isdigit() else (0, tok.lower())
+        for tok in re.findall(r"\d+|[A-Za-z]+", core_and_pre)
+    ]
+    return (1, tuple(fallback_parts), 1, ())
+
+
+def normalize_version_convention(raw_convention: Any) -> str:
+    """Normalize an explicit application version-ordering convention identifier (#85).
+
+    Supported canonical conventions:
+    - ``"maven"``: Maven ``ComparableVersion`` + FINOS OSERA ``REL-003-JAVA`` / CARE Java Patch Version Naming
+      (accepts aliases ``"java"``, ``"rel-003-java"``, ``"rel-003"``, ``"care"``, ``"maven"``).
+    - ``"semver"``: Genuine Semantic Versioning 2.0.0 (§11 precedence)
+      (accepts aliases ``"semver"``, ``"semver2"``, ``"npm"``, ``"cargo"``, ``"golang"``, ``"nuget"``, ``"pypi"``).
+    - ``"calver"``: Calendar versioning with numeric date segments (accepts ``"calver"``, ``"calendar"``).
+    - ``"unsupported"``: Opaque, hash-based, or unsupported version schemes where a single universal
+      latest release must not be silently claimed.
+    - ``""``: Unspecified (to be resolved from application root artifact metadata or unambiguous syntax).
     """
+
+    raw = str(raw_convention or "").strip().lower()
+    if not raw:
+        return ""
+    if raw in MAVEN_VERSION_CONVENTIONS:
+        return "maven"
+    if raw in SEMVER_VERSION_CONVENTIONS:
+        return "semver"
+    if raw in CALVER_VERSION_CONVENTIONS:
+        return "calver"
+    if raw in UNSUPPORTED_VERSION_CONVENTIONS:
+        return "unsupported"
+    return "unsupported"
+
+
+def _is_orderable_version(version: Any) -> bool:
+    """Return True if ``version`` has a structured numeric release core rather than an opaque/symbolic token."""
 
     raw = str(version or "").strip()
     lower = raw.lower()
-    if lower in SYMBOLIC_VERSION_TOKENS:
-        return (0, (), 0, (lower,))
+    if not raw or lower in SYMBOLIC_VERSION_TOKENS or lower in AMBIGUOUS_VERSION_TOKENS:
+        return False
+    if GIT_SHA_RE.match(raw) and "." not in raw and (not raw.isdigit() or len(raw) >= 16):
+        return False
+    core = raw.split("+", 1)[0].strip()
+    return bool(ORDERABLE_NUMERIC_START_RE.match(core))
+
+
+def _convention_from_root_purl(root_purl: Any) -> str:
+    """Infer an application's canonical version convention strictly from its own root artifact PURL."""
+
+    raw_root_purl = str(root_purl or "").strip().lower()
+    if not raw_root_purl.startswith("pkg:"):
+        return ""
+    if raw_root_purl.startswith("pkg:maven/"):
+        return "maven"
+    for sem_prefix in ("pkg:npm/", "pkg:cargo/", "pkg:golang/", "pkg:nuget/", "pkg:pypi/"):
+        if raw_root_purl.startswith(sem_prefix):
+            return "semver"
+    return ""
+
+
+def resolve_application_version_convention(
+    explicit_convention: Any = "",
+    root_purl: Any = "",
+    versions: Sequence[str] = (),
+) -> Tuple[str, str, str]:
+    """Resolve an application's version-ordering policy without assuming Java/Maven from dependencies (#85).
+
+    Policy rules:
+    1. Explicit ``version_convention`` / ``version_scheme`` on the application, SBOM root component,
+       inventory record, or caller configuration (``application_version_conventions`` / ``version_convention``)
+       takes precedence (``source="explicit"``).
+    2. Otherwise, if the application's own root artifact carries a PURL (e.g. ``pkg:maven/...`` vs
+       ``pkg:npm/...``), derive the convention from the application root PURL (``source="application_purl"``).
+       Consumed library dependencies are NEVER used to assume the application's own release convention.
+    3. Otherwise, inspect the application's release strings:
+       - If multiple active releases exist and any release is opaque/unorderable (e.g. git commit SHA,
+         symbolic branch token), return ``("unsupported", "unorderable_tokens", "unsupported_scheme")``.
+       - If any release uses unambiguous Java / Maven release qualifiers (``.Final``, ``.RELEASE``, ``.GA``,
+         ``-SNAPSHOT``, ``.CR1``), establish ``("maven", "rel_003_java_pattern", "ordered")``.
+       - If multiple releases include a convention-sensitive numeric hyphen suffix (e.g. ``2.0.0`` and
+         ``2.0.0-1``) with no explicit convention or application root PURL, return
+         ``("ambiguous", "ambiguous_numeric_hyphen", "ambiguous_convention")`` rather than guessing
+         between Maven build numbers (``2.0.0 < 2.0.0-1``) and SemVer prereleases (``2.0.0-1 < 2.0.0``).
+       - If any release uses unambiguous OSERA patch syntax (``-osera-NNNNN``), establish
+         ``("maven", "rel_003_java_pattern", "ordered")``.
+       - Otherwise default to ``("semver", "default_semver", "ordered")``.
+    """
+
+    clean_versions = [str(v).strip() for v in versions if str(v).strip()]
+    non_placeholder = [v for v in clean_versions if v != "0.0.0"]
+    check_versions = non_placeholder if non_placeholder else clean_versions
+
+    norm_explicit = normalize_version_convention(explicit_convention)
+    if norm_explicit:
+        if norm_explicit == "unsupported":
+            return ("unsupported", "explicit", "unsupported_scheme")
+        if len(check_versions) > 1 and any(not _is_orderable_version(v) for v in check_versions):
+            return (norm_explicit, "explicit", "unsupported_scheme")
+        return (norm_explicit, "explicit", "ordered")
+
+    purl_conv = _convention_from_root_purl(root_purl)
+    if purl_conv:
+        if len(check_versions) > 1 and any(not _is_orderable_version(v) for v in check_versions):
+            return (purl_conv, "application_purl", "unsupported_scheme")
+        return (purl_conv, "application_purl", "ordered")
+
+    if len(check_versions) > 1 and any(not _is_orderable_version(v) for v in check_versions):
+        return ("unsupported", "unorderable_tokens", "unsupported_scheme")
+
+    if any(JAVA_QUALIFIER_RE.search(v) for v in check_versions):
+        return ("maven", "rel_003_java_pattern", "ordered")
+
+    if len(check_versions) > 1 and any(NUMERIC_HYPHEN_SUFFIX_RE.match(v) for v in check_versions):
+        return ("ambiguous", "ambiguous_numeric_hyphen", "ambiguous_convention")
+
+    if any(OSERA_PATCH_SUFFIX_RE.search(v) for v in check_versions):
+        return ("maven", "rel_003_java_pattern", "ordered")
+
+    if len(check_versions) == 1 and not _is_orderable_version(check_versions[0]):
+        return ("unsupported", "unorderable_tokens", "single_active_release")
+
+    return ("semver", "default_semver", "ordered")
+
+
+def _version_sort_key(
+    version: Any,
+    convention: str = "semver",
+) -> Tuple[Any, ...]:
+    """Return a deterministic convention-aware version comparison key (#85).
+
+    Separates comparison paths by convention:
+    - Under ``convention="maven"`` (``"java"``, ``"rel-003-java"``, ``"care"``):
+      Uses Apache Maven ``ComparableVersion`` ordering (``alpha < beta < milestone < rc = cr < snapshot < '' = final = ga = release < sp``)
+      where OSERA patched releases (``-osera-NNNNN``) rank strictly after their numeric or qualified baselines
+      (``2.0.0-final < 2.0.0-osera-0001``, ``5.3.39 < 5.3.39.1-osera-00001``,
+      ``5.6.15.Final < 5.6.15.Final-osera-00001``, ``2.0.0.RELEASE < 2.0.0.RELEASE-osera-00001``)
+      and preserve patch sequence ordering (``00001 < 00002``).
+    - Under ``convention="semver"``:
+      Uses genuine SemVer 2.0.0 §11 precedence: any ``-<prerelease>`` suffix (including ``2.0.0-1``,
+      ``2.0.0-final``, or ``2.0.0-osera-00001``) is a pre-release that ranks strictly below ``2.0.0``,
+      and dot-separated pre-release identifiers are compared numerically when all-digits and lexically
+      in ASCII sort order otherwise.
+    """
+
+    norm_conv = normalize_version_convention(convention) or "semver"
+    raw = str(version or "").strip()
+    lower = raw.lower()
+    if lower in SYMBOLIC_VERSION_TOKENS or lower in AMBIGUOUS_VERSION_TOKENS:
+        return (0, norm_conv, lower)
 
     cleaned = re.sub(r"^[vV](?=\d)", "", raw)
     core_and_pre = cleaned.split("+", 1)[0].strip()
     if not core_and_pre:
-        return (0, (), 0, (lower,))
+        return (0, norm_conv, lower)
 
-    m_sem = re.match(r"^(?P<nums>\d+(?:\.\d+)*)(?P<rest>.*)$", core_and_pre)
-    if m_sem:
-        num_ints = [int(x) for x in m_sem.group("nums").split(".")]
-        while len(num_ints) < 3:
-            num_ints.append(0)
-        num_tuple = tuple((1, n) for n in num_ints)
-        rest = m_sem.group("rest").strip()
-        if not rest:
-            return (2, num_tuple, 1, ())
+    if norm_conv == "maven":
+        return (2, "maven", _parse_maven_comparable_version(core_and_pre))
 
-        suffix = re.sub(r"^[-._]+", "", rest)
-        raw_parts = [p for p in re.split(r"[-._]+", suffix) if p]
-        first_raw = raw_parts[0].lower() if raw_parts else ""
-        first_alpha_m = re.match(r"^([a-z]+)(\d*)$", first_raw)
-        first_alpha = first_alpha_m.group(1) if first_alpha_m else first_raw
+    if norm_conv == "calver":
+        rank, num_tuple, stage_rank, pre_tuple = _semver_sort_key(core_and_pre, pad_three=False)
+        return (rank, "calver", num_tuple, stage_rank, pre_tuple)
 
-        if first_raw in FINAL_RELEASE_MODIFIERS and len(raw_parts) == 1:
-            return (2, num_tuple, 1, ())
+    rank, num_tuple, stage_rank, pre_tuple = _semver_sort_key(core_and_pre, pad_three=True)
+    return (rank, "semver", num_tuple, stage_rank, pre_tuple)
 
-        if first_alpha in POST_RELEASE_MODIFIERS or (rest.startswith("-") and first_raw.isdigit()):
-            post_tokens: List[Tuple[int, Any]] = []
-            for tok in re.findall(r"\d+|[A-Za-z]+", suffix):
-                if tok.isdigit():
-                    post_tokens.append((1, int(tok)))
-                else:
-                    post_tokens.append((0, tok.lower()))
-            return (2, num_tuple, 2, tuple(post_tokens))
 
-        return (2, num_tuple, 0, _parse_prerelease_tokens(suffix))
+def compare_application_versions(
+    left: Any,
+    right: Any,
+    convention: str = "semver",
+) -> Optional[int]:
+    """Compare two application release versions under an explicit version convention (#85).
 
-    # Deterministic fallback for non-semantic versions (e.g. `r2026b`, `release-42-rc1`)
-    pre_match = re.search(
-        r"(?i)[-_.]?(dev|devel|nightly|canary|snapshot|alpha|beta|milestone|pre|preview|rc|cr)(?:[-_.]?\d+(?:[._-][A-Za-z0-9]+)*)?$",
-        core_and_pre,
-    )
-    if pre_match and pre_match.start() > 0:
-        base_str = core_and_pre[: pre_match.start()]
-        pre_str = re.sub(r"^[-._]+", "", core_and_pre[pre_match.start() :])
-        stage_rank = 0
-        pre_key: Tuple[Any, ...] = _parse_prerelease_tokens(pre_str)
-    else:
-        base_str = core_and_pre
-        stage_rank = 1
-        pre_key = ()
+    Returns:
+      - ``-1`` if ``left < right``
+      - ``0`` if ``left == right``
+      - ``1`` if ``left > right``
+      - ``None`` if the convention is ``"unsupported"`` / ``"ambiguous"`` or either version is unorderable.
+    """
 
-    fallback_parts: List[Tuple[int, Any]] = []
-    for tok in re.findall(r"\d+|[A-Za-z]+", base_str):
-        if tok.isdigit():
-            fallback_parts.append((1, int(tok)))
-        else:
-            fallback_parts.append((0, tok.lower()))
-    return (1, tuple(fallback_parts), stage_rank, pre_key)
+    raw_conv = str(convention or "").strip().lower()
+    if raw_conv in {"ambiguous"} or normalize_version_convention(raw_conv) == "unsupported":
+        return None
+    if not _is_orderable_version(left) or not _is_orderable_version(right):
+        return None
+    norm_conv = normalize_version_convention(raw_conv)
+    if not norm_conv:
+        resolved_conv, _, status = resolve_application_version_convention("", "", [str(left), str(right)])
+        if status in {"ambiguous_convention", "unsupported_scheme"}:
+            return None
+        norm_conv = resolved_conv
+    k_left = _version_sort_key(left, convention=norm_conv)
+    k_right = _version_sort_key(right, convention=norm_conv)
+    if k_left < k_right:
+        return -1
+    if k_left > k_right:
+        return 1
+    return 0
 
 
 def _parse_bool_flag(raw: Any, default: Optional[bool] = None) -> Optional[bool]:
@@ -722,6 +1139,8 @@ def _derive_application_identity(
     department: str = "SBOM Scan",
     eonid: str = "",
     tai_system: str = "",
+    version_convention: str = "",
+    root_purl: str = "",
 ) -> Dict[str, str]:
     """Derive a canonical logical application identity independent of build version or deployment IDs.
 
@@ -798,6 +1217,8 @@ def _derive_application_identity(
         "department": department or "SBOM Scan",
         "eonid": eonid or "",
         "tai_system": resolved_tai or (display_name or repo_name),
+        "version_convention": str(version_convention or "").strip(),
+        "root_purl": str(root_purl or "").strip(),
     }
 
 
@@ -849,6 +1270,21 @@ def parse_cyclonedx_document(
     ).strip()
     eonid = str(props.get("eonid") or props.get("asset_id") or "").strip()
     tai_system = str(props.get("tai_system") or comp_name).strip()
+    version_convention = str(
+        props.get("version_convention")
+        or props.get("version_scheme")
+        or props.get("versioning_scheme")
+        or component.get("version_convention")
+        or component.get("version_scheme")
+        or payload.get("version_convention")
+        or ""
+    ).strip()
+    root_purl = str(
+        component.get("purl")
+        or props.get("application_purl")
+        or props.get("purl")
+        or ""
+    ).strip()
 
     app_identity = _derive_application_identity(
         explicit_app_id=explicit_app_id,
@@ -860,6 +1296,8 @@ def parse_cyclonedx_document(
         department=department,
         eonid=eonid,
         tai_system=tai_system,
+        version_convention=version_convention,
+        root_purl=root_purl,
     )
     app_version_id = f"{app_identity['application_id']}@{comp_version}"
 
@@ -1181,9 +1619,29 @@ def parse_spdx_document(
             for token in re.split(r"[;,\n]", comment_src):
                 if "=" in token:
                     k, v = token.split("=", 1)
-                    meta_kv[k.strip().lower()] = v.strip()
+                    raw_mk = k.strip().lower()
+                    val_mv = v.strip()
+                    meta_kv[raw_mk] = val_mv
+                    for prefix in ("osera:", "cdx:", "org:"):
+                        if raw_mk.startswith(prefix):
+                            meta_kv[raw_mk[len(prefix):]] = val_mv
 
     comp_group = str(root_pkg.get("group") or meta_kv.get("group") or meta_kv.get("business_unit") or "").strip()
+    root_purl = str(meta_kv.get("application_purl") or meta_kv.get("purl") or root_pkg.get("purl") or "").strip()
+    if not root_purl:
+        for ext in root_pkg.get("externalRefs") or []:
+            if isinstance(ext, dict) and str(ext.get("referenceType") or "").lower() == "purl":
+                root_purl = str(ext.get("referenceLocator") or "").strip()
+                if root_purl:
+                    break
+    version_convention = str(
+        meta_kv.get("version_convention")
+        or meta_kv.get("version_scheme")
+        or meta_kv.get("versioning_scheme")
+        or root_pkg.get("version_convention")
+        or payload.get("version_convention")
+        or ""
+    ).strip()
     app_identity = _derive_application_identity(
         explicit_app_id=meta_kv.get("application_id") or meta_kv.get("app_id") or "",
         vcs_url=vcs_url,
@@ -1194,6 +1652,8 @@ def parse_spdx_document(
         department=meta_kv.get("department") or meta_kv.get("business_unit") or "SBOM Scan",
         eonid=meta_kv.get("eonid", ""),
         tai_system=meta_kv.get("tai_system", app_name),
+        version_convention=version_convention,
+        root_purl=root_purl,
     )
     app_version_id = f"{app_identity['application_id']}@{app_version}"
 
@@ -1467,11 +1927,12 @@ def parse_company_inventory_feed(
                 builds = app.get("builds") if isinstance(app.get("builds"), list) else [{}]
                 deployments = app.get("deployments") if isinstance(app.get("deployments"), list) else [{}]
                 components: List[Dict[str, Any]] = [
-                    dict(c) for c in (app.get("components") or []) if isinstance(c, dict)
+                    dict(c) for c in (app.get("components") or app.get("dependencies") or []) if isinstance(c, dict)
                 ]
                 for b_obj in builds:
-                    if isinstance(b_obj, dict) and isinstance(b_obj.get("components"), list):
-                        for b_comp in b_obj["components"]:
+                    b_comps = b_obj.get("components") or b_obj.get("dependencies") if isinstance(b_obj, dict) else None
+                    if isinstance(b_obj, dict) and isinstance(b_comps, list):
+                        for b_comp in b_comps:
                             if isinstance(b_comp, dict):
                                 c_copy = dict(b_comp)
                                 if b_obj.get("build_id") and not c_copy.get("build_id"):
@@ -1482,8 +1943,9 @@ def parse_company_inventory_feed(
                                     c_copy["observed_at"] = b_obj["observed_at"]
                                 components.append(c_copy)
                 for d_obj in deployments:
-                    if isinstance(d_obj, dict) and isinstance(d_obj.get("components"), list):
-                        for d_comp in d_obj["components"]:
+                    d_comps = d_obj.get("components") or d_obj.get("dependencies") if isinstance(d_obj, dict) else None
+                    if isinstance(d_obj, dict) and isinstance(d_comps, list):
+                        for d_comp in d_comps:
                             if isinstance(d_comp, dict):
                                 c_copy = dict(d_comp)
                                 if d_obj.get("deployment_id") and not c_copy.get("deployment_id"):
@@ -1504,6 +1966,19 @@ def parse_company_inventory_feed(
                         "department": dept,
                         "eonid": eonid,
                         "tai_system": tai,
+                        "version_convention": str(
+                            app.get("version_convention")
+                            or app.get("osera:version_convention")
+                            or app.get("version_scheme")
+                            or app.get("osera:version_scheme")
+                            or app.get("versioning_scheme")
+                            or primary_build.get("version_convention")
+                            or primary_deploy.get("version_convention")
+                            or payload.get("version_convention")
+                            or payload.get("osera:version_convention")
+                            or ""
+                        ).strip(),
+                        "root_purl": str(app.get("purl") or app.get("application_purl") or "").strip(),
                         "build_id": str(primary_build.get("build_id") or app.get("build_id") or f"build:{app_name}:1"),
                         "build_version": str(primary_build.get("version") or app.get("version") or "1.0.0"),
                         "deployment_id": str(primary_deploy.get("deployment_id") or app.get("deployment_id") or f"deploy:{app_name}:prod"),
@@ -1554,6 +2029,15 @@ def parse_company_inventory_feed(
                     "department": str(rec.get("department") or rec.get("business_unit") or "Enterprise Estate"),
                     "eonid": str(rec.get("eonid") or ""),
                     "tai_system": str(rec.get("tai_system") or app_id),
+                    "version_convention": str(
+                        rec.get("version_convention")
+                        or rec.get("osera:version_convention")
+                        or rec.get("version_scheme")
+                        or rec.get("osera:version_scheme")
+                        or rec.get("versioning_scheme")
+                        or ""
+                    ).strip(),
+                    "root_purl": str(rec.get("application_purl") or "").strip(),
                     "build_id": build_id,
                     "build_version": str(rec.get("build_version") or rec.get("app_version") or "1.0.0"),
                     "deployment_id": deploy_id,
@@ -1578,6 +2062,8 @@ def parse_company_inventory_feed(
             department=str(g.get("department") or "Enterprise Estate"),
             eonid=str(g.get("eonid") or ""),
             tai_system=str(g.get("tai_system") or ""),
+            version_convention=str(g.get("version_convention") or ""),
+            root_purl=str(g.get("root_purl") or ""),
         )
         observed_at = normalize_iso_timestamp(g.get("observed_at"), fallback=now_iso())
         deployed_at = normalize_iso_timestamp(g.get("deployed_at") or observed_at, fallback=observed_at)
@@ -2006,25 +2492,34 @@ def _aggregate_components_for_view(
     in_scope_app_ids: List[str] = []
     in_scope_version_ids: List[str] = []
     in_scope_deployment_ids: List[str] = []
+    ambiguous_latest_app_ids: List[str] = []
 
     for app in applications:
         app_id = app["application_id"]
         app_versions = app.get("application_versions") or []
         latest_prod_ver = app.get("latest_production_version") or ""
+        ordering_status = str(app.get("version_ordering_status") or "ordered")
 
         selected_versions: List[Dict[str, Any]] = []
-        for av in app_versions:
-            if view_mode == "all_active_deployments":
-                if av.get("active"):
+        if view_mode == "latest_production_version" and ordering_status in {"ambiguous_convention", "unsupported_scheme"} and not latest_prod_ver:
+            active_prod_candidates = [av for av in app_versions if av.get("active_production")]
+            if active_prod_candidates:
+                selected_versions.extend(active_prod_candidates)
+                if app_id not in ambiguous_latest_app_ids:
+                    ambiguous_latest_app_ids.append(app_id)
+        else:
+            for av in app_versions:
+                if view_mode == "all_active_deployments":
+                    if av.get("active"):
+                        selected_versions.append(av)
+                elif view_mode == "all_active_production":
+                    if av.get("active_production"):
+                        selected_versions.append(av)
+                elif view_mode == "latest_production_version":
+                    if av.get("active_production") and av.get("version") == latest_prod_ver:
+                        selected_versions.append(av)
+                elif view_mode == "all_imported":
                     selected_versions.append(av)
-            elif view_mode == "all_active_production":
-                if av.get("active_production"):
-                    selected_versions.append(av)
-            elif view_mode == "latest_production_version":
-                if av.get("active_production") and av.get("version") == latest_prod_ver:
-                    selected_versions.append(av)
-            elif view_mode == "all_imported":
-                selected_versions.append(av)
 
         if not selected_versions:
             continue
@@ -2166,7 +2661,7 @@ def _aggregate_components_for_view(
         item["dependency_classification"] = dep_cls
         components_out.append(item)
 
-    return {
+    view_out: Dict[str, Any] = {
         "view_mode": view_mode,
         "evaluated_application_count": len(in_scope_app_ids),
         "evaluated_application_version_count": len(in_scope_version_ids),
@@ -2177,6 +2672,12 @@ def _aggregate_components_for_view(
         "component_count": len(components_out),
         "components": components_out,
     }
+    if view_mode == "latest_production_version":
+        view_out["ambiguous_latest_version_application_ids"] = ambiguous_latest_app_ids
+        view_out["latest_version_selection_status"] = (
+            "partial_ambiguous_or_unsupported" if ambiguous_latest_app_ids else "complete"
+        )
+    return view_out
 
 
 def evaluate_estate_view(
@@ -2195,6 +2696,8 @@ def merge_estate_observations(
     parsed_documents: Sequence[Dict[str, Any]],
     *,
     view_mode: str = "all_active_deployments",
+    version_convention: Optional[str] = None,
+    application_version_conventions: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
     """Merge build and deployment observations into a deduplicated Estate Contract (`osera-estate-contract/v1`).
 
@@ -2206,8 +2709,9 @@ def merge_estate_observations(
       coexist when simultaneously deployed in production.
     - Obsolete, retired, historical, or superseded builds (`active=False`) are excluded from active
       component counts while remaining auditable in `application_versions` and `historical_components`.
-    - `latest_version` / `release` and `latest_production_version` are determined by semantic version
-      ordering (`_version_sort_key`) over active deployments rather than SBOM import timestamp (`observed_at`).
+    - `latest_version` / `release` and `latest_production_version` are determined by convention-aware
+      version ordering (`_version_sort_key` + `resolve_application_version_convention`, #85) over active
+      deployments rather than SBOM import timestamp (`observed_at`).
     """
 
     apps_by_id: Dict[str, Dict[str, Any]] = {}
@@ -2217,6 +2721,7 @@ def merge_estate_observations(
     total_mapped_components = 0
     builds_with_graph = 0
     builds_missing_graph = 0
+    app_conv_overrides = dict(application_version_conventions or {})
 
     for doc in parsed_documents:
         fmt = str(doc.get("source_format") or "cyclonedx")
@@ -2244,6 +2749,11 @@ def merge_estate_observations(
                 "department": app_info["department"],
                 "eonid": app_info.get("eonid") or f"SBOM-{len(apps_by_id) + 1}",
                 "tai_system": app_info.get("tai_system") or app_info["name"],
+                "version_convention": str(app_info.get("version_convention") or "").strip(),
+                "root_purl": str(app_info.get("root_purl") or "").strip(),
+                "observed_version_conventions": set(),
+                "observed_purl_conventions": set(),
+                "observed_root_purls": set(),
                 "builds_by_id": {},
                 "deployments_list": [],
                 "raw_observations": [],
@@ -2254,6 +2764,21 @@ def merge_estate_observations(
             app_entry["department"] = app_info["department"]
         if app_info.get("eonid") and app_entry["eonid"].startswith("SBOM-"):
             app_entry["eonid"] = app_info["eonid"]
+        raw_doc_conv = str(app_info.get("version_convention") or "").strip()
+        if raw_doc_conv:
+            norm_doc_conv = normalize_version_convention(raw_doc_conv)
+            if norm_doc_conv:
+                app_entry["observed_version_conventions"].add(norm_doc_conv)
+            if not app_entry.get("version_convention"):
+                app_entry["version_convention"] = raw_doc_conv
+        raw_doc_purl = str(app_info.get("root_purl") or "").strip()
+        if raw_doc_purl:
+            app_entry["observed_root_purls"].add(raw_doc_purl)
+            purl_doc_conv = _convention_from_root_purl(raw_doc_purl)
+            if purl_doc_conv:
+                app_entry["observed_purl_conventions"].add(purl_doc_conv)
+            if not app_entry.get("root_purl"):
+                app_entry["root_purl"] = raw_doc_purl
 
         for b in [doc["build"]] + list(doc.get("extra_builds") or []):
             bid = b["build_id"]
@@ -2331,6 +2856,52 @@ def merge_estate_observations(
         raw_app = apps_by_id[app_id]
         builds_by_id: Dict[str, Dict[str, Any]] = raw_app["builds_by_id"]
 
+        caller_app_override = str(
+            app_conv_overrides.get(app_id)
+            or app_conv_overrides.get(raw_app["name"])
+            or app_conv_overrides.get(raw_app["proj"])
+            or app_conv_overrides.get(raw_app["project_ref"])
+            or ""
+        ).strip()
+        observed_convs: Set[str] = raw_app["observed_version_conventions"]
+        observed_purl_convs: Set[str] = raw_app["observed_purl_conventions"]
+        has_conflicting_explicit = not caller_app_override and len(observed_convs) > 1
+        has_conflicting_purls = (
+            not caller_app_override
+            and not observed_convs
+            and not version_convention
+            and len(observed_purl_convs) > 1
+        )
+        if caller_app_override:
+            explicit_app_conv = caller_app_override
+        elif len(observed_convs) == 1:
+            explicit_app_conv = next(iter(observed_convs))
+        elif not observed_convs and version_convention:
+            explicit_app_conv = str(version_convention).strip()
+        else:
+            explicit_app_conv = ""
+        canonical_root_purl = (
+            next(iter(sorted(raw_app["observed_root_purls"])), "")
+            if not has_conflicting_purls
+            else ""
+        )
+
+        prelim_versions = [
+            str(b.get("version") or "")
+            for b in builds_by_id.values()
+        ] + [
+            str(d.get("version") or "")
+            for d in raw_app["deployments_list"]
+        ]
+        if has_conflicting_explicit or has_conflicting_purls:
+            prelim_conv = "ambiguous"
+        else:
+            prelim_conv, _, _ = resolve_application_version_convention(
+                explicit_convention=explicit_app_conv,
+                root_purl=canonical_root_purl,
+                versions=prelim_versions,
+            )
+
         # Resolve deployments by deployment_id: if multiple records share a deployment_id,
         # the newest deployed_at record wins and supersedes older build records on that same deployment slot.
         deploys_by_did: Dict[str, List[Dict[str, Any]]] = {}
@@ -2346,7 +2917,9 @@ def merge_estate_observations(
                     1 if x.get("active", True) and builds_by_id.get(str(x.get("build_id") or ""), {}).get("active", True) else 0,
                     _timestamp_sort_key(x.get("deployed_at") or x.get("observed_at")),
                     _timestamp_sort_key(x.get("observed_at")),
-                    _version_sort_key(x.get("version")),
+                    _version_sort_key(x.get("version"), convention=prelim_conv)
+                    if prelim_conv in {"maven", "semver", "calver"}
+                    else (),
                     int(x.get("_import_seq", 0)),
                     str(x.get("build_id") or ""),
                 ),
@@ -2503,8 +3076,42 @@ def merge_estate_observations(
             else:
                 _merge_observation_into_bucket(historical_components_by_purl, obs)
 
+        active_prod_ver_strings = [
+            ver for ver, ve in versions_map.items() if ve["active_production_deployments"]
+        ]
+        active_any_ver_strings = [
+            ver for ver, ve in versions_map.items() if (ve["active_deployments"] or ve["active_builds"])
+        ]
+        policy_target_versions = (
+            active_prod_ver_strings
+            if active_prod_ver_strings
+            else (active_any_ver_strings if active_any_ver_strings else list(versions_map.keys()))
+        )
+        if has_conflicting_explicit:
+            app_convention, convention_source, ordering_status = (
+                "ambiguous",
+                "conflicting_explicit_conventions",
+                "ambiguous_convention",
+            )
+        elif has_conflicting_purls:
+            app_convention, convention_source, ordering_status = (
+                "ambiguous",
+                "conflicting_application_purls",
+                "ambiguous_convention",
+            )
+        else:
+            app_convention, convention_source, ordering_status = resolve_application_version_convention(
+                explicit_convention=explicit_app_conv,
+                root_purl=canonical_root_purl,
+                versions=policy_target_versions,
+            )
+        has_orderable_conv = app_convention in {"maven", "semver", "calver"}
+
         app_versions_list: List[Dict[str, Any]] = []
-        for ver in sorted(versions_map.keys(), key=lambda v: (_version_sort_key(v), v)):
+        for ver in sorted(
+            versions_map.keys(),
+            key=lambda v: (_version_sort_key(v, convention=app_convention) if has_orderable_conv else (), v),
+        ):
             ve = versions_map[ver]
             ver_active = bool(ve["active_deployments"] or ve["active_builds"])
             ver_active_prod = bool(ve["active_production_deployments"])
@@ -2535,45 +3142,38 @@ def merge_estate_observations(
             app_versions_list.append(av_record)
             all_application_versions.append(av_record)
 
-        # Select latest_production_version and latest_version by semantic version ordering over active deployments
+        # Select latest_production_version and latest_version by convention-aware version ordering over active deployments
         active_prod_versions = [av for av in app_versions_list if av["active_production"]]
         active_any_versions = [av for av in app_versions_list if av["active"]]
+        is_ambiguous_or_unsupported = ordering_status in {"ambiguous_convention", "unsupported_scheme"}
+
+        def _av_rank_key(av: Dict[str, Any]) -> Tuple[Any, float, str]:
+            return (
+                _version_sort_key(av["version"], convention=app_convention) if has_orderable_conv else (),
+                _timestamp_sort_key(av.get("latest_deployed_at")),
+                av["version"],
+            )
 
         if active_prod_versions:
-            best_prod = max(
-                active_prod_versions,
-                key=lambda av: (
-                    _version_sort_key(av["version"]),
-                    _timestamp_sort_key(av.get("latest_deployed_at")),
-                    av["version"],
-                ),
-            )
-            latest_production_version = best_prod["version"]
+            if is_ambiguous_or_unsupported and len(active_prod_versions) > 1:
+                latest_production_version = ""
+            else:
+                latest_production_version = max(active_prod_versions, key=_av_rank_key)["version"]
         else:
             latest_production_version = ""
 
         if active_prod_versions:
             latest_version = latest_production_version
         elif active_any_versions:
-            best_active = max(
-                active_any_versions,
-                key=lambda av: (
-                    _version_sort_key(av["version"]),
-                    _timestamp_sort_key(av.get("latest_deployed_at")),
-                    av["version"],
-                ),
-            )
-            latest_version = best_active["version"]
+            if is_ambiguous_or_unsupported and len(active_any_versions) > 1:
+                latest_version = ""
+            else:
+                latest_version = max(active_any_versions, key=_av_rank_key)["version"]
         elif app_versions_list:
-            best_all = max(
-                app_versions_list,
-                key=lambda av: (
-                    _version_sort_key(av["version"]),
-                    _timestamp_sort_key(av.get("latest_deployed_at")),
-                    av["version"],
-                ),
-            )
-            latest_version = best_all["version"]
+            if is_ambiguous_or_unsupported and len(app_versions_list) > 1:
+                latest_version = ""
+            else:
+                latest_version = max(app_versions_list, key=_av_rank_key)["version"]
         else:
             latest_version = "0.0.0"
 
@@ -2611,6 +3211,9 @@ def merge_estate_observations(
                 "release": latest_version,
                 "latest_version": latest_version,
                 "latest_production_version": latest_production_version,
+                "version_convention": app_convention,
+                "version_convention_source": convention_source,
+                "version_ordering_status": ordering_status,
                 "active_versions": [av["version"] for av in active_any_versions],
                 "active_production_versions": [av["version"] for av in active_prod_versions],
                 "application_versions": app_versions_list,
@@ -2700,6 +3303,7 @@ def merge_estate_observations(
             "scope_dataset_schema": SCOPE_DATASET_SCHEMA_VERSION,
             "backward_compatible": True,
         },
+        "version_ordering_policy": copy.deepcopy(APPLICATION_VERSION_ORDERING_POLICY),
         "view_mode": view_mode,
         "imported_at": now_iso(),
         "applications": applications,
@@ -2719,6 +3323,8 @@ def import_estate_sources(
     scope: Optional[str] = None,
     *,
     view_mode: str = "all_active_deployments",
+    version_convention: Optional[str] = None,
+    application_version_conventions: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
     """Import one or more files or directories of CycloneDX, SPDX, or inventory feeds."""
 
@@ -2735,7 +3341,12 @@ def import_estate_sources(
     for file_path in files:
         parsed_docs.extend(detect_and_parse_estate_source(file_path))
 
-    contract = merge_estate_observations(parsed_docs, view_mode=view_mode)
+    contract = merge_estate_observations(
+        parsed_docs,
+        view_mode=view_mode,
+        version_convention=version_convention,
+        application_version_conventions=application_version_conventions,
+    )
     if scope:
         contract["scope"] = scope
     return contract
