@@ -121,6 +121,27 @@ your-company-risk-nav-overlay/
   3. validate schema contract,
   4. validate UI workflows (filters/modes/top-fixes/cart/help docs).
 
+### 6.1 Application version-ordering policy for estate imports (`REL-003-JAVA` and explicit conventions)
+
+When `scripts/estate_import.py` merges multi-version application observations and evaluates the optional `latest_production_version` view, it applies an explicit convention-aware ordering policy (`APPLICATION_VERSION_ORDERING_POLICY`):
+
+1. **Explicit or reliably established application convention (`version_convention`)**:
+   - Callers may declare the application's version convention via `osera:version_convention` (CycloneDX property, SPDX `creationInfo.comment` key, or inventory feed `version_convention` / `version_scheme` field) using `maven` (`java`, `rel-003-java`, `care`), `semver`, `calver`, or `unsupported` (`opaque`, `git-sha`).
+   - When not explicitly set, the convention is inferred only from the application's own root artifact PURL (`pkg:maven/...` -> `maven`; `pkg:npm/...`, `pkg:pypi/...`, `pkg:cargo/...`, `pkg:golang/...`, `pkg:nuget/...` -> `semver`) or unambiguous application version tokens such as `-osera-NNNNN`, `-SNAPSHOT`, `.CR1`, or `.Final` / `.RELEASE` / `.GA` (`maven`).
+   - **Never inferred from consumed dependencies**: Consuming Java/Maven library dependencies does not cause an application to be treated as using Maven version ordering.
+2. **Java / Maven and `REL-003-JAVA` / CARE patch ordering (`convention = "maven"`)**:
+   - Uses Apache Maven `ComparableVersion` ordering (`alpha < beta < milestone < rc = cr < snapshot < final = ga = release = "" < sp`), ensuring:
+     - Numeric-base and final-qualified OSERA patches: `2.0.0-final < 2.0.0-osera-0001` and `5.3.39 < 5.3.39.1-osera-00001`.
+     - Qualified OSERA patches: `5.6.15.Final < 5.6.15.Final-osera-00001` and `2.0.0.RELEASE < 2.0.0.RELEASE-osera-00001`.
+     - Patch sequence: `...-osera-00001 < ...-osera-00002`.
+     - Maven qualifier aliases and precedence: `CR1 = RC1`, `2.0.0-final = 2.0.0.Final = 2.0.0.RELEASE = 2.0.0-GA = 2.0.0`, and `2.0.0-rc1 < 2.0.0-SNAPSHOT < 2.0.0-final`.
+     - Numeric hyphen build/patch revisions rank after the base release (`2.0.0 < 2.0.0-1 < 2.0.0-2`).
+3. **Genuine SemVer ordering (`convention = "semver"`)**:
+   - Explicit SemVer inputs follow SemVer 2.0.0 §11 precedence without Java/Maven special cases: any hyphen suffix is a pre-release that ranks below the normal version (`2.0.0-1 < 2.0.0`, `2.0.0-rc.1 < 2.0.0`, `2.0.0-final < 2.0.0`, `2.0.0-osera-00001 < 2.0.0`), with dot-separated pre-release identifiers compared numerically when all-digits and lexically in ASCII sort order otherwise.
+4. **Honest handling of ambiguous or unsupported version schemes**:
+   - If an application has multiple active versions with convention-sensitive tokens (such as `2.0.0` and `2.0.0-1`) without an explicit convention or root PURL, carries conflicting conventions/root PURLs across imports (`version_ordering_status = "ambiguous_convention"`), or uses non-orderable version strings such as opaque git SHAs or branch names (`version_ordering_status = "unsupported_scheme"`), `latest_production_version` is set to `""` rather than guessing, and the `latest_production_version` view retains all active production releases for that application (`latest_version_selection_status = "partial_ambiguous_or_unsupported"`).
+   - Underlying supplied inventory (`all_active_production`, `all_active_deployments`, `all_imported`) is never discarded by latest-version selection.
+
 ## 7. Minimum acceptance checklist
 
 - Dataset validates against schema contract.
