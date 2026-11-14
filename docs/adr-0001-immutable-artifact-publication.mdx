@@ -1,0 +1,155 @@
+---
+id: adr-0001-immutable-artifact-publication
+title: "ADR 0001: Immutable Artifact Publication, Bundled Site Deployment, and Enterprise Adaptation"
+---
+
+import Mermaid from '@theme/Mermaid';
+
+## Status and Date
+
+- **Status:** Accepted Target Architecture (`2026-11-09`); Phase 1 Foundation Delivered in PR `#78` (`Refs #73`), Phase 2 Operational Integration Tracked in [`#73`](https://github.com/finos-osera/risk-navigator/issues/73)
+- **Issue Reference:** [`finos-osera/risk-navigator#73`](https://github.com/finos-osera/risk-navigator/issues/73)
+
+## Context and Decision
+
+Under the **target architecture** adopted for `#73`, routine generated production datasets (`finos-github-org`, `finos-labs`, and `oss-project-risk` scorecards) will be published as **validated, immutable artifacts** and bundled at site-build time from a pinned deployment manifest rather than continuously committed through automated data-refresh pull requests.
+
+Changes to collector code, schemas, scoring rules, curated demo fixtures, collection configurations (`data/collections/collections.json`), and GitHub Actions workflows continue to go through standard pull-request review. In the target operational pipeline, once merged to protected `main`, scheduled and manual refresh workflows will execute that approved code, validate outputs against schema/coverage/shrink/size gates, publish uniquely versioned immutable snapshot bundles, and invoke the site build/deploy workflow with the exact pinned snapshot IDs.
+
+This target architecture addresses the operational fragility of bot-opened data PRs (such as Actions run `42567446545`, where collection, validation, and all tests succeeded before failing only at automated pull-request creation) while keeping every published assessment cryptographically traceable and reproducible.
+
+## Implementation Scope (`PR #78` Foundation vs. `#73` Phase 2 Operational Integration)
+
+Delivery is intentionally split into two phases so the core data, provenance, caching, rollback, and status primitives are verified independently before replacing the live scheduled workflow and Pages deployment path:
+
+| Capability Area | Phase 1 — Delivered in Foundation PR `#78` (`Refs #73`) | Phase 2 — Target Architecture Deferred Under `#73` |
+| :--- | :--- | :--- |
+| **Collection Config & Incremental Inventory** | `data/collections/collections.json` and `run_incremental_inventory_scan()` (tree-manifest SHA reuse, rename/archive reconciliation, 20% shrink guard). | Wiring incremental GitHub manifest scanning into the live scheduled workflow in place of full-clone `scripts/refresh_finos.py`. |
+| **Inventory-Scoped OSV & Shared Evidence** | `resolve_inventory_scoped_osv_across_collections()` (cross-collection exact-coordinate deduplication, pagination, positive/negative TTL cache, SQLite cache) and `refresh_shared_evidence_sources_conditionally()` (`ETag` / `Last-Modified` `304`). | Replacing the global OSV `all.zip` download in `.github/workflows/refresh-finos.yml` and persisting live runner caches/digests across scheduled runs. |
+| **Evidence-Only Reassessment & Replay** | `reassess_inventory_with_refreshed_evidence()` (reconciling both newly disclosed and withdrawn/obsolete CVEs while preserving incomplete states), `compare_assessment_snapshots()`, and `verify_offline_replay_determinism()`. | Invoking conditional evidence-only reassessment automatically from scheduled GitHub Actions runs. |
+| **Receipts, Provenance & Safe Rollback** | `build_assessment_receipt()`, `validate_assessment_receipt()` (content-bound `snapshot_id`, captured source payload digests, explicit `partial_historical` marking), `publish_collection_artifacts_safely()`, `build_deployment_manifest()`, and `verify_promotion_candidate_not_stale()`. | Calling `publish_collection_artifacts_safely()` from production refresh scripts, uploading immutable `data-snapshot-<hash>` GitHub Release assets, and retiring automated branch-push / `gh pr create` steps. |
+| **Public Status Contract & Packaged Site UI** | `update_pipeline_status_document()` (controlled default failure messages and full `Authorization` / credential / path redaction), `validate_public_pipeline_status_provenance()`, `tool/pipeline-status.mjs`, and illustrative fixtures under `tests/fixtures/pipeline/`. | Copying status/receipt assets in `website/scripts/copy-tool-assets.mjs`, mounting `pipeline-status.mjs` in `tool/risk-navigator.html` and `oss-risk/browser.html`, reusable pinned Pages build/deploy workflows, and independent failed/unchanged status publication in CI. |
+
+> **Note on Sections 1–6 Below:** Sections 1–6 specify the complete **target operational design** for `#73`. Helper functions named in code spans (`publish_collection_artifacts_safely()`, `build_deployment_manifest()`, `verify_promotion_candidate_not_stale()`, `update_pipeline_status_document()`, `validate_assessment_receipt()`, `validate_public_pipeline_status_provenance()`) are implemented and unit-tested in `scripts/incremental_refresh_pipeline.py` in Phase 1; workflow triggers, GitHub Release uploads, reusable Pages deployment jobs, and packaged HTML mounting remain Phase 2 deliverables under `#73`.
+
+---
+
+## 1. End-to-End Dataflow and Deployment Architecture
+
+<Mermaid value={`
+flowchart TD
+    Review["Reviewed code and configuration merged to protected main"] --> Refresh["Scheduled or manual refresh"]
+    Sources["Repository inventory and shared OSV, OpenVEX, KEV, EPSS, OSS-risk evidence"] --> Collect["Collect or reuse pinned inputs"]
+    Refresh --> Collect
+    Collect --> Assess["Build collection assessments and provenance"]
+    Assess --> Validate["Validate schemas, hashes, coverage, freshness and size"]
+    Validate --> Bundle["Assemble complete versioned bundle and receipt"]
+    Bundle --> Store["Publish immutable data snapshot"]
+    Store --> Build["Reusable website build with exact snapshot ID"]
+    Code["Website changes merged to main"] --> Resolve["Resolve compatible validated snapshot once"]
+    Resolve --> Build
+    Rollback["Manual rebuild or rollback with pinned code and data"] --> Build
+    Build --> Test["Smoke-test packaged HTML, tools and JSON"]
+    Test --> Deploy["Serialized production Pages deployment"]
+    Deploy --> Browser["Browser reads bundled same-site JSON"]
+    Collect -. "attempt outcome" .-> Status["Independent public status publication"]
+    Validate -. "failure or unchanged" .-> Status
+    Test -. "build outcome" .-> Status
+    Deploy -. "deployment outcome" .-> Status
+    Status --> Retained["Update status using currently deployed code and data; never promote failed candidates"]
+`} />
+
+---
+
+## 2. Immutable Bundle Publication and Pinned Site Build Flow
+
+<Mermaid value={`
+sequenceDiagram
+    participant Sched as Scheduled / Manual Refresh
+    participant Coll as Incremental Collector & Validator
+    participant Rel as Immutable Release Asset Store
+    participant Site as Reusable Site Build & Smoke Test
+    participant Pages as Protected Pages Environment
+
+    Sched->>Coll: Run collection or evidence-only reassessment
+    Coll->>Coll: Verify schema, 5 MiB budget, 20% shrink guard & canonical SHA-256
+    Coll->>Rel: Upload immutable snapshot bundle + receipt (tag: data-snapshot-<hash>)
+    Coll->>Site: Dispatch build with exact deployment-manifest.json & snapshot_id
+    Site->>Rel: Download pinned artifacts and verify producer + content_sha256
+    Site->>Site: Bundle HTML, Risk Navigator, OSS Project Risk, JSON & manifest
+    Site->>Pages: Serialized promotion (reject if deployment_sequence is stale)
+`} />
+
+### Key Contract Rules
+
+1. **Two-Tier Artifact Retention:**
+   - **GitHub Actions Artifacts:** Used for intra-workflow job handoff and short-term diagnostic inspection (30-day retention). Never used to back permanent historical receipt URLs.
+   - **Immutable GitHub Release Assets:** Used as the default durable snapshot store (`data-snapshot-<hash>`), binding each collection's dataset JSON, coverage report, assessment receipt (`*.receipt.json`), and `deployment-manifest.json`.
+2. **Independent Collection Versioning with Pinned Deployment Sets:**
+   - `finos-github-org`, `finos-labs`, and `oss-project-risk` refresh on independent schedules and maintain independent `snapshot_id` and `content_sha256` identifiers.
+   - `build_deployment_manifest()` (`scripts/incremental_refresh_pipeline.py`) binds a complete compatible set of collection receipts, shared evidence snapshot IDs (`osv`, `osera_openvex`, `kev`, `epss`, `oss_risk`), and `deployed_code_sha` into a single immutable bundle descriptor.
+   - Code-only website builds resolve the latest validated deployment manifest **once** at build start and record its immutable `bundle_id`—never resolving moving `"latest"` pointers independently per file.
+3. **Content Identity vs. Run Identity:**
+   - `compute_canonical_assessment_sha256()` strips volatile run fields (`generated_at`, `checked_at`, `run_id`, `run_url`) before hashing.
+   - When a scheduled refresh finds no semantic change in inventory or security/patch evidence, `content_sha256` is unchanged: the pipeline records `outcome: "unchanged"` (`publication_state: "published_checked_unchanged"`) in `/data/pipeline-status.json` without minting a redundant dataset snapshot.
+
+---
+
+## 3. Failure Recovery, Independent Status Updates, and Rollback Path
+
+<Mermaid value={`
+flowchart LR
+    Attempt["Refresh or Build Attempt"] --> Gate{"Validation & Promotion Gate"}
+    Gate -- "Pass & Newer Sequence" --> Promote["Promote Bundled Site + Update Status to 'published'"]
+    Gate -- "No Semantic Diff" --> Unchanged["Retain Deployed Snapshot + Update Status to 'published_checked_unchanged'"]
+    Gate -- "Validation / Feed / Size Failure" --> Rollback["Rollback Staged Files + Retain Previous Snapshot"]
+    Rollback --> StatusOnly["Status-Only Update Using Deployed Code & Pinned Data"]
+    Gate -- "Stale Candidate Sequence" --> Reject["Reject Stale Promotion (verify_promotion_candidate_not_stale)"]
+    Manual["Operator Rollback Dispatch"] --> Pinned["Rebuild Site with Pinned Code SHA + Pinned bundle_id"]
+`} />
+
+### Operational Safeguards
+
+- **Complete Pre-Publication Rollback:** `publish_collection_artifacts_safely()` stages writes to `.tmp` files, backs up pre-existing targets to `.bak`, tracks newly created target paths (`created_targets`), and on any exception unlinks newly created targets while restoring `.bak` backups so failed first or subsequent publications never leave partial datasets behind.
+- **Independent Status Publication:** Failed, cancelled, or unchanged runs update `/data/pipeline-status.json` against the currently deployed code and pinned dataset snapshot without promoting unvalidated candidate data. Stale `running` records older than `stale_running_attempt_ttl_seconds` (`7200s`) are automatically reconciled to `stale_unknown`.
+- **Serialized Promotion & Stale-Run Rejection:** `verify_promotion_candidate_not_stale()` enforces monotonic `deployment_sequence` and timestamp ordering so an older delayed workflow run cannot overwrite a newer promoted deployment.
+
+---
+
+## 4. Alternatives Evaluated and Tradeoffs
+
+| Option | Summary | Pros | Cons / Why Rejected or Scoped |
+| :--- | :--- | :--- | :--- |
+| **1. Immutable Release Assets + Bundled Same-Site Deploy *(Selected)*** | Publish validated snapshots to immutable Release assets; bundle JSON + HTML together during serialized Pages deployment. | Zero Git history bloat; zero dependence on bot PR creation; deterministic browser loads from same-site static files; trivial pinned rollback. | Requires explicit deployment manifest and status-only update path. |
+| **2. Continuous Automated Data-Refresh PRs *(Superseded)*** | Commit refreshed JSON to a branch and open a PR on every scheduled run. | Familiar Git diff review for small files. | Fails when GitHub blocks bot PR creation (`run 42567446545`); bloats Git history with multi-megabyte JSON churn; delays routine freshness updates behind manual PR merges. |
+| **3. Runtime Cross-Origin Fetching in the Browser** | Browser fetches latest JSON dynamically from external APIs or raw release URLs at page load. | No site rebuild needed on data refresh. | Breaks offline/same-site static posture; introduces CORS/rate-limit failure modes; risks split-brain between UI code and dataset schema. |
+| **4. Transient GitHub Actions Artifacts Only** | Store snapshots only in Actions run artifacts. | Zero configuration. | Artifacts expire (typically 30–90 days), breaking historical receipt links and audit reproducibility. |
+| **5. External OCI Registry or Cloud Object Store (`S3`/`GCS`)** | Push dataset bundles as OCI artifacts or object-store blobs. | Strong enterprise fit for large private estates. | Adds external cloud account/credential dependencies for upstream FINOS open-source hosting; supported as a documented enterprise extension point below. |
+
+---
+
+## 5. Trust Boundaries, Permissions, and Producer Verification
+
+- **Job-Scoped Permissions:** Collection jobs run with read-only repository contents and scoped token access for public GitHub manifest discovery; only the post-validation publication job on protected `main` holds release/pages write permissions. Pull-request workflows run fixture tests and schema validation only and never publish production snapshots.
+- **Producer & Integrity Verification:** Before the site build bundles any downloaded snapshot, it validates `validate_assessment_receipt(receipt, dataset)` and `validate_public_pipeline_status_provenance()`, confirming that `content_sha256` matches the canonical payload digest and `producer.verified_main_branch` is true.
+- **Public Failure Sanitization:** `sanitize_public_failure_summary()` and `classify_public_failure_code()` enforce controlled public error codes (`PUBLIC_FAILURE_MESSAGES`) and strip URL user/password credentials, sensitive query parameters (`api_key`, `token`, `client_secret`, `password`, `sig`), auth headers, and Linux/macOS/Windows runner paths before writing `/data/pipeline-status.json`.
+
+---
+
+## 6. Enterprise Adaptation Guide
+
+Organizations adapting Risk Navigator for internal software estates can keep the collection, caching, receipt, and UI contracts unchanged while swapping the storage and authentication adapters:
+
+1. **Private Inventories and Credentials:**
+   - Supply internal CycloneDX/SPDX SBOMs or internal GitHub Enterprise / GitLab organization scopes via `data/collections/collections.json` and `scripts/estate_import.py`.
+   - Inject repository or artifact-registry credentials exclusively through short-lived CI environment variables or workload identity federation; never persist credentials in `data/local/` caches, receipts, or `pipeline-status.json`.
+2. **Alternative Private Artifact Stores and Hosting:**
+   - Replace the GitHub Release upload step with an internal OCI artifact registry (`oras push`), Amazon S3 / Google Cloud Storage bucket with object lock, or Artifactory repository while keeping the exact `deployment-manifest.json` and `*.receipt.json` schema.
+   - Deploy the bundled static site (`tool/`, `oss-risk/`, `data/`) to internal static hosting (e.g., internal Pages, S3 + CloudFront, or Nginx) so browser sessions read same-origin bundled JSON without exposing internal APIs.
+3. **Retention and Freshness Policies:**
+   - Tune `security_freshness_ttl_seconds` (default `86400` / 24h for OSV, KEV, EPSS, and OSERA OpenVEX) and `stale_running_attempt_ttl_seconds` (`7200`) in `data/collections/collections.json` to match internal vulnerability SLA policies.
+   - Retain immutable receipts and deployment manifests for your regulatory audit window while pruning intermediate `data/local/` SQLite and HTTP caches on runner rotation.
+4. **Optional Approval Gates:**
+   - Configure a GitHub Environment protection rule (or internal change-management gate) between the `Store["Publish immutable data snapshot"]` step and the `Deploy["Serialized production Pages deployment"]` step when human sign-off is required before promoting a new candidate snapshot (`publication_state: "refresh_succeeded_pr_awaiting_review"`).
+5. **Preventing Private Data from Reaching Public Artifacts:**
+   - Keep internal estate datasets on private hosting; when exporting unmet patch demand to external providers or FINOS OSERA, use `sanitize_for_public_export()` (`osera-public-demand-export/v1` allowlist) and `validate_public_pipeline_status_provenance()` so internal application names, repository paths, and credentials never enter shared status or demand artifacts.

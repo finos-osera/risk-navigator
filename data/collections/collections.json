@@ -1,0 +1,92 @@
+{
+  "schema_version": "1",
+  "methodology_version": "2026.11-incremental-v1",
+  "shared_evidence_cadence": {
+    "osv_known_package_versions": "daily",
+    "osera_openvex": "daily",
+    "kev_epss": "daily",
+    "oss_risk_vitality": "weekly",
+    "curated_demos": "deliberate_release_only",
+    "security_freshness_ttl_seconds": 86400
+  },
+  "publication_limits": {
+    "max_dataset_bytes": 5242880,
+    "max_report_bytes": 262144,
+    "max_status_bytes": 131072,
+    "max_allowed_repo_shrink_ratio": 0.2,
+    "stale_running_attempt_ttl_seconds": 7200
+  },
+  "collections": [
+    {
+      "collection_id": "finos-github-org",
+      "label": "FINOS GitHub Org Snapshot",
+      "dataset_type": "public-github-manifests-and-lockfiles",
+      "stage_posture": "production_governed",
+      "organizations": ["finos"],
+      "include_archived": false,
+      "include_forks": false,
+      "default_branch_only": true,
+      "opt_in_release_branches": [],
+      "excluded_repositories": [],
+      "supported_ecosystems": ["maven", "npm", "pypi"],
+      "scan_limits": {
+        "max_manifests_per_repo": 32,
+        "max_lockfiles_per_repo": 4,
+        "github_parallelism": 12
+      },
+      "refresh_cadence": "weekly",
+      "output_paths": {
+        "dataset": "data/finos-github-org.json",
+        "coverage_report": "data/finos-coverage.json",
+        "receipt": "data/receipts/finos-github-org.receipt.json"
+      }
+    },
+    {
+      "collection_id": "finos-labs",
+      "label": "FINOS Labs Snapshot (Early-Stage / Experimental)",
+      "dataset_type": "public-github-manifests-and-lockfiles",
+      "stage_posture": "early_stage_experimental",
+      "organizations": ["finos-labs"],
+      "include_archived": false,
+      "include_forks": false,
+      "default_branch_only": true,
+      "opt_in_release_branches": [],
+      "excluded_repositories": [],
+      "supported_ecosystems": ["maven", "npm", "pypi"],
+      "scan_limits": {
+        "max_manifests_per_repo": 32,
+        "max_lockfiles_per_repo": 4,
+        "github_parallelism": 12
+      },
+      "refresh_cadence": "weekly",
+      "output_paths": {
+        "dataset": "data/finos-labs.json",
+        "coverage_report": "data/finos-labs-coverage.json",
+        "receipt": "data/receipts/finos-labs.receipt.json"
+      }
+    }
+  ],
+  "curated_demos": [
+    {
+      "collection_id": "finos-sample-platform",
+      "label": "OSERA Demo Data (Example)",
+      "dataset_type": "synthetic-demo",
+      "refresh_policy": "deliberate_release_only",
+      "output_dataset": "data/finos-sample-platform.json"
+    },
+    {
+      "collection_id": "finos-sbom-demo",
+      "label": "FINOS SBOM Scan Demo",
+      "dataset_type": "cyclonedx-sbom-demo",
+      "refresh_policy": "deliberate_release_only",
+      "output_dataset": "data/finos-sbom-demo.json"
+    },
+    {
+      "collection_id": "finos-deep-sbom-demo",
+      "label": "FINOS Deep SBOM Demo",
+      "dataset_type": "curated-cyclonedx-sbom",
+      "refresh_policy": "deliberate_release_only",
+      "output_dataset": "data/finos-deep-sbom-demo.json"
+    }
+  ]
+}

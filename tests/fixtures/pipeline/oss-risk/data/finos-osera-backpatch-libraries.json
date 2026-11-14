@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-11-05T05:30:00Z",
+  "libraries": [
+    {
+      "ecosystem": "maven",
+      "name": "org.springframework:spring-web",
+      "repository": "https://github.com/spring-projects/spring-framework"
+    }
+  ]
+}

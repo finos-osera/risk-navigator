@@ -1,0 +1,57 @@
+{
+  "schema_version": "1",
+  "collection_id": "oss-project-risk",
+  "snapshot_id": "oss-project-risk-20261105-8bce25b94128",
+  "content_sha256": "8bce25b941285a45767cae4e9ad4233fc0148f5ca270d4f0bb149d236e143d18",
+  "generated_at": "2026-11-05T05:45:00Z",
+  "provenance_completeness": "complete",
+  "inventory_snapshot_id": "oss-project-risk-seeds-cd7897705fc6",
+  "evidence_snapshot_ids": {
+    "osera_openvex": "osera-openvex-fixture-v1-444444444444",
+    "osv": "osv-555555555555",
+    "cisa_kev": "kev-222222222222"
+  },
+  "collector_commit": "07ee91e7e264a530b7be987e40477fbb48d613af",
+  "methodology_version": "2026.11-incremental-v1",
+  "coverage": {},
+  "sources": [
+    {
+      "name": "finos-osera-backpatch-seeds",
+      "sha256": "cd7897705fc63714de88aba5875854117d40150b629fff37a810405c1125886e",
+      "retrieved_at": "2026-11-05T05:30:00Z"
+    },
+    {
+      "name": "osera-openvex",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "retrieved_at": "2026-11-05T05:40:00Z",
+      "version": "fixture-v1"
+    },
+    {
+      "name": "osv",
+      "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "retrieved_at": "2026-11-05T05:41:00Z"
+    },
+    {
+      "name": "cisa-kev",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "retrieved_at": "2026-11-05T05:42:00Z"
+    }
+  ],
+  "artifacts": [
+    {
+      "role": "dataset",
+      "path": "oss-risk/data/finos-osera-backpatch-scorecards.json",
+      "url": "../oss-risk/data/finos-osera-backpatch-scorecards.json"
+    },
+    {
+      "role": "coverage_report",
+      "path": "oss-risk/data/finos-osera-backpatch-libraries.json",
+      "url": "../oss-risk/data/finos-osera-backpatch-libraries.json"
+    },
+    {
+      "role": "receipt",
+      "path": "data/receipts/oss-project-risk.receipt.json",
+      "url": "../data/receipts/oss-project-risk.receipt.json"
+    }
+  ]
+}
