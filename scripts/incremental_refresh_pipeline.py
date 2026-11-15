@@ -774,20 +774,25 @@ def _edge_to_library_id(edge: dict[str, Any]) -> str | None:
 def _library_has_incomplete_state(lib_entry: dict[str, Any]) -> bool:
     for status_key in ("assessment_status", "status", "resolution_state"):
         raw_val = str(lib_entry.get(status_key) or "").strip().lower()
-        if raw_val and (
-            raw_val in {
-                "unknown",
-                "incomplete",
-                "partial",
-                "unresolved_range",
-                "unsupported_ecosystem",
-                "unknown_unresolved_range",
-                "unknown_unsupported_ecosystem",
-                "error",
-                "stale_unknown",
-            }
-            or raw_val.startswith("unknown")
-            or raw_val.startswith("incomplete")
+        if (
+            raw_val
+            and raw_val not in {"unknown_unassessed_scope", "incomplete_unassessed_scope"}
+            and (
+                raw_val
+                in {
+                    "unknown",
+                    "incomplete",
+                    "partial",
+                    "unresolved_range",
+                    "unsupported_ecosystem",
+                    "unknown_unresolved_range",
+                    "unknown_unsupported_ecosystem",
+                    "error",
+                    "stale_unknown",
+                }
+                or raw_val.startswith("unknown")
+                or raw_val.startswith("incomplete")
+            )
         ):
             return True
     lid = str(lib_entry.get("id") or "")
@@ -840,6 +845,9 @@ def reassess_inventory_with_refreshed_evidence(
         str(lib.get("id")): lib for lib in libraries if isinstance(lib, dict) and lib.get("id")
     }
 
+    assessment_scope_status = "complete"
+    unassessed_baseline_lids: list[str] = []
+
     if isinstance(refreshed_osv_collection_result, dict):
         refresh_status = str(refreshed_osv_collection_result.get("status") or "complete").strip().lower()
         refresh_is_incomplete = bool(refreshed_osv_collection_result.get("incomplete")) or refresh_status in {
@@ -868,6 +876,14 @@ def reassess_inventory_with_refreshed_evidence(
                 if raw_id:
                     preserved_incomplete_lids.add(str(raw_id))
 
+        raw_evaluated_ids = refreshed_osv_collection_result.get("evaluated_library_ids")
+        has_explicit_evaluated_ids = isinstance(raw_evaluated_ids, (list, tuple, set))
+        explicitly_assessed_lids: set[str] = (
+            ({str(x) for x in raw_evaluated_ids if x} - preserved_incomplete_lids)
+            if (has_explicit_evaluated_ids and not refresh_is_incomplete)
+            else set()
+        )
+
         if "cve_findings" in refreshed_osv_collection_result:
             findings_by_lid: dict[str, list[dict[str, Any]]] = {}
             for finding in refreshed_osv_collection_result.get("cve_findings") or []:
@@ -877,20 +893,11 @@ def reassess_inventory_with_refreshed_evidence(
                 if lid:
                     findings_by_lid.setdefault(lid, []).append(finding)
 
-            successfully_assessed_lids: set[str] = set(findings_by_lid.keys()) - preserved_incomplete_lids
-            if refreshed_osv_collection_result.get("evaluated_library_ids") is not None:
-                successfully_assessed_lids |= (
-                    {str(x) for x in (refreshed_osv_collection_result.get("evaluated_library_ids") or []) if x}
-                    - preserved_incomplete_lids
-                )
-            elif not refresh_is_incomplete:
-                eval_cnt = refreshed_osv_collection_result.get("exact_package_versions_evaluated")
-                clean_cnt = refreshed_osv_collection_result.get("clean_exact_package_versions")
-                explicitly_zero_evaluated = (
-                    eval_cnt == 0 and (clean_cnt is None or clean_cnt == 0) and not findings_by_lid
-                )
-                if not explicitly_zero_evaluated:
-                    successfully_assessed_lids |= set(libs_by_id.keys()) - preserved_incomplete_lids
+            # Never assume all baseline libraries were evaluated when evaluated_library_ids is absent.
+            # Only explicitly identified, successfully assessed library IDs can clear previous findings.
+            successfully_assessed_lids: set[str] = (
+                set(findings_by_lid.keys()) - preserved_incomplete_lids
+            ) | explicitly_assessed_lids
 
             removed_clean_lids: set[str] = set()
             for lid in sorted(successfully_assessed_lids):
@@ -911,7 +918,7 @@ def reassess_inventory_with_refreshed_evidence(
 
                 lib_entry = libs_by_id.get(lid)
                 if not ordered_cve_ids:
-                    if lib_entry is not None:
+                    if lib_entry is not None and lid in explicitly_assessed_lids:
                         removed_clean_lids.add(lid)
                         libs_by_id.pop(lid, None)
                     continue
@@ -942,6 +949,8 @@ def reassess_inventory_with_refreshed_evidence(
                     }
                     libraries.append(lib_entry)
                     libs_by_id[lid] = lib_entry
+                elif lib_entry.get("assessment_status") in {"unknown_unassessed_scope", "incomplete_unassessed_scope"}:
+                    lib_entry.pop("assessment_status", None)
 
                 prior_by_cve = {
                     str(c.get("cve_id") or "").strip().upper(): copy.deepcopy(c)
@@ -983,13 +992,25 @@ def reassess_inventory_with_refreshed_evidence(
                             proj_rollup["vulnerable_library_ids"] = kept_vids
                             proj_rollup["vulnerable_library_count"] = len(kept_vids)
 
+            unassessed_baseline_lids = sorted(set(libs_by_id.keys()) - successfully_assessed_lids)
+            if not has_explicit_evaluated_ids or refresh_is_incomplete or unassessed_baseline_lids:
+                assessment_scope_status = "incomplete_unassessed_scope"
+                for lid in unassessed_baseline_lids:
+                    lib_entry = libs_by_id.get(lid)
+                    if isinstance(lib_entry, dict) and not lib_entry.get("assessment_status"):
+                        lib_entry["assessment_status"] = "unknown_unassessed_scope"
+
         unresolved_edges = refreshed_osv_collection_result.get("unresolved_range_edges")
         unsupported_edges = refreshed_osv_collection_result.get("unsupported_ecosystem_edges")
-        if unresolved_edges or unsupported_edges:
-            reassessed["incomplete_assessments"] = {
+        if unresolved_edges or unsupported_edges or unassessed_baseline_lids or not has_explicit_evaluated_ids:
+            inc_summary: dict[str, Any] = {
                 "unresolved_range_edges": copy.deepcopy(unresolved_edges or []),
                 "unsupported_ecosystem_edges": copy.deepcopy(unsupported_edges or []),
             }
+            if unassessed_baseline_lids or not has_explicit_evaluated_ids:
+                inc_summary["unassessed_library_ids"] = unassessed_baseline_lids
+                inc_summary["missing_evaluated_library_ids"] = not has_explicit_evaluated_ids
+            reassessed["incomplete_assessments"] = inc_summary
 
         if refreshed_osv_collection_result.get("non_cve_findings") is not None:
             reassessed["non_cve_advisories"] = copy.deepcopy(refreshed_osv_collection_result["non_cve_findings"])
@@ -1062,6 +1083,8 @@ def reassess_inventory_with_refreshed_evidence(
         "receipt": candidate_receipt,
         "comparison": comparison,
         "material_change": candidate_receipt["content_sha256"] != baseline_receipt["content_sha256"],
+        "assessment_scope_status": assessment_scope_status,
+        "unassessed_library_ids": unassessed_baseline_lids,
     }
 
 

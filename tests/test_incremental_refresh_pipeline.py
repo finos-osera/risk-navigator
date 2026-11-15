@@ -844,35 +844,29 @@ def test_conditional_shared_evidence_refresh_evidence_only_reassessment_and_offl
     assert reassessed["comparison"]["newly_observed_cves"] == ["CVE-2026-55555"]
     assert reassessed["dataset"]["meta"]["inventory_scanned_at"] == "2026-11-01T00:00:00Z"
 
-    # Finding 4A: Complete refreshed result with 0 CVE findings and 1 clean evaluated package clears obsolete CVE
-    for clean_result_payload in (
-        {
+    # Finding 4A: Complete refreshed result with explicit evaluated_library_ids and 0 CVE findings clears obsolete CVE
+    cleared = reassess_inventory_with_refreshed_evidence(
+        collection_id="finos-labs",
+        baseline_dataset=base_ds,
+        baseline_receipt=base_rec,
+        refreshed_osv_collection_result={
             "evaluated_library_ids": ["maven|org.springframework|spring-web|5.3.20"],
             "cve_findings": [],
             "clean_exact_package_versions": 1,
         },
-        {
-            "cve_findings": [],
-            "clean_exact_package_versions": 1,
-        },
-    ):
-        cleared = reassess_inventory_with_refreshed_evidence(
-            collection_id="finos-labs",
-            baseline_dataset=base_ds,
-            baseline_receipt=base_rec,
-            refreshed_osv_collection_result=clean_result_payload,
-            refreshed_evidence_snapshot_ids={"osv": "osv-3", "kev": "kev-2"},
-            refreshed_sources=[{"name": "osv", "sha256": "c" * 64, "retrieved_at": "2026-11-07T12:00:00Z"}],
-            assessed_at="2026-11-07T12:05:00Z",
-        )
-        assert cleared["material_change"] is True
-        assert cleared["dataset"]["libraries"] == []
-        assert cleared["dataset"]["meta"]["counts"]["distinct_cve_libraries"] == 0
-        assert cleared["dataset"]["meta"]["counts"]["unique_cves"] == 0
-        assert cleared["dataset"]["consumer_projects"][0]["vulnerable_library_ids"] == []
-        assert cleared["dataset"]["consumer_projects"][0]["vulnerable_library_count"] == 0
-        assert cleared["comparison"]["resolved_cves"] == ["CVE-2024-22243"]
-        assert cleared["comparison"]["resolved_libraries"] == ["maven|org.springframework|spring-web|5.3.20"]
+        refreshed_evidence_snapshot_ids={"osv": "osv-3", "kev": "kev-2"},
+        refreshed_sources=[{"name": "osv", "sha256": "c" * 64, "retrieved_at": "2026-11-07T12:00:00Z"}],
+        assessed_at="2026-11-07T12:05:00Z",
+    )
+    assert cleared["material_change"] is True
+    assert cleared["assessment_scope_status"] == "complete"
+    assert cleared["dataset"]["libraries"] == []
+    assert cleared["dataset"]["meta"]["counts"]["distinct_cve_libraries"] == 0
+    assert cleared["dataset"]["meta"]["counts"]["unique_cves"] == 0
+    assert cleared["dataset"]["consumer_projects"][0]["vulnerable_library_ids"] == []
+    assert cleared["dataset"]["consumer_projects"][0]["vulnerable_library_count"] == 0
+    assert cleared["comparison"]["resolved_cves"] == ["CVE-2024-22243"]
+    assert cleared["comparison"]["resolved_libraries"] == ["maven|org.springframework|spring-web|5.3.20"]
 
     # Finding 4B: Partial CVE withdrawal + new CVE addition on the same library reconciles both
     partial_withdrawn = reassess_inventory_with_refreshed_evidence(
@@ -1000,6 +994,154 @@ def test_conditional_shared_evidence_refresh_evidence_only_reassessment_and_offl
     )
 
 
+def test_reassess_cve_removal_requires_explicit_evaluated_library_ids_two_package_matrix():
+    """Verify @DovOps review finding on #78: only clear findings for explicitly identified, successfully assessed package versions."""
+    pkg_a = "maven|org.springframework|spring-web|5.3.20"
+    pkg_b = "pypi||urllib3|2.0.7"
+    base_two_pkg_ds = {
+        "meta": {
+            "scope_name": "finos-labs",
+            "inventory_scanned_at": "2026-11-01T00:00:00Z",
+            "vulnerabilities_queried_at": "2026-11-01T00:05:00Z",
+            "counts": {"consumer_projects": 1, "distinct_cve_libraries": 2, "unique_cves": 2},
+            "coverage": {"repositories": 1, "vulnerable_library_versions": 2, "unique_cves": 2},
+        },
+        "consumer_projects": [
+            {
+                "id": "finos-labs/app-1",
+                "vulnerable_library_ids": [pkg_a, pkg_b],
+                "vulnerable_library_count": 2,
+            }
+        ],
+        "libraries": [
+            {
+                "id": pkg_a,
+                "namespace": "maven",
+                "meta": "org.springframework",
+                "proj": "spring-web",
+                "release": "5.3.20",
+                "cves": [{"cve_id": "CVE-2024-22243", "kev": False, "epss": 0.12}],
+            },
+            {
+                "id": pkg_b,
+                "namespace": "pypi",
+                "meta": "",
+                "proj": "urllib3",
+                "release": "2.0.7",
+                "cves": [{"cve_id": "CVE-2026-77777", "kev": False, "epss": 0.08}],
+            },
+        ],
+    }
+    base_two_pkg_rec = build_assessment_receipt(
+        collection_id="finos-labs",
+        dataset=base_two_pkg_ds,
+        inventory_snapshot_id="finos-labs-inv-two-pkg",
+        evidence_snapshot_ids={"osv": "osv-1", "kev": "kev-1"},
+        sources=[{"name": "osv", "sha256": "1" * 64, "retrieved_at": "2026-11-01T00:05:00Z"}],
+        artifacts=[{"role": "dataset", "path": "data/finos-labs.json"}],
+        collector_commit="716ee3f6e95033df2e2dcc6621dbfe0a791cf5bc",
+        generated_at="2026-11-01T00:10:00Z",
+    )
+
+    # 1. Explicitly assessing A as clean clears A but preserves B (with incomplete scope indication for B)
+    only_a_clean = reassess_inventory_with_refreshed_evidence(
+        collection_id="finos-labs",
+        baseline_dataset=base_two_pkg_ds,
+        baseline_receipt=base_two_pkg_rec,
+        refreshed_osv_collection_result={
+            "evaluated_library_ids": [pkg_a],
+            "exact_package_versions_evaluated": 1,
+            "clean_exact_package_versions": 1,
+            "cve_findings": [],
+        },
+        refreshed_evidence_snapshot_ids={"osv": "osv-2", "kev": "kev-1"},
+        refreshed_sources=[{"name": "osv", "sha256": "2" * 64, "retrieved_at": "2026-11-02T00:05:00Z"}],
+        assessed_at="2026-11-02T00:10:00Z",
+    )
+    assert [lib["id"] for lib in only_a_clean["dataset"]["libraries"]] == [pkg_b]
+    assert [c["cve_id"] for c in only_a_clean["dataset"]["libraries"][0]["cves"]] == ["CVE-2026-77777"]
+    assert only_a_clean["dataset"]["libraries"][0]["assessment_status"] == "unknown_unassessed_scope"
+    assert only_a_clean["dataset"]["consumer_projects"][0]["vulnerable_library_ids"] == [pkg_b]
+    assert only_a_clean["dataset"]["consumer_projects"][0]["vulnerable_library_count"] == 1
+    assert only_a_clean["dataset"]["meta"]["counts"]["distinct_cve_libraries"] == 1
+    assert only_a_clean["dataset"]["meta"]["counts"]["unique_cves"] == 1
+    assert only_a_clean["comparison"]["resolved_libraries"] == [pkg_a]
+    assert only_a_clean["comparison"]["resolved_cves"] == ["CVE-2024-22243"]
+    assert only_a_clean["assessment_scope_status"] == "incomplete_unassessed_scope"
+    assert only_a_clean["unassessed_library_ids"] == [pkg_b]
+    assert only_a_clean["dataset"]["incomplete_assessments"]["unassessed_library_ids"] == [pkg_b]
+
+    # 2. Missing evaluated_library_ids — including count-only and empty-findings inputs — cannot clear either package
+    for missing_ids_payload in (
+        {
+            "exact_package_versions_evaluated": 1,
+            "clean_exact_package_versions": 1,
+            "cve_findings": [],
+        },
+        {
+            "exact_package_versions_evaluated": 2,
+            "clean_exact_package_versions": 2,
+            "cve_findings": [],
+        },
+        {
+            "cve_findings": [],
+        },
+        {
+            "evaluated_library_ids": None,
+            "cve_findings": [],
+        },
+    ):
+        missing_scope_res = reassess_inventory_with_refreshed_evidence(
+            collection_id="finos-labs",
+            baseline_dataset=base_two_pkg_ds,
+            baseline_receipt=base_two_pkg_rec,
+            refreshed_osv_collection_result=missing_ids_payload,
+            refreshed_evidence_snapshot_ids={"osv": "osv-3", "kev": "kev-1"},
+            refreshed_sources=[{"name": "osv", "sha256": "3" * 64, "retrieved_at": "2026-11-03T00:05:00Z"}],
+            assessed_at="2026-11-03T00:10:00Z",
+        )
+        assert [lib["id"] for lib in missing_scope_res["dataset"]["libraries"]] == [pkg_a, pkg_b]
+        assert [c["cve_id"] for c in missing_scope_res["dataset"]["libraries"][0]["cves"]] == ["CVE-2024-22243"]
+        assert [c["cve_id"] for c in missing_scope_res["dataset"]["libraries"][1]["cves"]] == ["CVE-2026-77777"]
+        assert missing_scope_res["dataset"]["libraries"][0]["assessment_status"] == "unknown_unassessed_scope"
+        assert missing_scope_res["dataset"]["libraries"][1]["assessment_status"] == "unknown_unassessed_scope"
+        assert missing_scope_res["dataset"]["consumer_projects"][0]["vulnerable_library_ids"] == [pkg_a, pkg_b]
+        assert missing_scope_res["dataset"]["consumer_projects"][0]["vulnerable_library_count"] == 2
+        assert missing_scope_res["dataset"]["meta"]["counts"]["distinct_cve_libraries"] == 2
+        assert missing_scope_res["dataset"]["meta"]["counts"]["unique_cves"] == 2
+        assert missing_scope_res["comparison"]["resolved_libraries"] == []
+        assert missing_scope_res["comparison"]["resolved_cves"] == []
+        assert missing_scope_res["assessment_scope_status"] == "incomplete_unassessed_scope"
+        assert missing_scope_res["unassessed_library_ids"] == sorted([pkg_a, pkg_b])
+        assert missing_scope_res["dataset"]["incomplete_assessments"]["missing_evaluated_library_ids"] is True
+        assert missing_scope_res["dataset"]["incomplete_assessments"]["unassessed_library_ids"] == sorted([pkg_a, pkg_b])
+
+    # 3. Explicitly assessing both A and B as clean clears both
+    both_clean = reassess_inventory_with_refreshed_evidence(
+        collection_id="finos-labs",
+        baseline_dataset=base_two_pkg_ds,
+        baseline_receipt=base_two_pkg_rec,
+        refreshed_osv_collection_result={
+            "evaluated_library_ids": [pkg_a, pkg_b],
+            "exact_package_versions_evaluated": 2,
+            "clean_exact_package_versions": 2,
+            "cve_findings": [],
+        },
+        refreshed_evidence_snapshot_ids={"osv": "osv-4", "kev": "kev-1"},
+        refreshed_sources=[{"name": "osv", "sha256": "4" * 64, "retrieved_at": "2026-11-04T00:05:00Z"}],
+        assessed_at="2026-11-04T00:10:00Z",
+    )
+    assert both_clean["dataset"]["libraries"] == []
+    assert both_clean["dataset"]["consumer_projects"][0]["vulnerable_library_ids"] == []
+    assert both_clean["dataset"]["consumer_projects"][0]["vulnerable_library_count"] == 0
+    assert both_clean["dataset"]["meta"]["counts"]["distinct_cve_libraries"] == 0
+    assert both_clean["dataset"]["meta"]["counts"]["unique_cves"] == 0
+    assert both_clean["comparison"]["resolved_libraries"] == sorted([pkg_a, pkg_b])
+    assert both_clean["comparison"]["resolved_cves"] == ["CVE-2024-22243", "CVE-2026-77777"]
+    assert both_clean["assessment_scope_status"] == "complete"
+    assert both_clean["unassessed_library_ids"] == []
+
+
 class IncrementalRefreshPipelineTestCase(unittest.TestCase):
     def test_all(self):
         test_collections_config_and_incremental_inventory_reuse_readme_change_and_shrink_guard()
@@ -1009,6 +1151,7 @@ class IncrementalRefreshPipelineTestCase(unittest.TestCase):
         test_pipeline_status_updates_stale_running_reconciliation_and_secret_redaction()
         test_public_pipeline_status_provenance_same_date_uniqueness_and_historical_honesty()
         test_conditional_shared_evidence_refresh_evidence_only_reassessment_and_offline_replay_cli()
+        test_reassess_cve_removal_requires_explicit_evaluated_library_ids_two_package_matrix()
 
 
 if __name__ == "__main__":
