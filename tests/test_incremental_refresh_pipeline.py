@@ -1142,6 +1142,70 @@ def test_reassess_cve_removal_requires_explicit_evaluated_library_ids_two_packag
     assert both_clean["unassessed_library_ids"] == []
 
 
+def test_partial_nonempty_reassessment_preserves_prior_cves_until_explicitly_assessed():
+    lid = "npm||example|1.0.0"
+    old_cve, retained_cve, new_cve = "CVE-2026-1111", "CVE-2026-2222", "CVE-2026-3333"
+    baseline = {
+        "meta": {"counts": {"distinct_cve_libraries": 1, "unique_cves": 2}},
+        "libraries": [{
+            "id": lid,
+            "cves": [
+                {"cve_id": old_cve, "summary": "Keep prior evidence", "cvss": 9.0},
+                {"cve_id": retained_cve},
+            ],
+        }],
+    }
+    receipt = build_assessment_receipt(
+        collection_id="test",
+        dataset=baseline,
+        inventory_snapshot_id="inventory-1",
+        evidence_snapshot_ids={"osv": None},
+        sources=[{"name": "osv", "status": "unavailable_historical"}],
+        artifacts=[],
+    )
+    original = copy.deepcopy(baseline)
+    finding = {"library_id": lid, "cve_aliases": [retained_cve, new_cve]}
+    incomplete_scopes = [
+        {},
+        {"evaluated_library_ids": None},
+        {"evaluated_library_ids": []},
+        {"evaluated_library_ids": ["npm||other|1.0.0"]},
+        {"exact_package_versions_evaluated": 1},
+        {"evaluated_library_ids": [lid], "incomplete": True},
+        *({"evaluated_library_ids": [lid], "status": status}
+          for status in ("partial", "incomplete", "unknown", "failed", "error")),
+        *({"evaluated_library_ids": [lid], key: [lid]}
+          for key in ("incomplete_library_ids", "unknown_library_ids", "skipped_library_ids", "unevaluated_library_ids")),
+    ]
+    for scope in incomplete_scopes:
+        result = reassess_inventory_with_refreshed_evidence(
+            collection_id="test", baseline_dataset=baseline, baseline_receipt=receipt,
+            refreshed_osv_collection_result={**scope, "cve_findings": [finding, finding]},
+        )
+        lib = result["dataset"]["libraries"][0]
+        assert {c["cve_id"] for c in lib["cves"]} == {old_cve, retained_cve, new_cve}, scope
+        assert len(lib["cves"]) == 3, scope
+        assert next(c for c in lib["cves"] if c["cve_id"] == old_cve) == original["libraries"][0]["cves"][0]
+        assert result["comparison"]["resolved_cves"] == [], scope
+        assert result["comparison"]["newly_observed_cves"] == [new_cve], scope
+        assert result["assessment_scope_status"] == "incomplete_unassessed_scope", scope
+        assert result["unassessed_library_ids"] == [lid], scope
+        assert lib["assessment_status"] == "unknown_unassessed_scope", scope
+        assert result["dataset"]["incomplete_assessments"]["unassessed_library_ids"] == [lid], scope
+        assert result["dataset"]["meta"]["counts"]["unique_cves"] == 3, scope
+        assert baseline == original
+
+    # A complete assessment of this exact package may remove the old CVE.
+    complete = reassess_inventory_with_refreshed_evidence(
+        collection_id="test", baseline_dataset=baseline, baseline_receipt=receipt,
+        refreshed_osv_collection_result={"evaluated_library_ids": [lid], "cve_findings": [finding]},
+    )
+    assert {c["cve_id"] for c in complete["dataset"]["libraries"][0]["cves"]} == {retained_cve, new_cve}
+    assert complete["comparison"]["resolved_cves"] == [old_cve]
+    assert complete["assessment_scope_status"] == "complete"
+    assert complete["unassessed_library_ids"] == []
+
+
 class IncrementalRefreshPipelineTestCase(unittest.TestCase):
     def test_all(self):
         test_collections_config_and_incremental_inventory_reuse_readme_change_and_shrink_guard()
@@ -1152,6 +1216,7 @@ class IncrementalRefreshPipelineTestCase(unittest.TestCase):
         test_public_pipeline_status_provenance_same_date_uniqueness_and_historical_honesty()
         test_conditional_shared_evidence_refresh_evidence_only_reassessment_and_offline_replay_cli()
         test_reassess_cve_removal_requires_explicit_evaluated_library_ids_two_package_matrix()
+        test_partial_nonempty_reassessment_preserves_prior_cves_until_explicitly_assessed()
 
 
 if __name__ == "__main__":
