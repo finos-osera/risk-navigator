@@ -893,14 +893,12 @@ def reassess_inventory_with_refreshed_evidence(
                 if lid:
                     findings_by_lid.setdefault(lid, []).append(finding)
 
-            # Never assume all baseline libraries were evaluated when evaluated_library_ids is absent.
-            # Only explicitly identified, successfully assessed library IDs can clear previous findings.
-            successfully_assessed_lids: set[str] = (
-                set(findings_by_lid.keys()) - preserved_incomplete_lids
-            ) | explicitly_assessed_lids
+            # Observed findings can add evidence, but do not prove assessment completeness.
+            # Only explicitly identified, successfully assessed packages can lose prior findings.
+            libraries_to_reconcile = set(findings_by_lid) | explicitly_assessed_lids
 
             removed_clean_lids: set[str] = set()
-            for lid in sorted(successfully_assessed_lids):
+            for lid in sorted(libraries_to_reconcile):
                 lib_findings = findings_by_lid.get(lid) or []
                 refreshed_cve_summaries: dict[str, str] = {}
                 ordered_cve_ids: list[str] = []
@@ -949,7 +947,7 @@ def reassess_inventory_with_refreshed_evidence(
                     }
                     libraries.append(lib_entry)
                     libs_by_id[lid] = lib_entry
-                elif lib_entry.get("assessment_status") in {"unknown_unassessed_scope", "incomplete_unassessed_scope"}:
+                elif lid in explicitly_assessed_lids and lib_entry.get("assessment_status") in {"unknown_unassessed_scope", "incomplete_unassessed_scope"}:
                     lib_entry.pop("assessment_status", None)
 
                 prior_by_cve = {
@@ -957,6 +955,8 @@ def reassess_inventory_with_refreshed_evidence(
                     for c in (lib_entry.get("cves") or [])
                     if isinstance(c, dict) and c.get("cve_id")
                 }
+                if lid not in explicitly_assessed_lids:
+                    ordered_cve_ids = list(dict.fromkeys([*prior_by_cve, *ordered_cve_ids]))
                 reconciled_cves: list[dict[str, Any]] = []
                 for cid in ordered_cve_ids:
                     if cid in prior_by_cve:
@@ -992,7 +992,7 @@ def reassess_inventory_with_refreshed_evidence(
                             proj_rollup["vulnerable_library_ids"] = kept_vids
                             proj_rollup["vulnerable_library_count"] = len(kept_vids)
 
-            unassessed_baseline_lids = sorted(set(libs_by_id.keys()) - successfully_assessed_lids)
+            unassessed_baseline_lids = sorted(set(libs_by_id.keys()) - explicitly_assessed_lids)
             if not has_explicit_evaluated_ids or refresh_is_incomplete or unassessed_baseline_lids:
                 assessment_scope_status = "incomplete_unassessed_scope"
                 for lid in unassessed_baseline_lids:
