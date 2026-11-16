@@ -1,0 +1,47 @@
+{
+  "generated_at": "2026-11-05T05:45:00Z",
+  "collector_commit": "07ee91e7e264a530b7be987e40477fbb48d613af",
+  "run_metadata": {
+    "run_id": "fixture-run-1000",
+    "run_url": "https://example.invalid/actions/runs/fixture-run-1000",
+    "trigger": "workflow_dispatch",
+    "collector_commit": "07ee91e7e264a530b7be987e40477fbb48d613af",
+    "started_at": "2026-11-05T05:35:00Z",
+    "completed_at": "2026-11-05T05:45:00Z",
+    "outcome": "succeeded"
+  },
+  "measurements": {
+    "duration_seconds": 600.0,
+    "api_requests": 2,
+    "downloaded_bytes": 4096,
+    "cache_hits": 0,
+    "cache_misses": 1,
+    "osv_batch_queries": 1
+  },
+  "sources": {
+    "osera_openvex": {
+      "version": "fixture-v1",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "retrieved_at": "2026-11-05T05:40:00Z"
+    },
+    "osv": {
+      "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "retrieved_at": "2026-11-05T05:41:00Z"
+    },
+    "cisa_kev": {
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "retrieved_at": "2026-11-05T05:42:00Z"
+    }
+  },
+  "records": [
+    {
+      "library": "org.springframework:spring-web",
+      "ecosystem": "maven",
+      "evidence": {
+        "osera_openvex": {
+          "coverage_status": "covered"
+        }
+      }
+    }
+  ]
+}

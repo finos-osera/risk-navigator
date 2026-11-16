@@ -1,0 +1,135 @@
+{
+  "schema_version": "1",
+  "generated_at": "2026-11-06T00:00:00Z",
+  "checked_at": "2026-11-06T00:00:00Z",
+  "pipelines": [
+    {
+      "pipeline_id": "refresh-finos-github-org",
+      "collection_id": "finos-github-org",
+      "friendly_name": "FINOS GitHub Org Snapshot",
+      "publication_state": "published",
+      "provenance_completeness": "complete",
+      "pending_pr_url": null,
+      "previous_valid_snapshot_retained": true,
+      "failure_code": null,
+      "failure_summary": null,
+      "latest_attempt": {
+        "run_id": "fixture-run-1001",
+        "run_url": "https://example.invalid/actions/runs/fixture-run-1001",
+        "trigger": "schedule",
+        "code_sha": "07ee91e7e264a530b7be987e40477fbb48d613af",
+        "started_at": "2026-11-05T06:04:00Z",
+        "completed_at": "2026-11-05T06:10:00Z",
+        "outcome": "succeeded"
+      },
+      "latest_validated_candidate": {
+        "snapshot_id": "finos-github-org-20261105-a9e724aa8416",
+        "content_sha256": "a9e724aa84167c663336fa1cfff3336dce906c2cc007bd0a302c48cd987bad0b",
+        "provenance_completeness": "complete",
+        "validation_summary": "2 repositories; 2 with dependencies; 0 failed",
+        "dataset_url": "../data/finos-github-org.json",
+        "receipt_url": "../data/receipts/finos-github-org.receipt.json",
+        "coverage_url": "../data/finos-coverage.json"
+      },
+      "currently_published_snapshot": {
+        "snapshot_id": "finos-github-org-20261105-a9e724aa8416",
+        "content_sha256": "a9e724aa84167c663336fa1cfff3336dce906c2cc007bd0a302c48cd987bad0b",
+        "provenance_completeness": "complete",
+        "published_at": "2026-11-05T06:10:00Z",
+        "inventory_scanned_at": "2026-11-05T06:05:00Z",
+        "vulnerabilities_queried_at": "2026-11-05T06:08:00Z",
+        "osera_openvex_version": "fixture-v1",
+        "oss_risk_snapshot_id": "oss-project-risk-20261105-8bce25b94128",
+        "dataset_url": "../data/finos-github-org.json",
+        "receipt_url": "../data/receipts/finos-github-org.receipt.json",
+        "coverage_url": "../data/finos-coverage.json"
+      },
+      "measurements": {
+        "dataset_bytes": 1574,
+        "duration_seconds": 360.0,
+        "api_requests": 4,
+        "downloaded_bytes": 16384,
+        "cache_hits": 1,
+        "cache_misses": 1,
+        "osv_batch_queries": 1
+      }
+    },
+    {
+      "pipeline_id": "refresh-finos-labs",
+      "collection_id": "finos-labs",
+      "friendly_name": "FINOS Labs Snapshot (Early-Stage / Experimental)",
+      "publication_state": "awaiting_initial_publication",
+      "provenance_completeness": null,
+      "pending_pr_url": null,
+      "previous_valid_snapshot_retained": false,
+      "failure_code": null,
+      "failure_summary": null,
+      "latest_attempt": {
+        "run_id": null,
+        "run_url": null,
+        "trigger": "none",
+        "code_sha": null,
+        "started_at": null,
+        "completed_at": null,
+        "outcome": "unknown"
+      },
+      "latest_validated_candidate": null,
+      "currently_published_snapshot": null,
+      "measurements": {
+        "dataset_bytes": 0
+      }
+    },
+    {
+      "pipeline_id": "refresh-oss-project-risk",
+      "collection_id": "oss-project-risk",
+      "friendly_name": "OSS Project Risk Scorecards",
+      "publication_state": "published",
+      "provenance_completeness": "complete",
+      "pending_pr_url": null,
+      "previous_valid_snapshot_retained": true,
+      "failure_code": null,
+      "failure_summary": null,
+      "seed_inventory_limitation": "Repository-scoped GITHUB_TOKEN retains committed finos-osera-backpatch seed list when private org enumeration is unavailable.",
+      "latest_attempt": {
+        "run_id": "fixture-run-1000",
+        "run_url": "https://example.invalid/actions/runs/fixture-run-1000",
+        "trigger": "workflow_dispatch",
+        "code_sha": "07ee91e7e264a530b7be987e40477fbb48d613af",
+        "started_at": "2026-11-05T05:35:00Z",
+        "completed_at": "2026-11-05T05:45:00Z",
+        "outcome": "succeeded"
+      },
+      "latest_validated_candidate": {
+        "snapshot_id": "oss-project-risk-20261105-8bce25b94128",
+        "content_sha256": "8bce25b941285a45767cae4e9ad4233fc0148f5ca270d4f0bb149d236e143d18",
+        "provenance_completeness": "complete",
+        "validation_summary": "1 backpatch libraries scored; 1 with published OSERA OpenVEX fix",
+        "dataset_url": "../oss-risk/data/finos-osera-backpatch-scorecards.json",
+        "receipt_url": "../data/receipts/oss-project-risk.receipt.json",
+        "coverage_url": "../oss-risk/data/finos-osera-backpatch-libraries.json"
+      },
+      "currently_published_snapshot": {
+        "snapshot_id": "oss-project-risk-20261105-8bce25b94128",
+        "content_sha256": "8bce25b941285a45767cae4e9ad4233fc0148f5ca270d4f0bb149d236e143d18",
+        "provenance_completeness": "complete",
+        "published_at": "2026-11-05T05:45:00Z",
+        "inventory_scanned_at": "2026-11-05T05:30:00Z",
+        "vulnerabilities_queried_at": "2026-11-05T05:41:00Z",
+        "osera_openvex_version": "fixture-v1",
+        "oss_risk_snapshot_id": "oss-project-risk-20261105-8bce25b94128",
+        "dataset_url": "../oss-risk/data/finos-osera-backpatch-scorecards.json",
+        "receipt_url": "../data/receipts/oss-project-risk.receipt.json",
+        "coverage_url": "../oss-risk/data/finos-osera-backpatch-libraries.json"
+      },
+      "measurements": {
+        "dataset_bytes": 1366,
+        "duration_seconds": 600.0,
+        "api_requests": 2,
+        "downloaded_bytes": 4096,
+        "cache_hits": 0,
+        "cache_misses": 1,
+        "osv_batch_queries": 1
+      }
+    }
+  ]
+}

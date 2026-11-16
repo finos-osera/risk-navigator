@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-11-05T06:10:00Z",
+  "inventory_started_at": "2026-11-05T06:04:00Z",
+  "inventory_completed_at": "2026-11-05T06:05:00Z",
+  "collector_commit": "07ee91e7e264a530b7be987e40477fbb48d613af",
+  "repositories": 2,
+  "repositories_with_dependencies": 2,
+  "repositories_failed": 0,
+  "oss_risk_snapshot_id": "oss-project-risk-20261105-8bce25b94128",
+  "run_metadata": {
+    "run_id": "fixture-run-1001",
+    "run_url": "https://example.invalid/actions/runs/fixture-run-1001",
+    "trigger": "schedule",
+    "collector_commit": "07ee91e7e264a530b7be987e40477fbb48d613af",
+    "started_at": "2026-11-05T06:04:00Z",
+    "completed_at": "2026-11-05T06:10:00Z",
+    "outcome": "succeeded"
+  },
+  "measurements": {
+    "duration_seconds": 360.0,
+    "api_requests": 4,
+    "downloaded_bytes": 16384,
+    "cache_hits": 1,
+    "cache_misses": 1,
+    "osv_batch_queries": 1
+  },
+  "sources": {
+    "osv_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "osv_exact_versions": {
+      "queried_at": "2026-11-05T06:08:00Z"
+    },
+    "kev_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "kev_fetched_at": "2026-11-05T06:06:00Z",
+    "epss_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+    "epss_fetched_at": "2026-11-05T06:07:00Z",
+    "osera_openvex": {
+      "version": "fixture-v1",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "retrieved_at": "2026-11-05T06:07:30Z"
+    }
+  }
+}

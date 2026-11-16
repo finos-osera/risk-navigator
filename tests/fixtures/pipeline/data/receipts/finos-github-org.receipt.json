@@ -1,0 +1,69 @@
+{
+  "schema_version": "1",
+  "collection_id": "finos-github-org",
+  "snapshot_id": "finos-github-org-20261105-a9e724aa8416",
+  "content_sha256": "a9e724aa84167c663336fa1cfff3336dce906c2cc007bd0a302c48cd987bad0b",
+  "generated_at": "2026-11-05T06:10:00Z",
+  "provenance_completeness": "complete",
+  "inventory_snapshot_id": "finos-github-org-inv-516dd9de3ba1",
+  "evidence_snapshot_ids": {
+    "osv": "osv-111111111111",
+    "kev": "kev-222222222222",
+    "epss": "epss-333333333333",
+    "osera_openvex": "osera-openvex-fixture-v1-444444444444"
+  },
+  "collector_commit": "07ee91e7e264a530b7be987e40477fbb48d613af",
+  "methodology_version": "2026.11-incremental-v1",
+  "coverage": {
+    "repositories": 2,
+    "repositories_with_dependencies": 2,
+    "repositories_failed": 0,
+    "vulnerable_library_versions": 1,
+    "unique_cves": 1
+  },
+  "sources": [
+    {
+      "name": "github-finos-org",
+      "sha256": "516dd9de3ba19d07ac51ea742e14f4f35cd5b575bb851444ec2bf02ce2faf1a2",
+      "retrieved_at": "2026-11-05T06:05:00Z"
+    },
+    {
+      "name": "osv",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "retrieved_at": "2026-11-05T06:08:00Z"
+    },
+    {
+      "name": "cisa-kev",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "retrieved_at": "2026-11-05T06:06:00Z"
+    },
+    {
+      "name": "first-epss",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "retrieved_at": "2026-11-05T06:07:00Z"
+    },
+    {
+      "name": "osera-openvex",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "retrieved_at": "2026-11-05T06:07:30Z",
+      "version": "fixture-v1"
+    }
+  ],
+  "artifacts": [
+    {
+      "role": "dataset",
+      "path": "data/finos-github-org.json",
+      "url": "../data/finos-github-org.json"
+    },
+    {
+      "role": "coverage_report",
+      "path": "data/finos-coverage.json",
+      "url": "../data/finos-coverage.json"
+    },
+    {
+      "role": "receipt",
+      "path": "data/receipts/finos-github-org.receipt.json",
+      "url": "../data/receipts/finos-github-org.receipt.json"
+    }
+  ]
+}
