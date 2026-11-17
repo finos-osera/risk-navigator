@@ -22,9 +22,9 @@ def test_runtime_graph_resolves_nested_versions_and_multiple_parents():
     }), 'repo')
     assert len(edges) == 5
     assert {(e.library_id, e.parent_id) for e in edges if not e.direct} == {
-        ('npm||shared|1.0.0', 'npm||a|1.2.0'),
-        ('npm||shared|2.0.0', 'npm||b|1.0.0'),
-        ('npm||peer|1.0.0', 'npm||b|1.0.0'),
+        ('pkg:npm/shared@1.0.0', 'pkg:npm/a@1.2.0'),
+        ('pkg:npm/shared@2.0.0', 'pkg:npm/b@1.0.0'),
+        ('pkg:npm/peer@1.0.0', 'pkg:npm/b@1.0.0'),
     }
     assert all('tool' not in e.library_id for e in edges)
 
@@ -36,7 +36,7 @@ def test_workspaces_aliases_scopes_and_cycles():
         'packages/workspace': {'name': '@company/workspace', 'version': '1.0.0', 'dependencies': {'alias': 'npm:@scope/real@1'}},
         'node_modules/alias': {'name': '@scope/real', 'version': '1.0.1', 'dependencies': {'workspace': '*'}},
     }, 2), 'repo')
-    assert any(e.library_id == 'npm|@scope|real|1.0.1' and e.direct for e in edges)
+    assert any(e.library_id == 'pkg:npm/%40scope/real@1.0.1' and e.direct for e in edges)
     assert len(edges) == 3
 
 
@@ -58,7 +58,7 @@ def test_compact_inventory_keeps_non_vulnerable_packages_and_all_parent_edges():
     inv = data['dependency_inventory']
     assert len(inv['libraries']) == 3
     assert len(inv['edges']) == 2
-    assert {inv['libraries'][e[4]] for e in inv['edges']} == {'npm||parent-a|1.0.0', 'npm||parent-b|1.0.0'}
+    assert {inv['libraries'][e[4]] for e in inv['edges']} == {'pkg:npm/parent-a@1.0.0', 'pkg:npm/parent-b@1.0.0'}
 
 
 def test_oversized_publish_cannot_replace_existing_snapshot(tmp_path, monkeypatch):
@@ -89,7 +89,7 @@ def test_shared_version_histories_are_lossless():
     libraries = [{'namespace': 'npm', 'meta': '', 'proj': 'a', 'version_chain': chain, 'cves': []}
                  for _ in range(2)]
     data = compact_dataset({'libraries': libraries}, [])
-    assert data['version_chains'] == {'npm||a': chain}
+    assert data['version_chains'] == {'pkg:npm/a': chain}
     for lib in data['libraries']:
         assert data['version_chains'][lib['version_chain_ref']] == chain
 
@@ -111,7 +111,7 @@ def test_scan_pins_content_to_commit_and_uses_workspace_lock_over_ranges(monkeyp
     monkeypatch.setattr(extract, 'github_get_repo_content', get_content)
     edges, report = extract.scan_repo('finos', 'traderX', 'main', 'repo', None, 'https://example.test', 1, 32)
     assert seen_refs == ['fixed-commit']
-    assert [e.library_id for e in edges] == ['npm||a|1.9.0']
+    assert [e.library_id for e in edges] == ['pkg:npm/a@1.9.0']
     assert report['commit'] == 'fixed-commit'
     assert report['status'] == 'extracted'
 
@@ -188,7 +188,7 @@ def test_pypi_identity_survives_extraction_query_ingestion_and_join(tmp_path, mo
     from ingest_vulns import ensure_schema, normalize_package_key
     ns, meta, proj, version, qualifier = parse_requirements_dependencies(f'{inventory_name}==1.2.3')[0]
     lid = make_library_id(ns, meta, proj, version)
-    assert lid == f'pypi||{canonical}|1.2.3'
+    assert lid == f'pkg:pypi/{canonical}@1.2.3'
     assert normalize_package_key('pypi', '', inventory_name) == ('pypi', '', canonical)
     db = tmp_path / 'vulns.db'
     with sqlite3.connect(db) as conn:
@@ -228,9 +228,9 @@ def test_negative_exact_query_clears_all_legacy_release_prefixes(tmp_path, monke
     monkeypatch.setattr(osv, 'query_versions', query)
     osv.resolve_inventory(db, [DepEdge('repo', f'{namespace}||example-pkg|{inventory_version}', 1, 'runtime')], tmp_path)
     findings = load_vuln_edges(db)
-    assert f'{namespace}||example-pkg|1.0.0' not in findings
-    assert f'{namespace}||example-pkg|2.0.0' in findings
-    assert 'maven|org.example|example-pkg|v1.0.0' in findings
+    assert f'pkg:{namespace}/example-pkg@1.0.0' not in findings
+    assert f'pkg:{namespace}/example-pkg@2.0.0' in findings
+    assert 'pkg:maven/org.example/example-pkg@v1.0.0' in findings
 
 
 def test_prerelease_and_build_metadata_retain_parent_relationship():
@@ -240,14 +240,14 @@ def test_prerelease_and_build_metadata_retain_parent_relationship():
         'node_modules/child': {'version': '2.0.0+build.5'},
     }), 'repo')
     assert {(e.library_id, e.direct, e.parent_id) for e in edges} == {
-        ('npm||parent|1.2.3-rc.1+build.2', 1, ''),
-        ('npm||child|2.0.0+build.5', 0, 'npm||parent|1.2.3-rc.1+build.2'),
+        ('pkg:npm/parent@1.2.3-rc.1+build.2', 1, ''),
+        ('pkg:npm/child@2.0.0+build.5', 0, 'pkg:npm/parent@1.2.3-rc.1+build.2'),
     }
 
 
 def test_package_name_normalization_is_pypi_only():
     from common import make_library_id, split_coords
-    assert make_library_id('maven', 'Org.Example', 'Some_Library', 'v1.0.0') == 'maven|Org.Example|Some_Library|v1.0.0'
+    assert make_library_id('maven', 'Org.Example', 'Some_Library', 'v1.0.0') == 'pkg:maven/Org.Example/Some_Library@v1.0.0'
     assert split_coords('npm', '@Scope/pkg.name') == ('npm', '@Scope', 'pkg.name')
 
 

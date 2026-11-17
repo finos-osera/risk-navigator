@@ -44,7 +44,7 @@ def test_evidence_disagreement_broken_required_chain_and_unverified_links_block_
     assert result["eligible_for_deployment"] is False
     blocker_codes = {b["code"] for b in result["blockers"]}
     assert "EVIDENCE_DOCUMENT_DISAGREEMENT" in blocker_codes
-    assert "BROKEN_REQUIRED_CHAIN:maven:org.springframework:spring-core:5.3.39-osera.1" in blocker_codes
+    assert "BROKEN_REQUIRED_CHAIN:pkg:maven/org.springframework/spring-core@5.3.39-osera.1" in blocker_codes
     assert "UNVERIFIED_ATTESTATION_SIGNATURE" in blocker_codes
 
 
@@ -94,7 +94,7 @@ def test_missing_required_companion_chain_blocks_readiness():
     assert result["overall_status"] == "blocked"
     assert result["eligible_for_deployment"] is False
     codes = {b["code"] for b in result["blockers"]}
-    assert "MISSING_REQUIRED_CHAIN:maven:org.springframework:spring-core:5.3.39-osera.1" in codes
+    assert "MISSING_REQUIRED_CHAIN:pkg:maven/org.springframework/spring-core@5.3.39-osera.1" in codes
 
 
 def test_mismatched_or_missing_member_evidence_binding_blocks_readiness():
@@ -141,7 +141,7 @@ def test_evaluate_patch_readiness_bundle_returns_all_scenarios():
 
 
 def test_default_write_dataset_attaches_spring_web_readiness_and_preserves_adoption_data(tmp_path):
-    assert DEFAULT_DATASET_LIBRARY_ID == "maven|org.springframework|spring-web|5.3.39"
+    assert DEFAULT_DATASET_LIBRARY_ID == "pkg:maven/org.springframework/spring-web@5.3.39"
     committed_dataset = json.loads(SAMPLE_DATASET_PATH.read_text(encoding="utf-8"))
     committed_spring_web = next(
         (lib for lib in committed_dataset.get("libraries", []) if lib.get("id") == DEFAULT_DATASET_LIBRARY_ID),

@@ -2349,6 +2349,32 @@ function actionLink(label, href, options = {}) {
   return `<a${className} href="${escapeHtml(href)}"${target}${title}>${icon}${text}</a>`;
 }
 
+function parseRecordPurl(value) {
+  const raw = String(value || "").trim();
+  const match = /^pkg:([a-z][a-z0-9.+-]*)\/([^?#]+?)(?:@([^@?#]+))?(?:\?[^#]*)?(?:#.*)?$/i.exec(raw);
+  if (!match) return null;
+  try {
+    const ecosystem = match[1].toLowerCase();
+    const parts = match[2].split("/").filter(Boolean).map(decodeURIComponent);
+    if (!parts.length) return null;
+    const proj = parts[parts.length - 1];
+    const meta = parts.slice(0, -1).join("/");
+    const pkg = ecosystem === "maven" && meta ? `${meta}:${proj}` : (meta ? `${meta}/${proj}` : proj);
+    const packagePurl = `pkg:${ecosystem}/${[meta, proj].filter(Boolean).map(encodeURIComponent).join("/")}`;
+    return {
+      ecosystem,
+      namespace: ecosystem,
+      meta,
+      proj,
+      package: pkg,
+      version: match[3] ? decodeURIComponent(match[3]) : "",
+      package_purl: packagePurl
+    };
+  } catch {
+    return null;
+  }
+}
+
 function matchesProjectParam(record, value) {
   const query = String(value || "").trim().toLowerCase();
   if (!query) return false;
@@ -2356,6 +2382,10 @@ function matchesProjectParam(record, value) {
   const ecosystem = String(project.ecosystem || "").toLowerCase();
   const pkg = String(project.package || "").toLowerCase();
   const name = String(project.name || "").toLowerCase();
+  const parsedQuery = parseRecordPurl(query);
+  if (parsedQuery) {
+    return parsedQuery.ecosystem === ecosystem && parsedQuery.package.toLowerCase() === pkg;
+  }
   const firstColon = query.indexOf(":");
   if (firstColon > 0) {
     const queryEcosystem = query.slice(0, firstColon);
@@ -2366,13 +2396,41 @@ function matchesProjectParam(record, value) {
 }
 
 function splitCoordinate(record) {
+  const parsedPurl = parseRecordPurl(record.project?.purl || record.project?.package_purl || "");
+  if (parsedPurl) {
+    return {
+      namespace: parsedPurl.namespace,
+      meta: parsedPurl.meta,
+      proj: parsedPurl.proj,
+      package_purl: parsedPurl.package_purl
+    };
+  }
   const ecosystem = String(record.project?.ecosystem || "").toLowerCase();
   const pkg = String(record.project?.package || "");
   if (ecosystem === "maven") {
     const [group = "", artifact = ""] = pkg.split(":");
-    return { namespace: "maven", meta: group, proj: artifact };
+    return {
+      namespace: "maven",
+      meta: group,
+      proj: artifact,
+      package_purl: group && artifact ? `pkg:maven/${encodeURIComponent(group)}/${encodeURIComponent(artifact)}` : ""
+    };
   }
-  return { namespace: ecosystem, meta: "", proj: pkg };
+  if (pkg.startsWith("@") && pkg.includes("/")) {
+    const [scope = "", name = ""] = pkg.split("/", 2);
+    return {
+      namespace: ecosystem,
+      meta: scope,
+      proj: name,
+      package_purl: ecosystem && name ? `pkg:${ecosystem}/${encodeURIComponent(scope)}/${encodeURIComponent(name)}` : ""
+    };
+  }
+  return {
+    namespace: ecosystem,
+    meta: "",
+    proj: pkg,
+    package_purl: ecosystem && pkg ? `pkg:${ecosystem}/${encodeURIComponent(pkg)}` : ""
+  };
 }
 
 function cveIdsForLibrary(lib) {
@@ -2405,11 +2463,17 @@ function deriveEnterpriseOverlay(record, dataset, overlayLabel) {
     return emptyEnterpriseOverlay("No Risk Navigator collection selected");
   }
   const coord = splitCoordinate(record);
-  const matches = dataset.libraries.filter(lib =>
-    String(lib.namespace || "").toLowerCase() === coord.namespace &&
-    String(lib.meta || "") === coord.meta &&
-    String(lib.proj || "") === coord.proj
-  );
+  const matches = dataset.libraries.filter(lib => {
+    const libParsed = parseRecordPurl(lib.package_purl || lib.purl || lib.id || "");
+    if (coord.package_purl && libParsed && libParsed.package_purl.toLowerCase() === coord.package_purl.toLowerCase()) {
+      return true;
+    }
+    return (
+      String(lib.namespace || "").toLowerCase() === coord.namespace &&
+      String(lib.meta || "") === coord.meta &&
+      String(lib.proj || "") === coord.proj
+    );
+  });
   if (!matches.length) {
     return emptyEnterpriseOverlay(`${overlayLabel}: no matching package-version rows`);
   }

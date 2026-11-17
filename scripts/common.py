@@ -46,53 +46,24 @@ def slugify(text: str) -> str:
     return base or "scope"
 
 
-def canonical_package_name(namespace: str, name: str) -> str:
-    """Use the PyPA lookup identity for PyPI; preserve other ecosystems' names."""
-    return re.sub(r"[-_.]+", "-", name).lower() if namespace.lower() == "pypi" else name
-
-
-def split_coords(namespace: str, name: str) -> Tuple[str, str, str]:
-    ns = namespace.lower()
-    if ns == "maven" and ":" in name:
-        meta, proj = name.split(":", 1)
-    elif ns == "npm" and name.startswith("@") and "/" in name:
-        meta, proj = name.split("/", 1)
-    elif ns == "rpm" and "/" in name:
-        meta, proj = name.split("/", 1)
-    else:
-        meta = ""
-        proj = name
-    return ns, meta, canonical_package_name(ns, proj)
-
-
-def make_library_id(namespace: str, meta: str, proj: str, release: str) -> str:
-    return f"{namespace}|{meta}|{canonical_package_name(namespace, proj)}|{release}"
-
-
-def canonical_release(namespace: str, release: str) -> str:
-    """Return the package-manager canonical form for a release string.
-
-    OSV records sometimes use Git tag notation such as v1.2.3 for ecosystems
-    whose registries publish the package version as 1.2.3. Normalize that at
-    ingestion/build boundaries so version chains do not split the same release
-    into duplicate rows with conflicting vulnerability metadata.
-    """
-
-    value = str(release or "").strip()
-    ns = str(namespace or "").lower()
-    if ns in {"npm", "pypi"} and re.match(r"^[vV](?=\d)", value):
-        return value[1:]
-    return value
-
-
-def canonical_library_id(library_id: str) -> str:
-    namespace, meta, proj, release = parse_library_id(library_id)
-    return make_library_id(namespace, meta, proj, canonical_release(namespace, release))
-
-
-def parse_library_id(library_id: str) -> Tuple[str, str, str, str]:
-    namespace, meta, proj, release = library_id.split("|", 3)
-    return namespace, meta, canonical_package_name(namespace, proj), release
+from purl_identity import (
+    ParsedPurl,
+    canonical_library_id,
+    canonical_namespace,
+    canonical_package_id,
+    canonical_package_name,
+    canonical_release,
+    format_purl,
+    is_version_range_or_unresolved,
+    make_library_id,
+    make_package_id,
+    parse_library_id,
+    parse_package_id,
+    parse_purl_spec,
+    same_artifact_purl,
+    same_package_purl,
+    split_coords,
+)
 
 
 def is_ga_release(release: str) -> bool:

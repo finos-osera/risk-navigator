@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, Iterator, List, Optional, Sequence, Set, Tuple
 
-from common import canonical_package_name, canonical_release, split_coords
+from common import canonical_package_name, canonical_release, parse_package_id, split_coords
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE_DIR = ROOT / "data" / "sources" / "osv"
@@ -523,11 +523,9 @@ def load_package_allowlist(path: Optional[Path]) -> Optional[Set[Tuple[str, str,
         line = raw_line.strip()
         if not line or line.startswith("#"):
             continue
-        parts = [p.strip() for p in line.split("|")]
-        if len(parts) == 3:
-            ns, meta, proj = parts
-            if ns and proj:
-                out.add(normalize_package_key(ns, meta, proj))
+        ns, meta, proj = parse_package_id(line)
+        if ns and proj:
+            out.add(normalize_package_key(ns, meta, proj))
     return out or None
 
 

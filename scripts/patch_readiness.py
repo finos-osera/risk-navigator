@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Protocol, Sequence, Set
 
+from purl_identity import canonical_library_id
+
 
 VALID_CHECK_STATUSES = {"pass", "fail", "warn", "not-tested", "not-applicable"}
 DEFAULT_ADOPTED_MANDATORY_CHECKS = (
@@ -24,7 +26,7 @@ DEFAULT_ADOPTED_MANDATORY_CHECKS = (
     "REL-006",
     "EVD-001",
 )
-DEFAULT_DATASET_LIBRARY_ID = "maven|org.springframework|spring-web|5.3.39"
+DEFAULT_DATASET_LIBRARY_ID = "pkg:maven/org.springframework/spring-web@5.3.39"
 DEFAULT_CANDIDATE_ID = "ready-with-unrelated-broken-artifact"
 
 
@@ -428,11 +430,20 @@ def attach_patch_readiness_to_dataset(
             f"Unknown candidate ID {candidate_id!r}: not found in evaluated readiness bundle."
         )
 
+    canonical_target_id = canonical_library_id(library_id)
+    if not canonical_target_id:
+        raise ValueError(
+            f"Target library ID {library_id!r} was not found in dataset libraries."
+        )
     libraries = (dataset.get("libraries") or []) if isinstance(dataset, dict) else []
     matching_libs = [
         lib
         for lib in libraries
-        if isinstance(lib, dict) and lib.get("id") == library_id
+        if isinstance(lib, dict)
+        and (
+            lib.get("id") == library_id
+            or canonical_library_id(str(lib.get("id") or "")) == canonical_target_id
+        )
     ]
     if not matching_libs:
         raise ValueError(
