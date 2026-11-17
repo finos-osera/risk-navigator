@@ -5,7 +5,8 @@ def test_canonical_release_strips_tag_v_for_registry_versions():
     assert canonical_release("pypi", "v0.8.8") == "0.8.8"
     assert canonical_release("npm", "V1.2.3") == "1.2.3"
     assert canonical_release("maven", "v1.2.3") == "v1.2.3"
-    assert canonical_library_id("pypi||requests|v0.8.8") == "pypi||requests|0.8.8"
+    assert canonical_library_id("pypi||requests|v0.8.8") == "pkg:pypi/requests@0.8.8"
+    assert canonical_library_id("pkg:pypi/requests@v0.8.8") == "pkg:pypi/requests@0.8.8"
 
 
 def test_is_ga_release_accepts_ga_variants():

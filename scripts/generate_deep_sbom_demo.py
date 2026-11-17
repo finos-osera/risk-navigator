@@ -79,19 +79,11 @@ REPOS: RepoGraph = {
 }
 
 
+from common import parse_library_id
+
+
 def split_purl(purl: str) -> Tuple[str, str, str, str]:
-    body = purl.split(":", 1)[1]
-    namespace, rest = body.split("/", 1)
-    name_part, version = rest.rsplit("@", 1)
-    parts = [unquote(part) for part in name_part.split("/")]
-    if namespace in {"maven", "oci"} and len(parts) > 1:
-        group = "/".join(parts[:-1]) if namespace == "oci" else ".".join(".".join(parts[:-1]).split("."))
-        return namespace, group, parts[-1], version
-    if namespace == "rpm" and len(parts) > 1:
-        return namespace, parts[0], parts[-1], version
-    if namespace == "npm" and len(parts) > 1 and parts[0].startswith("@"):
-        return namespace, parts[0], parts[1], version
-    return namespace, "", parts[-1], version
+    return parse_library_id(purl)
 
 
 def component_for(purl: str) -> Dict[str, str]:

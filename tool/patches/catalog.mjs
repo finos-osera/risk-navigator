@@ -1,27 +1,31 @@
 // Pure catalog and estate matching functions shared by the coverage view and request cart.
+import { formatPurl, parseLibraryId, parsePurlSpec, sameArtifactPurl } from '../purl-identity.mjs';
+
 export const unique = values => [...new Set(values.filter(Boolean))].sort();
 const strings = value => Array.isArray(value) && value.every(x => typeof x === 'string' && x.trim());
 export function purl(value) {
-  if (typeof value !== 'string') return null;
-  const match = /^pkg:([a-z][a-z0-9.+-]*)\/([^?#]+)@([^@?#]+)(\?[^#]+)?(#.+)?$/.exec(value);
-  if (!match) return null;
-  try {
-    const name = decodeURIComponent(match[2]);
-    const version = decodeURIComponent(match[3]);
-    return { key: `${match[1]}/${name}`, ecosystem: match[1], name, version, exact: value };
-  } catch { return null; }
+  const parsed = parsePurlSpec(value, { requireVersion: true });
+  if (!parsed.valid) return null;
+  const decodedName = [parsed.namespace, parsed.name].filter(Boolean).join('/');
+  return {
+    key: `${parsed.type}/${decodedName}`,
+    ecosystem: parsed.type,
+    namespace: parsed.namespace,
+    name: decodedName,
+    package_purl: parsed.package_purl,
+    version: parsed.version,
+    exact: parsed.canonical_purl
+  };
 }
 export function libraryPurl(lib) {
-  if (purl(lib.purl)) return lib.purl;
+  if (!lib || typeof lib !== 'object') return '';
+  if (purl(lib.purl)) return purl(lib.purl).exact;
+  if (purl(lib.id)) return purl(lib.id).exact;
   if (!lib.namespace || !lib.proj || !lib.release) return '';
-  const name = [lib.meta, lib.proj].filter(Boolean).map(encodeURIComponent).join('/');
-  return `pkg:${lib.namespace}/${name}@${encodeURIComponent(lib.release)}`;
+  return formatPurl({ type: lib.namespace, namespace: lib.meta || '', name: lib.proj, version: lib.release });
 }
 export function sameArtifact(a, b) {
-  const x = purl(a), y = purl(b);
-  // Qualifiers/subpaths must not be silently discarded when proving consumption.
-  return !!x && !!y && x.key === y.key && x.version === y.version &&
-    (a.split('?')[1] || a.split('#')[1] || '') === (b.split('?')[1] || b.split('#')[1] || '');
+  return sameArtifactPurl(a, b);
 }
 export function normalizeFeed(doc, source = 'Imported feed', releaseSets = null) {
   // Accept the provider catalog contract used by the Python evaluator (#69).
@@ -153,9 +157,10 @@ export function inventoryLibraries(dataset) {
     const direct = !!edge[columns.indexOf('direct')];
     if (dataset.inventory_scope?.directOnly && !direct || dataset.inventory_scope?.transitiveOnly && direct) continue;
     if (!libraries.has(id)) {
-      const [namespace, meta, proj, release] = id.split('|');
+      const { namespace, meta, proj, release } = parseLibraryId(id);
       if (!namespace || !proj || !release || /[${}]/.test(release) || release === 'unspecified') continue;
-      libraries.set(id, {id, namespace, meta, proj, release, cves: [], inventory_only: true,
+      const canonicalId = formatPurl({ type: namespace, namespace: meta, name: proj, version: release }) || id;
+      libraries.set(id, {id: canonicalId, purl: canonicalId, namespace, meta, proj, release, cves: [], inventory_only: true,
         consumer_project_ids: [], direct_consumer_project_ids: []});
     }
     const lib = libraries.get(id);

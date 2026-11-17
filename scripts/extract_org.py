@@ -32,7 +32,7 @@ try:
 except ModuleNotFoundError:
     tomllib = None
 
-from common import canonical_release, make_library_id, parse_library_id, slugify
+from common import canonical_release, format_purl, make_library_id, parse_library_id, parse_purl_spec, slugify
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DB = ROOT / "data" / "vulns.db"
@@ -427,51 +427,28 @@ def parse_image_reference(image: str) -> Tuple[str, str, str, str]:
     return ("oci", meta, repo, normalize_version_text(tag))
 
 
-def parse_purl(purl: str, fallback: Dict[str, object]) -> Optional[Tuple[str, str, str, str]]:
-    """Return Risk Navigator coordinates from a package-url string."""
+def parse_purl(purl: str, fallback: Optional[Dict[str, object]] = None) -> Optional[Tuple[str, str, str, str]]:
+    """Return Risk Navigator coordinates from a package-url string using the shared PURL contract."""
+    fb = fallback or {}
+    parsed = parse_purl_spec(purl, require_version=False)
+    if parsed.valid:
+        release = normalize_version_text(parsed.version or str(fb.get("version") or "unspecified"))
+        return (parsed.type, parsed.namespace, parsed.name, release)
 
-    if not purl.startswith("pkg:"):
+    if not isinstance(purl, str) or not purl.startswith("pkg:"):
         return None
 
-    body = purl[4:]
-    body = body.split("#", 1)[0].split("?", 1)[0]
-    release = "unspecified"
+    body = purl[4:].split("#", 1)[0].split("?", 1)[0]
+    release = str(fb.get("version") or "unspecified")
     if "@" in body:
         body, release = body.rsplit("@", 1)
-
-    if "/" in body:
-        namespace, rest = body.split("/", 1)
-    else:
-        namespace, rest = body, ""
-
-    namespace = urllib.parse.unquote(namespace).lower()
-    rest = urllib.parse.unquote(rest)
-    parts = [part for part in rest.split("/") if part]
-
-    meta = ""
-    proj = ""
-    if namespace == "maven" and len(parts) >= 2:
-        meta = parts[0]
-        proj = parts[1]
-    elif namespace == "npm" and len(parts) >= 2 and parts[0].startswith("@"):
-        meta = parts[0]
-        proj = parts[1]
-    elif len(parts) >= 2:
-        meta = "/".join(parts[:-1])
-        proj = parts[-1]
-    elif parts:
-        proj = parts[0]
-
-    if not proj:
-        raw_name = str(fallback.get("name") or "").strip()
-        raw_group = str(fallback.get("group") or "").strip()
-        if raw_name:
-            proj = raw_name
-            meta = raw_group
-
-    if not namespace or not proj:
-        return None
-    return (namespace, meta, proj, normalize_version_text(release))
+    namespace, rest = body.split("/", 1) if "/" in body else (body, "")
+    namespace = urllib.parse.unquote(namespace).strip().lower()
+    raw_name = str(fb.get("name") or "").strip()
+    raw_group = str(fb.get("group") or "").strip()
+    if namespace and raw_name:
+        return (namespace, raw_group, raw_name, normalize_version_text(release))
+    return None
 
 
 def cyclonedx_component_coords(component: Dict[str, object]) -> Optional[Tuple[str, str, str, str]]:
@@ -489,6 +466,28 @@ def cyclonedx_component_coords(component: Dict[str, object]) -> Optional[Tuple[s
     # fit for the current demo and OpenRewrite cart behavior.
     namespace = "maven" if group else "generic"
     return (namespace, group, name, version)
+
+
+def cyclonedx_component_library_id(component: Dict[str, object]) -> Optional[str]:
+    """Produce canonical PURL library_id for a CycloneDX component, preserving incoming qualifiers/subpath."""
+    raw_purl = str(component.get("purl") or "").strip()
+    if raw_purl:
+        parsed_spec = parse_purl_spec(raw_purl, require_version=False)
+        if parsed_spec.valid:
+            release = normalize_version_text(parsed_spec.version or str(component.get("version") or "unspecified"))
+            return format_purl(
+                parsed_spec.type,
+                parsed_spec.namespace,
+                parsed_spec.name,
+                release,
+                qualifiers=parsed_spec.qualifiers,
+                subpath=parsed_spec.subpath,
+            )
+    coords = cyclonedx_component_coords(component)
+    if not coords:
+        return None
+    namespace, meta, proj, release = coords
+    return make_library_id(namespace, meta, proj, release)
 
 
 def cyclonedx_qualifier(component: Dict[str, object]) -> str:

@@ -3856,7 +3856,7 @@ def _sanitize_library_id_token(
         parts = val.split("|")
         if len(parts) == 4:
             clean_ver, _ = _strip_internal_version_suffix(parts[3], known_internal_tokens)
-            return f"{parts[0]}|{parts[1]}|{parts[2]}|{clean_ver}"
+            return make_library_id(parts[0], parts[1], parts[2], clean_ver)
     if known_internal_tokens and any(len(t) >= 3 and t.lower() in val.lower() for t in known_internal_tokens):
         return "<redacted-application>"
     return val

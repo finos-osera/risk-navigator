@@ -12,6 +12,7 @@ from collections import Counter
 from pathlib import Path
 
 from build_dataset import build_dataset
+from common import canonical_library_id, make_package_id, parse_package_id
 from extract_org import DepEdge, Project, write_scope_extract, now_iso
 from ingest_vulns import file_sha256
 from build_package_allowlist import read_dep_edges
@@ -41,7 +42,7 @@ def compact_dataset(dataset, edges):
     # show a short summary and the authoritative CVE reference for further detail.
     chains = {}
     for lib in dataset["libraries"]:
-        key = "|".join([lib["namespace"], lib["meta"], lib["proj"]])
+        key = make_package_id(lib["namespace"], lib["meta"], lib["proj"])
         chain = lib.get("version_chain", [])
         if key in chains and chains[key] != chain:
             raise ValueError(f"Inconsistent version chains for {key}")
@@ -57,8 +58,18 @@ def compact_dataset(dataset, edges):
     dataset["version_chains"] = chains
     # Preserve all extracted inventory, including packages without CVEs. Indexed
     # edges prevent repeating long coordinates and repository names thousands of times.
-    libraries = sorted({e.library_id for e in edges} | {e.parent_id for e in edges if e.parent_id})
-    projects = sorted({e.consumer_id for e in edges})
+    normalized_edges = [
+        DepEdge(
+            consumer_id=e.consumer_id,
+            library_id=canonical_library_id(e.library_id) or e.library_id,
+            direct=e.direct,
+            qualifier=e.qualifier,
+            parent_id=(canonical_library_id(e.parent_id) or e.parent_id) if e.parent_id else "",
+        )
+        for e in edges
+    ]
+    libraries = sorted({e.library_id for e in normalized_edges} | {e.parent_id for e in normalized_edges if e.parent_id})
+    projects = sorted({e.consumer_id for e in normalized_edges})
     lib_index = {value: index for index, value in enumerate(libraries)}
     project_index = {value: index for index, value in enumerate(projects)}
     dataset["dependency_inventory"] = {
@@ -67,7 +78,7 @@ def compact_dataset(dataset, edges):
         "libraries": libraries, "projects": projects,
         "edge_columns": ["project", "library", "direct", "qualifier", "parent"],
         "edges": sorted({(project_index[e.consumer_id], lib_index[e.library_id], e.direct, e.qualifier,
-                          lib_index[e.parent_id] if e.parent_id else None) for e in edges}, key=str),
+                          lib_index[e.parent_id] if e.parent_id else None) for e in normalized_edges}, key=str),
     }
     return dataset
 
@@ -120,7 +131,13 @@ def main():
         if file_sha256(ROOT / "data/local/osv/all.zip") != fingerprint["source_zip_sha256"]:
             raise RuntimeError("Local OSV archive changed; rerun without --reuse-vulnerabilities")
         allowlist = ROOT / f"data/local/allowlists/{SCOPE}-packages.txt"
-        expected_keys = {tuple(line.split("|")) for line in allowlist.read_text().splitlines() if line and not line.startswith("#")}
+        expected_keys = set()
+        for line in allowlist.read_text().splitlines():
+            if not line or line.startswith("#"):
+                continue
+            ns, meta, proj = parse_package_id(line)
+            if ns and proj:
+                expected_keys.add((ns, meta, proj))
         if read_dep_edges(raw / "02-dep-edges.csv") != expected_keys or file_sha256(allowlist) != fingerprint["package_allowlist_sha256"]:
             raise RuntimeError("Inventory packages changed; rerun without --reuse-vulnerabilities")
     projects = [Project(**row) for row in read_rows(raw / "01-consumer-projects.csv")]

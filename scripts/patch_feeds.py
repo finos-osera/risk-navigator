@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 
+from purl_identity import parse_purl_spec
+
 VALID_VEX_STATUSES = ("fixed", "affected", "not_affected", "under_investigation")
 RELEASED_STATES = ("released",)
 UNRELEASED_STATES = ("planned", "supported_line", "backlog_closed", "draft", "candidate")
@@ -51,61 +53,33 @@ def _parse_iso_timestamp(value: Any) -> str | None:
 
 def parse_purl(purl: Any) -> dict[str, Any]:
     """Parse a Package URL (PURL) in alignment with OSERA community#39 / community#40 feed-data.mjs."""
-    if not isinstance(purl, str) or not purl.strip():
+    parsed = parse_purl_spec(purl, require_version=True)
+    if not parsed.valid:
+        decoded_lib = (
+            f"{parsed.namespace}:{parsed.name}"
+            if parsed.namespace and parsed.name
+            else (parsed.name or parsed.raw)
+        )
         return {
             "valid": False,
-            "purl": str(purl or ""),
-            "ecosystem_type": "unknown",
-            "ecosystem": "Unknown",
-            "library": "",
-            "version": "",
-            "error": "Missing product identifier",
+            "purl": parsed.raw,
+            "ecosystem_type": parsed.type or ("unknown" if not parsed.raw else "other"),
+            "ecosystem": ECOSYSTEM_LABELS.get(parsed.type, parsed.type or ("Unknown" if not parsed.raw else "Other")),
+            "library": "" if not parsed.raw else decoded_lib,
+            "version": parsed.version,
+            "error": parsed.error,
         }
-    raw = purl.strip()
-    match = re.match(r"^pkg:([^/]+)/(.+)$", raw)
-    if not match:
-        return {
-            "valid": False,
-            "purl": raw,
-            "ecosystem_type": "other",
-            "ecosystem": "Other",
-            "library": raw,
-            "version": "",
-            "error": f"Unsupported or non-PURL product identifier: {raw}",
-        }
-    eco_type = match.group(1).strip().lower()
-    coordinate = match.group(2).split("?")[0].split("#")[0]
-    at_idx = coordinate.rfind("@")
-    if at_idx < 0:
-        decoded_lib = unquote(coordinate).replace("/", ":")
-        return {
-            "valid": False,
-            "purl": raw,
-            "ecosystem_type": eco_type,
-            "ecosystem": ECOSYSTEM_LABELS.get(eco_type, eco_type),
-            "library": decoded_lib,
-            "version": "",
-            "error": f"Missing version in product PURL: {raw}",
-        }
-    decoded_lib = unquote(coordinate[:at_idx]).replace("/", ":")
-    decoded_ver = unquote(coordinate[at_idx + 1 :]).strip()
-    if not decoded_lib or not decoded_ver:
-        return {
-            "valid": False,
-            "purl": raw,
-            "ecosystem_type": eco_type,
-            "ecosystem": ECOSYSTEM_LABELS.get(eco_type, eco_type),
-            "library": decoded_lib,
-            "version": decoded_ver,
-            "error": f"Incomplete package coordinate or version in PURL: {raw}",
-        }
+    decoded_lib = f"{parsed.namespace}:{parsed.name}" if parsed.namespace else parsed.name
     return {
         "valid": True,
-        "purl": f"pkg:{eco_type}/{coordinate[:at_idx]}@{decoded_ver}",
-        "ecosystem_type": eco_type,
-        "ecosystem": ECOSYSTEM_LABELS.get(eco_type, eco_type),
+        "purl": parsed.canonical_purl,
+        "package_purl": parsed.package_purl,
+        "ecosystem_type": parsed.type,
+        "ecosystem": ECOSYSTEM_LABELS.get(parsed.type, parsed.type),
         "library": decoded_lib,
-        "version": decoded_ver,
+        "version": parsed.version,
+        "qualifiers": dict(parsed.qualifiers),
+        "subpath": parsed.subpath,
         "error": None,
     }
 

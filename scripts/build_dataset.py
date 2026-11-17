@@ -25,6 +25,7 @@ from common import (
     find_nearest_safe,
     is_ga_release,
     make_library_id,
+    make_package_id,
     parse_library_id,
     risk_signal,
 )
@@ -997,6 +998,8 @@ def build_dataset(
 
         lib_obj = {
             "id": lid,
+            "purl": lid,
+            "package_purl": make_package_id(namespace, meta, proj),
             "namespace": namespace,
             "meta": meta,
             "proj": proj,
@@ -1090,7 +1093,7 @@ def build_dataset(
         lid = lib["id"]
         lib_cve_count = to_int(lib.get("cve_count"), 0)
         for amp in lib.get("all_amplifiers", []):
-            amp_id = f"{amp['namespace']}|{amp['meta']}|{amp['proj']}"
+            amp_id = make_package_id(amp["namespace"], amp["meta"], amp["proj"])
             label = f"{amp['namespace']}/{amp['meta']}/{amp['proj']}"
             state = amplifier_cluster_map.setdefault(
                 amp_id,

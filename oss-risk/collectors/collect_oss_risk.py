@@ -590,6 +590,7 @@ def parse_openvex_purl(purl: Any) -> Optional[Dict[str, Any]]:
     osera_seq = int(osera_match.group("seq")) if osera_match else None
     return {
         "purl": f"pkg:{eco}/{coord_and_ver[:at_idx]}@{version}",
+        "package_purl": f"pkg:{eco}/{coord_and_ver[:at_idx]}",
         "ecosystem": eco,
         "package": package,
         "version": version,

@@ -11,7 +11,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import quote
 
-from common import canonical_library_id, parse_library_id, split_coords
+from common import canonical_library_id, make_library_id, parse_library_id, split_coords
 from extract_org import now_iso
 from ingest_vulns import ingest_records
 
@@ -55,7 +55,7 @@ def observed_record(record, identities, queried=()):
         return None
     result = copy.deepcopy(record)
     confirmed = {canonical_library_id(lid) for lid in identities}
-    queried = set(queried)
+    queried = {canonical_library_id(lid) for lid in queried}
     for affected in result.get('affected', []):
         package = affected.get('package', {})
         coords = split_coords(package.get('ecosystem', ''), package.get('name', ''))
@@ -64,7 +64,7 @@ def observed_record(record, identities, queried=()):
         # different exact query rejected. Do not reintroduce those during ingest.
         retained = []
         for version in affected.get('versions', []):
-            lid = canonical_library_id('|'.join((*coords, version)))
+            lid = canonical_library_id(make_library_id(*coords, version))
             if lid not in queried or lid in confirmed:
                 retained.append(version)
         affected['versions'] = sorted(set(retained) | set(observed))
@@ -97,7 +97,7 @@ def resolve_inventory(db, edges, local):
         # Normalize legacy DB rows too: exact-query results must supersede all
         # equivalent package spellings and v/V release prefixes in the archive.
         rows = conn.execute('SELECT rowid, namespace, meta, proj, release FROM vuln_version_edges').fetchall()
-        stale = [(row[0],) for row in rows if canonical_library_id('|'.join(row[1:])) in queried]
+        stale = [(row[0],) for row in rows if canonical_library_id(make_library_id(*row[1:])) in queried]
         conn.executemany('DELETE FROM vuln_version_edges WHERE rowid=?', stale)
         ingest_records(conn, adjusted, progress_every=0)
     finally:

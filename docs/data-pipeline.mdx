@@ -145,7 +145,7 @@ The top-level JSON shape is:
       "id": "github|finos|legend-studio",
       "project_ref": "github/finos/legend-studio",
       "department": "SBOM Scan",
-      "vulnerable_library_ids": ["maven|org.springframework|spring-web|5.3.39"],
+      "vulnerable_library_ids": ["pkg:maven/org.springframework/spring-web@5.3.39"],
       "vulnerable_library_count": 1,
       "direct_vulnerable_library_count": 0,
       "transitive_vulnerable_library_count": 1
@@ -153,7 +153,7 @@ The top-level JSON shape is:
   ],
   "libraries": [
     {
-      "id": "maven|org.springframework|spring-web|5.3.39",
+      "id": "pkg:maven/org.springframework/spring-web@5.3.39",
       "namespace": "maven",
       "meta": "org.springframework",
       "proj": "spring-web",
@@ -244,21 +244,42 @@ github|finos|legend-studio,github,finos,legend-studio,main,github/finos/legend-s
 | Column | Meaning |
 |---|---|
 | `consumer_id` | Project ID from `01-consumer-projects.csv`. |
-| `library_id` | Package coordinate: `namespace|meta|proj|release`. |
+| `library_id` | Canonical versioned Package URL (`pkg:<type>/<namespace>/<name>@<version>`). |
 | `direct` | `1` for direct dependency, `0` for transitive dependency. |
 | `qualifier` | Typical values: `runtime`, `test`, `build`, `module-load`. |
-| `parent_id` | Parent package that introduces a transitive dependency. Empty for direct dependencies. |
+| `parent_id` | Parent package PURL that introduces a transitive dependency. Empty for direct dependencies. |
 
 Example:
 
 ```csv
 consumer_id,library_id,direct,qualifier,parent_id
-github|finos|legend-studio,maven|org.springframework.boot|spring-boot-starter-web|2.7.18,1,runtime,
-github|finos|legend-studio,maven|org.springframework|spring-web|5.3.39,0,runtime,maven|org.springframework.boot|spring-boot-starter-web|2.7.18
+github|finos|legend-studio,pkg:maven/org.springframework.boot/spring-boot-starter-web@2.7.18,1,runtime,
+github|finos|legend-studio,pkg:maven/org.springframework/spring-web@5.3.39,0,runtime,pkg:maven/org.springframework.boot/spring-boot-starter-web@2.7.18
 ```
 
 Direct/transitive accuracy matters. It drives direct-only filters, transitive
 exposure, amplifier analysis, and OpenRewrite cart eligibility.
+
+## Package identity and PURL contract
+
+Risk Navigator standardizes package identity on the
+[Package URL (`purl`) specification](https://github.com/package-url/purl-spec)
+across Python scripts (`scripts/purl_identity.py`) and browser/Node tools
+(`tool/purl-identity.mjs`):
+
+| Surface | Producer / Consumer | Identity rule |
+|---|---|---|
+| Shared helpers | `scripts/purl_identity.py`, `scripts/common.py`, `tool/purl-identity.mjs` | Shared parsing, percent-encoding, ecosystem normalization (PyPI PEP 503, scoped npm `%40scope`, Maven group/artifact case preservation, qualifiers, and subpaths). |
+| Extraction & estate import | `scripts/extract_org.py`, `scripts/estate_import.py`, `scripts/generate_deep_sbom_demo.py` | Emits canonical versioned PURLs (`pkg:<type>/...`) for libraries while keeping consumer project/application IDs (`github\|org\|repo`) and scope IDs strictly separate. |
+| Vulnerability & dataset build | `scripts/ingest_vulns.py`, `scripts/build_package_allowlist.py`, `scripts/build_dataset.py`, `scripts/validate_dataset.py` | Distinguishes versionless package identity (`pkg:<type>/<ns>/<name>`), versioned artifact identity (`...@<version>[?<qualifiers>][#<subpath>]`), and version range expressions (never promoted to exact artifact IDs). |
+| Patch feeds, readiness & UI | `scripts/patch_feeds.py`, `scripts/patch_readiness.py`, `tool/patches/*.mjs`, `tool/risk-navigator.html`, `oss-risk/browser.html` | Matches feeds, readiness bundles, and saved links/state on canonical PURLs while explicitly resolving legacy 4-part (`ecosystem\|namespace\|name\|version`) and 3-part pipe IDs during transition; rejects ambiguous colon-separated coordinates and fails clearly on unmatched CLI write targets. |
+
+To migrate or verify raw CSVs and published JSON datasets idempotently:
+
+```bash
+python3 scripts/migrate_purl_identities.py --check
+python3 scripts/migrate_purl_identities.py --write
+```
 
 ## SBOM input path
 

@@ -1833,8 +1833,34 @@ function kevSearchUrl(cveId) {
   return `${KEV_CATALOG_BASE}?field_date_added_wrapper=all&items_per_page=20&search_api_fulltext=${encodeURIComponent(cve)}&sort_by=field_date_added`;
 }
 
+function makeLibraryId(namespace, meta, proj, release) {
+  const ns = String(namespace || "").trim().toLowerCase();
+  const m = String(meta || "").trim();
+  const p = String(proj || "").trim();
+  const r = String(release || "").trim();
+  if (!ns || !p || !r) return "";
+  const path = [m, p].filter(Boolean).map(encodeURIComponent).join("/");
+  return `pkg:${ns}/${path}@${encodeURIComponent(r)}`;
+}
+
 function parseLibraryId(id) {
-  const [namespace = "", meta = "", proj = "", release = ""] = String(id || "").split("|");
+  const raw = String(id || "").trim();
+  if (raw.startsWith("pkg:")) {
+    const match = /^pkg:([a-z][a-z0-9.+-]*)\/([^?#]+?)(?:@([^@?#]+))?(?:\?[^#]*)?(?:#.*)?$/i.exec(raw);
+    if (match) {
+      try {
+        const namespace = match[1].toLowerCase();
+        const parts = match[2].split("/").filter(Boolean).map(decodeURIComponent);
+        const proj = parts.length ? parts[parts.length - 1] : "";
+        const meta = parts.length > 1 ? parts.slice(0, -1).join("/") : "";
+        const release = match[3] ? decodeURIComponent(match[3]) : "";
+        return { namespace, meta, proj, release };
+      } catch {
+        return { namespace: "", meta: "", proj: "", release: "" };
+      }
+    }
+  }
+  const [namespace = "", meta = "", proj = "", release = ""] = raw.split("|");
   return { namespace, meta, proj, release };
 }
 
@@ -3772,8 +3798,9 @@ function findLatestSameMinor(lib) {
   });
   if (!inMinor.length) return null;
   const latest = inMinor[inMinor.length - 1];
-  const libId = `${lib.namespace}|${lib.meta}|${lib.proj}|${latest.release}`;
-  const known = (state.dataset.libraries || []).find(x => x.id === libId);
+  const purlId = makeLibraryId(lib.namespace, lib.meta, lib.proj, latest.release);
+  const legacyId = `${lib.namespace}|${lib.meta}|${lib.proj}|${latest.release}`;
+  const known = (state.dataset.libraries || []).find(x => x.id === purlId || x.id === legacyId);
   return {
     release: latest.release,
     cve_count: Number(latest.cve_count || 0),

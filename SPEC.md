@@ -255,7 +255,7 @@ a system family, a region. Keep them roughly 1k–200k consumer projects each.
 
   "libraries": [
     {
-      "id": "maven|org.springframework|spring-web|5.3.39",
+      "id": "pkg:maven/org.springframework/spring-web@5.3.39",
       "namespace": "maven",
       "meta": "org.springframework",
       "proj": "spring-web",
@@ -339,9 +339,9 @@ a system family, a region. Keep them roughly 1k–200k consumer projects each.
 
   "amplifier_clusters": [
     {
-      "amplifier_id": "maven|org.springframework.boot|spring-boot-starter",
+      "amplifier_id": "pkg:maven/org.springframework.boot/spring-boot-starter",
       "amplifier_label": "maven/org.springframework.boot/spring-boot-starter",
-      "amplified_libraries": ["maven|org.yaml|snakeyaml|1.30", "..."],
+      "amplified_libraries": ["pkg:maven/org.yaml/snakeyaml@1.30", "..."],
       "consumer_project_count_affected": 234,
       "cve_count_total": 89
     }
@@ -1502,8 +1502,8 @@ project root to each library, and emits:
 ```csv
 # data/raw/<scope>/02-dep-edges.csv
 consumer_id,library_id,direct,qualifier
-maven|com.example|api-svc,maven|org.springframework|spring-context|5.3.39,1,runtime
-maven|com.example|api-svc,maven|org.springframework|spring-core|5.3.39,0,runtime
+github|com.example|api-svc,pkg:maven/org.springframework/spring-context@5.3.39,1,runtime
+github|com.example|api-svc,pkg:maven/org.springframework/spring-core@5.3.39,0,runtime
 ```
 
 > **Tooling tip:** if you don't already have CycloneDX SBOMs,
@@ -1522,9 +1522,9 @@ Joining OSV → org via the lib coord gives you this CSV. One row per
 
 ```csv
 library_id,cve_id,cvss_base,cvss_temporal,priority,exploitability
-maven|org.springframework|spring-context|5.3.39,CVE-2024-38820,5.3,4.8,P3,FUNCTIONAL
-maven|org.springframework|spring-context|5.3.39,CVE-2024-38827,4.8,4.2,P3,POC
-maven|org.springframework|spring-context|5.3.39,CVE-2025-22233,5.3,4.8,P3,FUNCTIONAL
+pkg:maven/org.springframework/spring-context@5.3.39,CVE-2024-38820,5.3,4.8,P3,FUNCTIONAL
+pkg:maven/org.springframework/spring-context@5.3.39,CVE-2024-38827,4.8,4.2,P3,POC
+pkg:maven/org.springframework/spring-context@5.3.39,CVE-2025-22233,5.3,4.8,P3,FUNCTIONAL
 ```
 
 `cvss_temporal`, `priority`, `exploitability` are convenient extras you can
@@ -1538,7 +1538,7 @@ script joins everything:
 
 ```jsonc
 {
-  "id": "maven|org.springframework|spring-context|5.3.39",
+  "id": "pkg:maven/org.springframework/spring-context@5.3.39",
   "namespace": "maven",
   "meta": "org.springframework",
   "proj": "spring-context",

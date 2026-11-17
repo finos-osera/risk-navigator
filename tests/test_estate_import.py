@@ -257,7 +257,7 @@ def test_preserves_purls_qualifiers_subpaths_digests_paths_scopes_and_timestamps
     comps_by_id = {c["library_id"]: c for c in contract["components"]}
 
     # Qualifier preservation on RPM package
-    openssl = comps_by_id["rpm|redhat|openssl-libs|3.0.7-24.el9"]
+    openssl = comps_by_id["pkg:rpm/redhat/openssl-libs@3.0.7-24.el9"]
     assert openssl["qualifiers"] == {"arch": ["x86_64"], "distro": ["rhel-9.3"]}
     assert openssl["identity_status"] == "qualified_or_repackaged"
     assert any("distro=rhel-9.3" in r for r in openssl["uncertain_match_reasons"])
@@ -269,7 +269,7 @@ def test_preserves_purls_qualifiers_subpaths_digests_paths_scopes_and_timestamps
     ]
 
     # Internally repackaged library survival & visibility
-    repackaged = comps_by_id["maven|com.fasterxml.jackson.core|jackson-databind|2.13.3-acme-internal-1"]
+    repackaged = comps_by_id["pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3-acme-internal-1"]
     assert repackaged["is_repackaged"] is True
     assert repackaged["identity_status"] == "qualified_or_repackaged"
     assert repackaged["qualifiers"]["classifier"] == ["shaded"]
@@ -277,17 +277,17 @@ def test_preserves_purls_qualifiers_subpaths_digests_paths_scopes_and_timestamps
     assert any("internally repackaged" in r for r in repackaged["uncertain_match_reasons"])
 
     # Ambiguous identity visibility
-    ambiguous = comps_by_id["generic|unknown|libcrypto|1.1.1k"]
+    ambiguous = comps_by_id["pkg:generic/unknown/libcrypto@1.1.1k"]
     assert ambiguous["identity_status"] == "ambiguous"
     assert any("generic ecosystem" in r or "missing vendor/group" in r for r in ambiguous["uncertain_match_reasons"])
 
     # Subpath preservation on Go package from SPDX
-    gin = comps_by_id["golang|github.com/gin-gonic|gin|1.9.0"]
+    gin = comps_by_id["pkg:golang/github.com/gin-gonic/gin@1.9.0"]
     assert gin["subpaths"] == ["binding/json"]
     assert "pkg:golang/github.com/gin-gonic/gin@v1.9.0#binding/json" in gin["observed_purls"]
 
     # Transitive dependency paths & shared component across payments-engine and settlement-worker
-    jackson = comps_by_id["maven|com.fasterxml.jackson.core|jackson-databind|2.13.3"]
+    jackson = comps_by_id["pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3"]
     assert jackson["total_consumer_count"] == 2
     assert jackson["direct_consumer_count"] == 0
     assert jackson["transitive_consumer_count"] == 2
@@ -296,13 +296,13 @@ def test_preserves_purls_qualifiers_subpaths_digests_paths_scopes_and_timestamps
     assert jackson["observed_at"] == "2026-10-24T12:00:00Z"
     assert [
         "github|acme|payments-engine|main",
-        "maven|org.springframework|spring-web|5.3.20",
-        "maven|com.fasterxml.jackson.core|jackson-databind|2.13.3",
+        "pkg:maven/org.springframework/spring-web@5.3.20",
+        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3",
     ] in jackson["dependency_paths"]
     assert [
         "github|acme|settlement-worker|main",
-        "maven|org.springframework|spring-web|5.3.20",
-        "maven|com.fasterxml.jackson.core|jackson-databind|2.13.3",
+        "pkg:maven/org.springframework/spring-web@5.3.20",
+        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3",
     ] in jackson["dependency_paths"]
 
 
@@ -337,7 +337,7 @@ def test_missing_graphs_produce_unknown_classification_and_suppress_direct_recip
     libs_by_id = {lib["id"]: lib for lib in dataset["libraries"]}
 
     # Graphless SBOM component: log4j-core@2.14.1 in legacy-batch-ledger
-    log4j = libs_by_id["maven|org.apache.logging.log4j|log4j-core|2.14.1"]
+    log4j = libs_by_id["pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"]
     assert log4j["dependency_classification"] == "unknown"
     assert log4j["direct_consumer_count"] == 0
     assert log4j["transitive_consumer_count"] == 0
@@ -345,14 +345,14 @@ def test_missing_graphs_produce_unknown_classification_and_suppress_direct_recip
     assert log4j["unknown_consumer_project_ids"] == ["github|acme|legacy-batch-ledger|main"]
 
     # Graphless component across 2 graphless apps (legacy-batch-ledger + treasury-portal): snakeyaml@1.30
-    snakeyaml = libs_by_id["maven|org.yaml|snakeyaml|1.30"]
+    snakeyaml = libs_by_id["pkg:maven/org.yaml/snakeyaml@1.30"]
     assert snakeyaml["dependency_classification"] == "unknown"
     assert snakeyaml["direct_consumer_count"] == 0
     assert snakeyaml["transitive_consumer_count"] == 0
     assert snakeyaml["unknown_consumer_count"] == 2
 
     # Repeated SBOM imports across builds/deployments did not inflate exposure counts on spring-web
-    spring_web = libs_by_id["maven|org.springframework|spring-web|5.3.20"]
+    spring_web = libs_by_id["pkg:maven/org.springframework/spring-web@5.3.20"]
     assert spring_web["dependency_classification"] == "direct"
     assert spring_web["total_consumer_count"] == 2
     assert spring_web["direct_consumer_count"] == 2
@@ -362,16 +362,16 @@ def test_missing_graphs_produce_unknown_classification_and_suppress_direct_recip
     # Remediation recipe generation suppresses unknown (graphless) and transitive-only libraries
     recipes = generate_remediation_recipes(dataset["libraries"], scope_name="acme-estate")
     recipe_lib_ids = {r["library_id"] for r in recipes["recipes"]}
-    assert "maven|org.springframework|spring-web|5.3.20" in recipe_lib_ids
-    assert "maven|com.fasterxml.jackson.core|jackson-databind|2.13.3-acme-internal-1" in recipe_lib_ids
-    assert "maven|org.apache.logging.log4j|log4j-core|2.14.1" not in recipe_lib_ids
-    assert "maven|org.yaml|snakeyaml|1.30" not in recipe_lib_ids
-    assert "maven|com.fasterxml.jackson.core|jackson-databind|2.13.3" not in recipe_lib_ids
+    assert "pkg:maven/org.springframework/spring-web@5.3.20" in recipe_lib_ids
+    assert "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3-acme-internal-1" in recipe_lib_ids
+    assert "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1" not in recipe_lib_ids
+    assert "pkg:maven/org.yaml/snakeyaml@1.30" not in recipe_lib_ids
+    assert "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3" not in recipe_lib_ids
 
     suppressed_by_id = {s["library_id"]: s for s in recipes["suppressed"]}
-    assert suppressed_by_id["maven|org.apache.logging.log4j|log4j-core|2.14.1"]["reason"] == "dependency_classification_unknown_missing_graph"
-    assert suppressed_by_id["maven|org.yaml|snakeyaml|1.30"]["reason"] == "dependency_classification_unknown_missing_graph"
-    assert suppressed_by_id["maven|com.fasterxml.jackson.core|jackson-databind|2.13.3"]["reason"] == "no_direct_consumers_transitive_only"
+    assert suppressed_by_id["pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"]["reason"] == "dependency_classification_unknown_missing_graph"
+    assert suppressed_by_id["pkg:maven/org.yaml/snakeyaml@1.30"]["reason"] == "dependency_classification_unknown_missing_graph"
+    assert suppressed_by_id["pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3"]["reason"] == "no_direct_consumers_transitive_only"
 
     # Completeness and unmapped records are reported
     estate_meta = dataset["meta"]["estate_import"]
@@ -421,12 +421,12 @@ def test_company_overlay_modifies_filtering_and_prioritization_without_disclosin
     base_libs = {lib["id"]: lib for lib in base_dataset["libraries"]}
     over_libs = {lib["id"]: lib for lib in overlaid["libraries"]}
 
-    assert over_libs["maven|org.springframework|spring-web|5.3.20"]["risk_signal"] > base_libs["maven|org.springframework|spring-web|5.3.20"]["risk_signal"]
-    assert over_libs["maven|org.apache.logging.log4j|log4j-core|2.14.1"]["risk_signal"] < base_libs["maven|org.apache.logging.log4j|log4j-core|2.14.1"]["risk_signal"]
+    assert over_libs["pkg:maven/org.springframework/spring-web@5.3.20"]["risk_signal"] > base_libs["pkg:maven/org.springframework/spring-web@5.3.20"]["risk_signal"]
+    assert over_libs["pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"]["risk_signal"] < base_libs["pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"]["risk_signal"]
 
     # Runtime constraint (major_upgrade_blocked=True on payments-engine) escalates MAJOR upgrade
     # on repackaged jackson-databind@2.13.3-acme-internal-1 -> 2.15.0 to CREATE_LIBRARY_FORK
-    repackaged_over = over_libs["maven|com.fasterxml.jackson.core|jackson-databind|2.13.3-acme-internal-1"]
+    repackaged_over = over_libs["pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3-acme-internal-1"]
     assert repackaged_over["overlay_priority"]["runtime_constrained"] is True
     assert repackaged_over["overlay_recommended_action"] == "CREATE_LIBRARY_FORK"
 
@@ -513,8 +513,8 @@ def test_company_overlay_modifies_filtering_and_prioritization_without_disclosin
     assert jackson_pub["dependency_paths"] == [
         [
             "<redacted-application>",
-            "maven|org.springframework|spring-web|5.3.20",
-            "maven|com.fasterxml.jackson.core|jackson-databind|2.13.3",
+            "pkg:maven/org.springframework/spring-web@5.3.20",
+            "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3",
         ]
     ]
     repackaged_pub = next(
@@ -649,13 +649,13 @@ def test_two_versions_simultaneously_deployed_in_production_and_view_semantics()
     prod_comps = {c["library_id"]: c for c in all_prod_view["components"]}
 
     # spring-web is in both 1.0.0 and 2.0.0 -> 1 logical app, 2 active app versions, 2 active deployments
-    spring = prod_comps["maven|org.springframework|spring-web|5.3.20"]
+    spring = prod_comps["pkg:maven/org.springframework/spring-web@5.3.20"]
     assert spring["affected_application_count"] == 1
     assert spring["affected_application_version_count"] == 2
     assert spring["affected_deployment_count"] == 2
 
     # log4j-core is only in 1.0.0, which is still active in US production -> must remain visible!
-    log4j = prod_comps["maven|org.apache.logging.log4j|log4j-core|2.14.1"]
+    log4j = prod_comps["pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"]
     assert log4j["affected_application_count"] == 1
     assert log4j["affected_application_version_count"] == 1
     assert log4j["consumer_application_version_ids"] == ["github|acme|order-router|main@1.0.0"]
@@ -665,9 +665,9 @@ def test_two_versions_simultaneously_deployed_in_production_and_view_semantics()
     assert latest_prod_view["evaluated_application_count"] == 1
     assert latest_prod_view["evaluated_application_version_count"] == 1
     latest_comps = {c["library_id"]: c for c in latest_prod_view["components"]}
-    assert "maven|org.apache.logging.log4j|log4j-core|2.14.1" not in latest_comps
-    assert latest_comps["maven|org.springframework|spring-web|5.3.20"]["affected_application_version_count"] == 1
-    assert latest_comps["maven|com.fasterxml.jackson.core|jackson-databind|2.15.0"]["affected_application_count"] == 1
+    assert "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1" not in latest_comps
+    assert latest_comps["pkg:maven/org.springframework/spring-web@5.3.20"]["affected_application_version_count"] == 1
+    assert latest_comps["pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.15.0"]["affected_application_count"] == 1
 
 
 def test_historical_or_superseded_build_is_excluded_from_active_components() -> None:
@@ -748,15 +748,15 @@ def test_historical_or_superseded_build_is_excluded_from_active_components() -> 
     assert contract["completeness"]["historical_builds_excluded"] == 2
 
     active_lids = {c["library_id"] for c in contract["components"]}
-    assert active_lids == {"maven|org.springframework|spring-web|5.3.32"}
-    assert "maven|commons-collections|commons-collections|3.2.1" not in active_lids
-    assert "maven|org.yaml|snakeyaml|1.30" not in active_lids
+    assert active_lids == {"pkg:maven/org.springframework/spring-web@5.3.32"}
+    assert "pkg:maven/commons-collections/commons-collections@3.2.1" not in active_lids
+    assert "pkg:maven/org.yaml/snakeyaml@1.30" not in active_lids
 
     # Historical components remain auditable in historical_components and all_imported view
     hist_lids = {c["library_id"] for c in app["historical_components"]}
     assert hist_lids == {
-        "maven|commons-collections|commons-collections|3.2.1",
-        "maven|org.yaml|snakeyaml|1.30",
+        "pkg:maven/commons-collections/commons-collections@3.2.1",
+        "pkg:maven/org.yaml/snakeyaml@1.30",
     }
     all_imported_view = evaluate_estate_view(contract, "all_imported")
     assert len(all_imported_view["components"]) == 3
@@ -859,7 +859,7 @@ def test_equivalent_spdx_and_cyclonedx_inputs_produce_identical_identities_and_c
 
     cdx_comp = cdx_contract["components"][0]
     spdx_comp = spdx_contract["components"][0]
-    assert cdx_comp["library_id"] == spdx_comp["library_id"] == "maven|org.springframework|spring-web|5.3.20"
+    assert cdx_comp["library_id"] == spdx_comp["library_id"] == "pkg:maven/org.springframework/spring-web@5.3.20"
     assert cdx_comp["total_consumer_count"] == spdx_comp["total_consumer_count"] == 1
     assert cdx_comp["affected_application_version_count"] == spdx_comp["affected_application_version_count"] == 2
     assert cdx_comp["affected_deployment_count"] == spdx_comp["affected_deployment_count"] == 2
@@ -1051,25 +1051,25 @@ def test_replacement_build_same_version_and_staging_build_same_version_isolation
 
     # 1. Superseded build b1 (log4j 2.14.1) must NOT appear in any active view
     active_deploy_lids = {c["library_id"] for c in evaluate_estate_view(contract, "all_active_deployments")["components"]}
-    assert "maven|org.apache.logging.log4j|log4j-core|2.14.1" not in active_deploy_lids
+    assert "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1" not in active_deploy_lids
     assert active_deploy_lids == {
-        "maven|org.apache.logging.log4j|log4j-core|2.17.1",
-        "maven|org.yaml|snakeyaml|1.30",
+        "pkg:maven/org.apache.logging.log4j/log4j-core@2.17.1",
+        "pkg:maven/org.yaml/snakeyaml@1.30",
     }
 
     # 2. Production-only views must include ONLY replacement build b2 (log4j 2.17.1) and exclude both b1 (2.14.1) and staging b3 (snakeyaml 1.30)
     all_prod_lids = {c["library_id"] for c in evaluate_estate_view(contract, "all_active_production")["components"]}
-    assert all_prod_lids == {"maven|org.apache.logging.log4j|log4j-core|2.17.1"}
+    assert all_prod_lids == {"pkg:maven/org.apache.logging.log4j/log4j-core@2.17.1"}
 
     latest_prod_lids = {c["library_id"] for c in evaluate_estate_view(contract, "latest_production_version")["components"]}
-    assert latest_prod_lids == {"maven|org.apache.logging.log4j|log4j-core|2.17.1"}
+    assert latest_prod_lids == {"pkg:maven/org.apache.logging.log4j/log4j-core@2.17.1"}
 
     # 3. Historical view (all_imported) still preserves b1 for auditability
     all_imported_lids = {c["library_id"] for c in evaluate_estate_view(contract, "all_imported")["components"]}
     assert all_imported_lids == {
-        "maven|org.apache.logging.log4j|log4j-core|2.14.1",
-        "maven|org.apache.logging.log4j|log4j-core|2.17.1",
-        "maven|org.yaml|snakeyaml|1.30",
+        "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+        "pkg:maven/org.apache.logging.log4j/log4j-core@2.17.1",
+        "pkg:maven/org.yaml/snakeyaml@1.30",
     }
 
 
@@ -1149,8 +1149,8 @@ def test_latest_version_selection_ranks_final_release_above_release_candidate() 
     latest_prod_view = evaluate_estate_view(contract, "latest_production_version")
     assert latest_prod_view["evaluated_application_version_ids"] == ["github|acme|clearing-router|main@2.0.0"]
     latest_lids = {c["library_id"] for c in latest_prod_view["components"]}
-    assert latest_lids == {"maven|org.apache.logging.log4j|log4j-core|2.17.1"}
-    assert "maven|org.apache.logging.log4j|log4j-core|2.14.1" not in latest_lids
+    assert latest_lids == {"pkg:maven/org.apache.logging.log4j/log4j-core@2.17.1"}
+    assert "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1" not in latest_lids
 
 
 def test_osera_java_patch_version_ordering_and_patch_sequences() -> None:
@@ -1333,8 +1333,8 @@ def test_maven_versus_semver_numeric_hyphen_suffix_and_explicit_convention_polic
     assert ambig_latest_view["latest_version_selection_status"] == "partial_ambiguous_or_unsupported"
     assert ambig_latest_view["ambiguous_latest_version_application_ids"] == ["github|acme|polyglot-gateway|main"]
     assert {c["library_id"] for c in ambig_latest_view["components"]} == {
-        "maven|org.springframework|spring-web|5.3.20",
-        "maven|com.fasterxml.jackson.core|jackson-databind|2.13.3",
+        "pkg:maven/org.springframework/spring-web@5.3.20",
+        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.3",
     }
 
     # When explicit convention is provided (maven vs semver), 2.0.0 vs 2.0.0-1 resolves deterministically as Intended:
@@ -1370,7 +1370,7 @@ def test_maven_versus_semver_numeric_hyphen_suffix_and_explicit_convention_polic
     assert maven_app["version_ordering_status"] == "ordered"
     assert maven_app["latest_production_version"] == "2.0.0-1"
     maven_latest_lids = {c["library_id"] for c in evaluate_estate_view(maven_contract, "latest_production_version")["components"]}
-    assert maven_latest_lids == {"maven|org.springframework|spring-web|5.3.32"}
+    assert maven_latest_lids == {"pkg:maven/org.springframework/spring-web@5.3.32"}
 
     feed_semver = parse_company_inventory_feed(
         {
@@ -1404,7 +1404,7 @@ def test_maven_versus_semver_numeric_hyphen_suffix_and_explicit_convention_polic
     assert semver_app["version_ordering_status"] == "ordered"
     assert semver_app["latest_production_version"] == "2.0.0"
     semver_latest_lids = {c["library_id"] for c in evaluate_estate_view(semver_contract, "latest_production_version")["components"]}
-    assert semver_latest_lids == {"maven|org.springframework|spring-web@5.3.32".replace("@", "|")}
+    assert semver_latest_lids == {"pkg:maven/org.springframework/spring-web@5.3.32"}
 
     # Explicit SemVer applications retain genuine SemVer behavior even when version strings use
     # `-osera-00001` or `-final` and even when the application consumes Java/Maven dependencies:
@@ -1442,12 +1442,12 @@ def test_maven_versus_semver_numeric_hyphen_suffix_and_explicit_convention_polic
             assert explicit_semver_app["latest_production_version"] == "2.0.0"
             latest_sem_view = evaluate_estate_view(explicit_semver_contract, "latest_production_version")
             assert {c["library_id"] for c in latest_sem_view["components"]} == {
-                "maven|org.springframework|spring-web|5.3.32"
+                "pkg:maven/org.springframework/spring-web@5.3.32"
             }
             all_active_sem_view = evaluate_estate_view(explicit_semver_contract, "all_active_production")
             assert {c["library_id"] for c in all_active_sem_view["components"]} == {
-                "maven|org.springframework|spring-web|5.3.20",
-                "maven|org.springframework|spring-web|5.3.32",
+                "pkg:maven/org.springframework/spring-web@5.3.20",
+                "pkg:maven/org.springframework/spring-web@5.3.32",
             }
 
     # Unsupported / opaque version schemes (e.g. git commit SHAs) do not claim a fake universal latest version
@@ -1550,7 +1550,7 @@ def test_estate_latest_production_version_view_with_osera_patched_releases_and_a
             assert latest_view["latest_version_selection_status"] == "complete"
             assert latest_view["evaluated_application_version_ids"] == [f"github|acme|{app_name}|main@{patched_ver}"]
             latest_lids = {c["library_id"] for c in latest_view["components"]}
-            assert latest_lids == {"maven|org.apache.logging.log4j|log4j-core|2.17.1"}
+            assert latest_lids == {"pkg:maven/org.apache.logging.log4j/log4j-core@2.17.1"}
 
             # all_active_production view must still retain BOTH releases and BOTH dependencies while both remain active
             all_active_view = evaluate_estate_view(contract, "all_active_production")
@@ -1560,8 +1560,8 @@ def test_estate_latest_production_version_view_with_osera_patched_releases_and_a
             }
             all_active_lids = {c["library_id"] for c in all_active_view["components"]}
             assert all_active_lids == {
-                "maven|org.apache.logging.log4j|log4j-core|2.14.1",
-                "maven|org.apache.logging.log4j|log4j-core|2.17.1",
+                "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+                "pkg:maven/org.apache.logging.log4j/log4j-core@2.17.1",
             }
 
 
@@ -1631,8 +1631,8 @@ def test_conflicting_multi_import_conventions_and_spdx_osera_comment_convention(
         latest_view = evaluate_estate_view(conflict_contract, "latest_production_version")
         assert latest_view["latest_version_selection_status"] == "partial_ambiguous_or_unsupported"
         assert {c["library_id"] for c in latest_view["components"]} == {
-            "maven|org.springframework|spring-web|5.3.20",
-            "maven|org.springframework|spring-web|5.3.32",
+            "pkg:maven/org.springframework/spring-web@5.3.20",
+            "pkg:maven/org.springframework/spring-web@5.3.32",
         }
 
         # Explicit caller override resolves conflicting document conventions deterministically
